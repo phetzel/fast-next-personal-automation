@@ -2,10 +2,11 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.api.deps import CurrentUser, SessionSvc, UserSvc
+from app.core.config import settings
 from app.core.exceptions import AuthenticationError
 from app.core.security import create_access_token, create_refresh_token
 from app.schemas.token import RefreshTokenRequest, Token
@@ -48,7 +49,13 @@ async def register(
     """Register a new user.
 
     Raises AlreadyExistsError if email is already registered.
+    Raises 403 if registration is disabled.
     """
+    if not settings.REGISTRATION_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Registration is currently disabled. Contact the administrator.",
+        )
     user = await user_service.register(user_in)
     return user
 

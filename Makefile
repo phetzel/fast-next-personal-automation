@@ -83,6 +83,14 @@ frontend-install:
 user-create:
 	uv run --directory backend personal_automations user create
 
+user-create-admin:
+	uv run --directory backend personal_automations user create-admin
+
+user-set-role:
+	@read -p "Email: " email; \
+	read -p "Role (user/admin): " role; \
+	uv run --directory backend personal_automations user set-role $$email --role $$role
+
 user-list:
 	uv run --directory backend personal_automations user list
 
@@ -206,6 +214,8 @@ help:
 	@echo ""
 	@echo "Users:"
 	@echo "  make user-create      Create new user (interactive)"
+	@echo "  make user-create-admin Create admin/superuser"
+	@echo "  make user-set-role    Change user's role"
 	@echo "  make user-list        List all users"
 	@echo ""
 	@echo "Taskiq:"

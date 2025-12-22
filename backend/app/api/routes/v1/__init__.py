@@ -12,6 +12,7 @@ from app.api.routes.v1 import conversations
 from app.api.routes.v1 import webhooks
 from app.api.routes.v1 import ws
 from app.api.routes.v1 import agent
+from app.api.routes.v1 import config
 
 v1_router = APIRouter()
 
@@ -44,3 +45,6 @@ v1_router.include_router(ws.router, tags=["websocket"])
 
 # AI Agent routes
 v1_router.include_router(agent.router, tags=["agent"])
+
+# Public config routes (no auth required)
+v1_router.include_router(config.router, prefix="/config", tags=["config"])

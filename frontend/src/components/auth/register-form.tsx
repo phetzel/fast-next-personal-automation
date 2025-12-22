@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks";
+import { useAuth, useConfig } from "@/hooks";
 import {
   Button,
   Input,
@@ -20,12 +20,36 @@ import { ROUTES } from "@/lib/constants";
 export function RegisterForm() {
   const router = useRouter();
   const { register } = useAuth();
+  const { config, isLoading: configLoading } = useConfig();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect if registration is disabled
+  useEffect(() => {
+    if (!configLoading && !config.registration_enabled) {
+      router.replace(ROUTES.LOGIN);
+    }
+  }, [config.registration_enabled, configLoading, router]);
+
+  // Show loading while checking config
+  if (configLoading) {
+    return (
+      <Card className="mx-auto w-full max-w-md">
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="text-muted-foreground">Loading...</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Don't render form if registration is disabled
+  if (!config.registration_enabled) {
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

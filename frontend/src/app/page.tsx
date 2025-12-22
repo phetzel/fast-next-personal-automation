@@ -1,8 +1,15 @@
+"use client";
+
 import Link from "next/link";
 import { Button, Card, CardHeader, CardTitle, CardContent } from "@/components/ui";
 import { ROUTES } from "@/lib/constants";
+import { useConfig } from "@/hooks";
+import { useAuthStore } from "@/stores";
 
 export default function HomePage() {
+  const { config } = useConfig();
+  const { isAuthenticated } = useAuthStore();
+
   return (
     <div className="bg-background min-h-screen">
       <div className="container mx-auto px-4 py-16">
@@ -21,12 +28,22 @@ export default function HomePage() {
             <CardContent>
               <p className="text-muted-foreground mb-4">Secure JWT-based authentication system</p>
               <div className="flex gap-2">
-                <Button asChild>
-                  <Link href={ROUTES.LOGIN}>Login</Link>
-                </Button>
-                <Button variant="outline" asChild>
-                  <Link href={ROUTES.REGISTER}>Register</Link>
-                </Button>
+                {isAuthenticated ? (
+                  <Button asChild>
+                    <Link href={ROUTES.DASHBOARD}>Go to Dashboard</Link>
+                  </Button>
+                ) : (
+                  <>
+                    <Button asChild>
+                      <Link href={ROUTES.LOGIN}>Login</Link>
+                    </Button>
+                    {config.registration_enabled && (
+                      <Button variant="outline" asChild>
+                        <Link href={ROUTES.REGISTER}>Register</Link>
+                      </Button>
+                    )}
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -40,7 +57,9 @@ export default function HomePage() {
                 Chat with our AI assistant powered by PydanticAI
               </p>
               <Button asChild>
-                <Link href={ROUTES.CHAT}>Start Chat</Link>
+                <Link href={isAuthenticated ? ROUTES.CHAT : ROUTES.LOGIN}>
+                  {isAuthenticated ? "Start Chat" : "Login to Chat"}
+                </Link>
               </Button>
             </CardContent>
           </Card>
@@ -54,7 +73,9 @@ export default function HomePage() {
                 View your dashboard and manage your account
               </p>
               <Button variant="outline" asChild>
-                <Link href={ROUTES.DASHBOARD}>Go to Dashboard</Link>
+                <Link href={isAuthenticated ? ROUTES.DASHBOARD : ROUTES.LOGIN}>
+                  {isAuthenticated ? "Go to Dashboard" : "Login to Continue"}
+                </Link>
               </Button>
             </CardContent>
           </Card>

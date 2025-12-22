@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@/hooks";
+import { useAuth, useConfig } from "@/hooks";
 import {
   Button,
   Input,
@@ -18,6 +18,7 @@ import { ROUTES } from "@/lib/constants";
 
 export function LoginForm() {
   const { login } = useAuth();
+  const { config } = useConfig();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -76,14 +77,16 @@ export function LoginForm() {
           </Button>
         </form>
       </CardContent>
-      <CardFooter className="justify-center">
-        <p className="text-muted-foreground text-sm">
-          Don&apos;t have an account?{" "}
-          <Link href={ROUTES.REGISTER} className="text-primary hover:underline">
-            Register
-          </Link>
-        </p>
-      </CardFooter>
+      {config.registration_enabled && (
+        <CardFooter className="justify-center">
+          <p className="text-muted-foreground text-sm">
+            Don&apos;t have an account?{" "}
+            <Link href={ROUTES.REGISTER} className="text-primary hover:underline">
+              Register
+            </Link>
+          </p>
+        </CardFooter>
+      )}
     </Card>
   );
 }
