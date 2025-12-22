@@ -122,7 +122,7 @@ async def archive_conversation(
     return await conversation_service.archive_conversation(conversation_id)
 
 
-@router.get("/{conversation_id}/messages", response_model=list[MessageReadSimple])
+@router.get("/{conversation_id}/messages", response_model=list[MessageRead])
 async def list_messages(
     conversation_id: UUID,
     conversation_service: ConversationSvc,
@@ -133,8 +133,11 @@ async def list_messages(
     """List messages in a conversation.
 
     Returns messages ordered by creation time (oldest first).
+    Includes tool calls for each message.
     """
-    return await conversation_service.list_messages(conversation_id, skip=skip, limit=limit)
+    return await conversation_service.list_messages(
+        conversation_id, skip=skip, limit=limit, include_tool_calls=True
+    )
 
 
 @router.post(
