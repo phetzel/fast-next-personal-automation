@@ -10,21 +10,32 @@ export default function HomePage() {
 
   return (
     <div className="bg-background relative flex min-h-screen items-center justify-center overflow-hidden">
-      <DottedGlowBackground
-        gap={20}
-        radius={1.5}
-        color="rgba(120, 120, 120, 0.4)"
-        darkColor="rgba(200, 200, 200, 0.3)"
-        glowColor="rgba(34, 211, 238, 0.9)"
-        darkGlowColor="rgba(34, 211, 238, 0.8)"
-        opacity={0.8}
-        speedMin={0.3}
-        speedMax={0.8}
-      />
+      {/* Radial mask container for circular dot effect */}
+      <div
+        className="pointer-events-none absolute inset-0 flex items-center justify-center"
+        style={{
+          maskImage:
+            "radial-gradient(ellipse 70% 60% at 50% 50%, black 0%, black 50%, transparent 80%)",
+          WebkitMaskImage:
+            "radial-gradient(ellipse 70% 60% at 50% 50%, black 0%, black 50%, transparent 80%)",
+        }}
+      >
+        <DottedGlowBackground
+          gap={18}
+          radius={1.5}
+          color="rgba(100, 100, 100, 0.5)"
+          darkColor="rgba(180, 180, 180, 0.4)"
+          glowColor="rgba(34, 211, 238, 0.95)"
+          darkGlowColor="rgba(34, 211, 238, 0.9)"
+          opacity={0.9}
+          speedMin={0.2}
+          speedMax={0.6}
+        />
+      </div>
 
-      <div className="relative z-10 flex flex-col items-center gap-8 px-4 text-center">
-        <h1 className="text-6xl font-black tracking-tighter sm:text-7xl md:text-8xl lg:text-9xl">
-          <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
+      <div className="relative z-10 flex flex-col items-center gap-8 px-8 text-center">
+        <h1 className="text-6xl font-black tracking-tight sm:text-7xl md:text-8xl lg:text-9xl">
+          <span className="inline-block bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text px-2 text-transparent">
             AILIENS
           </span>
         </h1>
