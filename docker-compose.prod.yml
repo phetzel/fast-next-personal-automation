@@ -151,7 +151,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: personal_automations_taskiq_worker
+    # Note: no container_name because replicas > 1
     command: taskiq worker app.worker.taskiq_app:broker --workers 4
     env_file:
       - .env
