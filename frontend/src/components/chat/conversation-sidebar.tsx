@@ -162,7 +162,7 @@ function ConversationList({
   onNewChat,
   onNavigate,
 }: ConversationListProps) {
-  const activeConversations = conversations.filter((c) => !c.is_archived);
+  const activeConversations = (conversations || []).filter((c) => !c.is_archived);
 
   const handleSelect = (id: string) => {
     onSelect(id);
@@ -189,7 +189,7 @@ function ConversationList({
       </div>
 
       <div className="scrollbar-thin flex-1 overflow-y-auto px-3 pb-3">
-        {isLoading && conversations.length === 0 ? (
+        {isLoading && (!conversations || conversations.length === 0) ? (
           <div className="text-muted-foreground flex items-center justify-center py-8 text-sm">
             Loading...
           </div>

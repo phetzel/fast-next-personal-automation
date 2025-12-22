@@ -1,4 +1,4 @@
-.PHONY: install format lint test run clean help db-init
+.PHONY: install format lint test run clean help db-init frontend frontend-build frontend-install
 
 # === Setup ===
 install:
@@ -68,6 +68,16 @@ run-prod:
 
 routes:
 	uv run --directory backend personal_automations server routes
+
+# === Frontend ===
+frontend:
+	cd frontend && bun dev
+
+frontend-build:
+	cd frontend && bun run build
+
+frontend-install:
+	cd frontend && bun install
 
 # === Users ===
 user-create:
@@ -177,36 +187,38 @@ help:
 	@echo "======================================"
 	@echo ""
 	@echo "Setup:"
-	@echo "  make install       Install dependencies + pre-commit hooks"
+	@echo "  make install          Install dependencies + pre-commit hooks"
+	@echo "  make frontend-install Install frontend dependencies"
 	@echo ""
 	@echo "Development:"
-	@echo "  make run           Start dev server (with hot reload)"
-	@echo "  make test          Run tests"
-	@echo "  make lint          Check code quality"
-	@echo "  make format        Auto-format code"
+	@echo "  make run              Start backend server (with hot reload)"
+	@echo "  make frontend         Start frontend dev server"
+	@echo "  make test             Run tests"
+	@echo "  make lint             Check code quality"
+	@echo "  make format           Auto-format code"
 	@echo ""
 	@echo "Database:"
-	@echo "  make db-init       Initialize database (start + migrate)"
-	@echo "  make db-migrate    Create new migration"
-	@echo "  make db-upgrade    Apply migrations"
-	@echo "  make db-downgrade  Rollback last migration"
-	@echo "  make db-current    Show current migration"
+	@echo "  make db-init          Initialize database (start + migrate)"
+	@echo "  make db-migrate       Create new migration"
+	@echo "  make db-upgrade       Apply migrations"
+	@echo "  make db-downgrade     Rollback last migration"
+	@echo "  make db-current       Show current migration"
 	@echo ""
 	@echo "Users:"
-	@echo "  make user-create   Create new user (interactive)"
-	@echo "  make user-list     List all users"
+	@echo "  make user-create      Create new user (interactive)"
+	@echo "  make user-list        List all users"
 	@echo ""
 	@echo "Taskiq:"
-	@echo "  make taskiq-worker     Start Taskiq worker"
-	@echo "  make taskiq-scheduler  Start Taskiq scheduler"
+	@echo "  make taskiq-worker    Start Taskiq worker"
+	@echo "  make taskiq-scheduler Start Taskiq scheduler"
 	@echo ""
 	@echo "Docker (Development):"
 	@echo "  make docker-up            Start backend services"
 	@echo "  make docker-down          Stop all services"
 	@echo "  make docker-logs          View backend logs"
 	@echo "  make docker-build         Build backend images"
-	@echo "  make docker-frontend      Start frontend (separate)"
-	@echo "  make docker-frontend-down Stop frontend"
+	@echo "  make docker-frontend      Start frontend (Docker)"
+	@echo "  make docker-frontend-down Stop frontend (Docker)"
 	@echo "  make docker-db            Start only PostgreSQL"
 	@echo "  make docker-redis         Start only Redis"
 	@echo ""
@@ -216,6 +228,6 @@ help:
 	@echo "  make docker-prod-logs     View production logs"
 	@echo ""
 	@echo "Other:"
-	@echo "  make routes        Show all API routes"
-	@echo "  make clean         Clean cache files"
+	@echo "  make routes           Show all API routes"
+	@echo "  make clean            Clean cache files"
 	@echo ""

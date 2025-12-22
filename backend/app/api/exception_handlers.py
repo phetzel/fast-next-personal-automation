@@ -19,12 +19,15 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
     Logs 5xx errors as errors and 4xx as warnings.
     Returns a standardized JSON error response.
     """
+    # Handle both HTTP requests and WebSocket connections
+    method = getattr(request, "method", "WEBSOCKET")
+    
     log_extra = {
         "error_code": exc.code,
         "status_code": exc.status_code,
         "details": exc.details,
         "path": request.url.path,
-        "method": request.method,
+        "method": method,
     }
 
     if exc.status_code >= 500:
@@ -55,11 +58,14 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     Logs the full exception but returns a generic error to the client
     to avoid leaking sensitive information.
     """
+    # Handle both HTTP requests and WebSocket connections
+    method = getattr(request, "method", "WEBSOCKET")
+    
     logger.exception(
         "Unhandled exception",
         extra={
             "path": request.url.path,
-            "method": request.method,
+            "method": method,
         },
     )
 

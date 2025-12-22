@@ -22,11 +22,13 @@ async_session_maker = async_sessionmaker(
 )
 
 
-@asynccontextmanager
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Get async database session.
+    """Get async database session as a FastAPI dependency.
 
-    Can be used both as a FastAPI dependency and as an async context manager.
+    Usage as FastAPI dependency:
+        DBSession = Annotated[AsyncSession, Depends(get_db_session)]
+
+    For manual context manager usage, use get_db_context() instead.
     """
     async with async_session_maker() as session:
         try:
@@ -35,8 +37,25 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
-        finally:
-            await session.close()
+
+
+@asynccontextmanager
+async def get_db_context() -> AsyncGenerator[AsyncSession, None]:
+    """Get async database session as a context manager.
+
+    Usage:
+        async with get_db_context() as db:
+            user = await user_repo.get_by_id(db, user_id)
+
+    For FastAPI dependencies, use get_db_session() instead.
+    """
+    async with async_session_maker() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
 
 async def close_db() -> None:

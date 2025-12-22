@@ -209,7 +209,9 @@ async def get_current_user_ws(
         await websocket.close(code=4001, reason="Invalid token payload")
         raise AuthenticationError(message="Invalid token payload")
 
-    async with get_db_session() as db:
+    from app.db.session import get_db_context
+
+    async with get_db_context() as db:
         user_service = UserService(db)
         user = await user_service.get_by_id(UUID(user_id))
 
@@ -218,6 +220,52 @@ async def get_current_user_ws(
         raise AuthenticationError(message="User account is disabled")
 
     return user
+
+
+async def get_optional_user_ws(
+    websocket: WebSocket,
+    token: str = Query(None, alias="token"),
+) -> User | None:
+    """Get current user from WebSocket JWT token, or None if not authenticated.
+
+    Token should be passed as a query parameter: ws://...?token=<jwt>
+    If no token or invalid token, returns None instead of raising an error.
+    This allows WebSocket endpoints to work for both authenticated and anonymous users.
+    """
+    from uuid import UUID
+
+    from app.core.security import verify_token
+
+    if not token:
+        return None
+
+    payload = verify_token(token)
+    if payload is None:
+        return None
+
+    if payload.get("type") != "access":
+        return None
+
+    user_id = payload.get("sub")
+    if user_id is None:
+        return None
+
+    try:
+        from app.db.session import get_db_context
+
+        async with get_db_context() as db:
+            user_service = UserService(db)
+            user = await user_service.get_by_id(UUID(user_id))
+
+        if not user.is_active:
+            return None
+
+        return user
+    except Exception:
+        return None
+
+
+OptionalUserWS = Annotated[User | None, Depends(get_optional_user_ws)]
 
 
 import secrets

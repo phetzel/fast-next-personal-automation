@@ -24,9 +24,9 @@ from pydantic_ai.messages import (
 )
 
 from app.agents.assistant import Deps, get_agent
-from app.api.deps import get_conversation_service, get_current_user_ws
+from app.api.deps import get_conversation_service, get_optional_user_ws
 from app.db.models.user import User
-from app.db.session import get_db_session
+from app.db.session import get_db_context
 from app.schemas.conversation import (
     ConversationCreate,
     MessageCreate,
@@ -91,7 +91,7 @@ def build_message_history(history: list[dict[str, str]]) -> list[ModelRequest | 
 @router.websocket("/ws/agent")
 async def agent_websocket(
     websocket: WebSocket,
-    user: User = Depends(get_current_user_ws),
+    user: User | None = Depends(get_optional_user_ws),
 ) -> None:
     """WebSocket endpoint for AI agent with full event streaming.
 
@@ -113,11 +113,12 @@ async def agent_websocket(
         "conversation_id": "optional-uuid-to-continue-existing-conversation"
     }
 
-    Authentication: Requires a valid JWT token passed as a query parameter or header.
+    Authentication: Optional. Pass JWT token as query parameter for persistence.
+    Anonymous users can chat but conversations are not saved to the database.
 
     Persistence: Set 'conversation_id' to continue an existing conversation.
-    If not provided, a new conversation is created. The conversation_id is
-    returned in the 'conversation_started' event.
+    If not provided and user is authenticated, a new conversation is created.
+    The conversation_id is returned in the 'conversation_started' event.
     """
 
     await manager.connect(websocket)
@@ -140,39 +141,44 @@ async def agent_websocket(
                 await manager.send_event(websocket, "error", {"message": "Empty message"})
                 continue
 
-            # Handle conversation persistence
-            try:
-                async with get_db_session() as db:
-                    conv_service = get_conversation_service(db)
+            # Handle conversation persistence (only for authenticated users)
+            new_conversation_created = False
+            if user is not None:
+                try:
+                    async with get_db_context() as db:
+                        conv_service = get_conversation_service(db)
 
-                    # Get or create conversation
-                    requested_conv_id = data.get("conversation_id")
-                    if requested_conv_id:
-                        current_conversation_id = requested_conv_id
-                        # Verify conversation exists
-                        await conv_service.get_conversation(UUID(requested_conv_id))
-                    elif not current_conversation_id:
-                        # Create new conversation
-                        conv_data = ConversationCreate(
-                            user_id=user.id,
-                            title=user_message[:50] if len(user_message) > 50 else user_message,
+                        # Get or create conversation
+                        requested_conv_id = data.get("conversation_id")
+                        if requested_conv_id:
+                            current_conversation_id = requested_conv_id
+                            # Verify conversation exists
+                            await conv_service.get_conversation(UUID(requested_conv_id))
+                        elif not current_conversation_id:
+                            # Create new conversation
+                            conv_data = ConversationCreate(
+                                user_id=user.id,
+                                title=user_message[:50] if len(user_message) > 50 else user_message,
+                            )
+                            conversation = await conv_service.create_conversation(conv_data)
+                            current_conversation_id = str(conversation.id)
+                            new_conversation_created = True
+
+                        # Save user message
+                        await conv_service.add_message(
+                            UUID(current_conversation_id),
+                            MessageCreate(role="user", content=user_message),
                         )
-                        conversation = await conv_service.create_conversation(conv_data)
-                        current_conversation_id = str(conversation.id)
+                    # Transaction is now committed - safe to notify frontend
+                    if new_conversation_created:
                         await manager.send_event(
                             websocket,
-                            "conversation_started",
+                            "conversation_created",
                             {"conversation_id": current_conversation_id},
                         )
-
-                    # Save user message
-                    await conv_service.add_message(
-                        UUID(current_conversation_id),
-                        MessageCreate(role="user", content=user_message),
-                    )
-            except Exception as e:
-                logger.warning(f"Failed to persist conversation: {e}")
-                # Continue without persistence
+                except Exception as e:
+                    logger.warning(f"Failed to persist conversation: {e}")
+                    # Continue without persistence
 
             await manager.send_event(websocket, "user_prompt", {"content": user_message})
 
@@ -289,7 +295,7 @@ async def agent_websocket(
                 # Save assistant response to database
                 if current_conversation_id and agent_run.result:
                     try:
-                        async with get_db_session() as db:
+                        async with get_db_context() as db:
                             conv_service = get_conversation_service(db)
                             await conv_service.add_message(
                                 UUID(current_conversation_id),

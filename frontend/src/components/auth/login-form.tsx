@@ -15,7 +15,6 @@ import {
 } from "@/components/ui";
 import { ApiError } from "@/lib/api-client";
 import { ROUTES } from "@/lib/constants";
-import { GoogleIcon } from "@/components/icons/google-icon";
 
 export function LoginForm() {
   const { login } = useAuth();
@@ -23,7 +22,6 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isOAuthLoading, setIsOAuthLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,12 +38,6 @@ export function LoginForm() {
       }
       setIsLoading(false);
     }
-  };
-
-  const handleGoogleLogin = () => {
-    setIsOAuthLoading(true);
-    // Redirect to backend OAuth endpoint
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/oauth/google/login`;
   };
 
   return (
@@ -83,26 +75,6 @@ export function LoginForm() {
             {isLoading ? "Logging in..." : "Login"}
           </Button>
         </form>
-
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card text-muted-foreground px-2">Or continue with</span>
-          </div>
-        </div>
-
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full"
-          onClick={handleGoogleLogin}
-          disabled={isOAuthLoading || isLoading}
-        >
-          <GoogleIcon className="mr-2 h-4 w-4" />
-          {isOAuthLoading ? "Redirecting..." : "Continue with Google"}
-        </Button>
       </CardContent>
       <CardFooter className="justify-center">
         <p className="text-muted-foreground text-sm">

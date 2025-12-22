@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { apiClient } from "@/lib/api-client";
-import { useConversationStore } from "@/stores";
+import { useConversationStore, useChatStore } from "@/stores";
 import type { Conversation, ConversationMessage, ConversationListResponse } from "@/types";
 
 interface CreateConversationResponse {
@@ -77,9 +77,12 @@ export function useConversations() {
     [addConversation, setLoading, setError]
   );
 
+  const { clearMessages } = useChatStore();
+
   const selectConversation = useCallback(
     async (id: string) => {
       setCurrentConversationId(id);
+      clearMessages(); // Clear chat store before loading new messages
       setLoading(true);
       setError(null);
       try {
@@ -92,7 +95,7 @@ export function useConversations() {
         setLoading(false);
       }
     },
-    [setCurrentConversationId, setCurrentMessages, setLoading, setError]
+    [setCurrentConversationId, setCurrentMessages, setLoading, setError, clearMessages]
   );
 
   const archiveConversation = useCallback(
@@ -137,7 +140,8 @@ export function useConversations() {
   const startNewChat = useCallback(() => {
     setCurrentConversationId(null);
     setCurrentMessages([]);
-  }, [setCurrentConversationId, setCurrentMessages]);
+    clearMessages();
+  }, [setCurrentConversationId, setCurrentMessages, clearMessages]);
 
   return {
     conversations,

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Moon, Sun, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useThemeStore, Theme, getResolvedTheme } from "@/stores/theme-store";
@@ -11,7 +12,14 @@ interface ThemeToggleProps {
 
 export function ThemeToggle({ variant = "icon", className }: ThemeToggleProps) {
   const { theme, setTheme } = useThemeStore();
-  const resolvedTheme = getResolvedTheme(theme);
+  const [mounted, setMounted] = useState(false);
+
+  // Only access window-dependent APIs after mount to avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const resolvedTheme = mounted ? getResolvedTheme(theme) : "light";
 
   const cycleTheme = () => {
     const themes: Theme[] = ["light", "dark", "system"];
