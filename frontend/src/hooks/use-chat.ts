@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { nanoid } from "nanoid";
 import { useWebSocket } from "./use-websocket";
 import { useChatStore } from "@/stores";
 import type { ChatMessage, ToolCall, WSEvent } from "@/types";
 import { WS_URL } from "@/lib/constants";
 import { useConversationStore } from "@/stores";
+
 interface UseChatOptions {
   conversationId?: string | null;
   onConversationCreated?: (conversationId: string) => void;
@@ -20,6 +21,25 @@ export function useChat(options: UseChatOptions = {}) {
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentMessageId, setCurrentMessageId] = useState<string | null>(null);
+  const [wsToken, setWsToken] = useState<string | null>(null);
+  const [tokenFetched, setTokenFetched] = useState(false);
+
+  // Fetch WebSocket token on mount for authenticated sessions
+  useEffect(() => {
+    async function fetchToken() {
+      try {
+        const response = await fetch("/api/auth/ws-token");
+        if (response.ok) {
+          const data = await response.json();
+          setWsToken(data.token);
+        }
+      } catch {
+        // Token fetch failed - will connect as anonymous
+      }
+      setTokenFetched(true);
+    }
+    fetchToken();
+  }, []);
 
   const handleWebSocketMessage = useCallback(
     (event: MessageEvent) => {
@@ -144,12 +164,29 @@ export function useChat(options: UseChatOptions = {}) {
     ]
   );
 
-  const wsUrl = `${WS_URL}/api/v1/ws/agent`;
+  // Build WebSocket URL with optional token for authentication
+  const wsUrl = wsToken
+    ? `${WS_URL}/api/v1/ws/agent?token=${wsToken}`
+    : `${WS_URL}/api/v1/ws/agent`;
 
-  const { isConnected, connect, disconnect, sendMessage } = useWebSocket({
+  const { isConnected, connect: wsConnect, disconnect, sendMessage } = useWebSocket({
     url: wsUrl,
     onMessage: handleWebSocketMessage,
   });
+
+  // Custom connect that waits for token fetch
+  const connect = useCallback(() => {
+    if (tokenFetched) {
+      wsConnect();
+    }
+  }, [tokenFetched, wsConnect]);
+
+  // Auto-connect once token is fetched (or confirmed absent)
+  useEffect(() => {
+    if (tokenFetched && !isConnected) {
+      wsConnect();
+    }
+  }, [tokenFetched, isConnected, wsConnect]);
 
   const sendChatMessage = useCallback(
     (content: string) => {

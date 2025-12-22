@@ -148,14 +148,25 @@ async def agent_websocket(
                     async with get_db_context() as db:
                         conv_service = get_conversation_service(db)
 
-                        # Get or create conversation
-                        requested_conv_id = data.get("conversation_id")
-                        if requested_conv_id:
-                            current_conversation_id = requested_conv_id
-                            # Verify conversation exists
-                            await conv_service.get_conversation(UUID(requested_conv_id))
-                        elif not current_conversation_id:
-                            # Create new conversation
+                        # Determine which conversation to use
+                        # - If "conversation_id" key is present with a value: use that conversation
+                        # - If "conversation_id" key is present with null: create new conversation
+                        # - If "conversation_id" key is absent: continue current or create new
+                        if "conversation_id" in data:
+                            requested_conv_id = data["conversation_id"]
+                            if requested_conv_id:
+                                # Client wants to continue a specific conversation
+                                current_conversation_id = requested_conv_id
+                                # Verify conversation exists
+                                await conv_service.get_conversation(UUID(requested_conv_id))
+                            else:
+                                # Client explicitly wants a new conversation (sent null)
+                                current_conversation_id = None
+                                # Also clear conversation history for new chat
+                                conversation_history = []
+
+                        # Create new conversation if needed
+                        if not current_conversation_id:
                             conv_data = ConversationCreate(
                                 user_id=user.id,
                                 title=user_message[:50] if len(user_message) > 50 else user_message,
@@ -169,6 +180,7 @@ async def agent_websocket(
                             UUID(current_conversation_id),
                             MessageCreate(role="user", content=user_message),
                         )
+
                     # Transaction is now committed - safe to notify frontend
                     if new_conversation_created:
                         await manager.send_event(

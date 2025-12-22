@@ -49,6 +49,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[LifespanState, None]:
 
     setup_cache(redis_client)
 
+    # Initialize action pipelines (register all available pipelines)
+    from app.pipelines import init_pipelines
+
+    init_pipelines()
+
     yield {"redis": redis_client}
 
     # === Shutdown ===
@@ -107,6 +112,10 @@ def create_app() -> FastAPI:
         {
             "name": "agent",
             "description": "AI agent WebSocket endpoint for real-time chat",
+        },
+        {
+            "name": "pipelines",
+            "description": "Action pipelines - reusable automations callable via API, webhooks, or AI agent",
         },
         {
             "name": "websocket",

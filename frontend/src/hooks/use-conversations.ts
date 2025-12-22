@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import { apiClient } from "@/lib/api-client";
 import { useConversationStore, useChatStore } from "@/stores";
-import type { Conversation, ConversationMessage, ConversationListResponse } from "@/types";
+import type { Conversation, ConversationMessage } from "@/types";
 
 interface CreateConversationResponse {
   id: string;
@@ -11,11 +11,6 @@ interface CreateConversationResponse {
   created_at: string;
   updated_at: string;
   is_archived: boolean;
-}
-
-interface MessagesResponse {
-  items: ConversationMessage[];
-  total: number;
 }
 
 export function useConversations() {
@@ -39,8 +34,9 @@ export function useConversations() {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get<ConversationListResponse>("/conversations");
-      setConversations(response.items);
+      // Backend returns array directly, not wrapped in { items: [...] }
+      const response = await apiClient.get<Conversation[]>("/conversations");
+      setConversations(response);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to fetch conversations";
       setError(message);
@@ -82,12 +78,13 @@ export function useConversations() {
   const selectConversation = useCallback(
     async (id: string) => {
       setCurrentConversationId(id);
-      clearMessages(); // Clear chat store before loading new messages
       setLoading(true);
       setError(null);
       try {
-        const response = await apiClient.get<MessagesResponse>(`/conversations/${id}/messages`);
-        setCurrentMessages(response.items);
+        // Backend returns array directly, not wrapped in { items: [...] }
+        const response = await apiClient.get<ConversationMessage[]>(`/conversations/${id}/messages`);
+        // Setting currentMessages triggers useEffect in ChatContainer that syncs to chat store
+        setCurrentMessages(response);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to fetch messages";
         setError(message);
@@ -95,7 +92,7 @@ export function useConversations() {
         setLoading(false);
       }
     },
-    [setCurrentConversationId, setCurrentMessages, setLoading, setError, clearMessages]
+    [setCurrentConversationId, setCurrentMessages, setLoading, setError]
   );
 
   const archiveConversation = useCallback(

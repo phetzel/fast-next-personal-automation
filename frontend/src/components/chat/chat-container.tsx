@@ -26,31 +26,31 @@ export function ChatContainer({ useLocalStorage = false }: ChatContainerProps) {
 
 function AuthenticatedChatContainer() {
   const { currentConversationId, currentMessages } = useConversationStore();
-  const { addMessage: addChatMessage } = useChatStore();
+  const { setMessages: setChatMessages } = useChatStore();
   const { fetchConversations } = useConversations();
 
+  // Sync conversation messages to chat store when loading a conversation from sidebar
+  // This replaces all messages atomically to avoid race conditions
   useEffect(() => {
-    if (currentMessages.length > 0) {
-      currentMessages.forEach((msg) => {
-        addChatMessage({
-          id: msg.id,
-          role: msg.role,
-          content: msg.content,
-          timestamp: new Date(msg.created_at),
-          toolCalls: msg.tool_calls?.map((tc) => ({
-            id: tc.tool_call_id,
-            name: tc.tool_name,
-            args: tc.args,
-            result: tc.result,
-            status: tc.status === "failed" ? "error" : tc.status,
-          })),
-        });
-      });
-    }
-  }, [currentMessages, addChatMessage]);
+    const convertedMessages = currentMessages.map((msg) => ({
+      id: msg.id,
+      role: msg.role as "user" | "assistant" | "system",
+      content: msg.content,
+      timestamp: new Date(msg.created_at),
+      toolCalls: msg.tool_calls?.map((tc) => ({
+        id: tc.tool_call_id,
+        name: tc.tool_name,
+        args: tc.args,
+        result: tc.result,
+        status: (tc.status === "failed" ? "error" : tc.status) as "pending" | "running" | "completed" | "error",
+      })),
+    }));
+    setChatMessages(convertedMessages);
+  }, [currentMessages, setChatMessages]);
 
   const handleConversationCreated = useCallback(
-    (conversationId: string) => {
+    (_conversationId: string) => {
+      // Refresh conversation list when a new conversation is created
       fetchConversations();
     },
     [fetchConversations]

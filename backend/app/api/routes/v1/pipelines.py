@@ -1,0 +1,152 @@
+"""Pipeline API routes.
+
+Provides REST endpoints for:
+- Listing available pipelines
+- Getting pipeline details and schemas
+- Executing pipelines (authenticated)
+- Webhook receiver for external service integration
+"""
+
+import logging
+
+from fastapi import APIRouter, HTTPException, status
+
+from app.api.deps import CurrentUser, ValidAPIKey
+from app.pipelines.action_base import PipelineContext, PipelineSource
+from app.pipelines.registry import (
+    execute_pipeline,
+    get_pipeline_info,
+    list_pipelines,
+)
+from app.schemas.pipeline import (
+    PipelineExecuteRequest,
+    PipelineExecuteResponse,
+    PipelineInfo,
+    PipelineListResponse,
+    PipelineWebhookPayload,
+)
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+
+
+@router.get("", response_model=PipelineListResponse)
+async def list_available_pipelines() -> PipelineListResponse:
+    """List all available pipelines.
+
+    Returns pipeline names, descriptions, and input/output schemas.
+    This endpoint is public to allow frontend to discover available automations.
+    """
+    pipelines = list_pipelines()
+    return PipelineListResponse(
+        pipelines=[PipelineInfo(**p) for p in pipelines],
+        total=len(pipelines),
+    )
+
+
+@router.get("/{pipeline_name}", response_model=PipelineInfo)
+async def get_pipeline_details(pipeline_name: str) -> PipelineInfo:
+    """Get details about a specific pipeline.
+
+    Returns the pipeline's name, description, and JSON schemas for input/output.
+
+    Args:
+        pipeline_name: The unique pipeline identifier.
+
+    Raises:
+        404: If the pipeline is not found.
+    """
+    info = get_pipeline_info(pipeline_name)
+    if info is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Pipeline '{pipeline_name}' not found",
+        )
+    return PipelineInfo(**info)
+
+
+@router.post(
+    "/{pipeline_name}/execute",
+    response_model=PipelineExecuteResponse,
+)
+async def execute_pipeline_endpoint(
+    pipeline_name: str,
+    request: PipelineExecuteRequest,
+    current_user: CurrentUser,
+) -> PipelineExecuteResponse:
+    """Execute a pipeline by name.
+
+    Requires authentication. The input is validated against the pipeline's
+    input schema.
+
+    Args:
+        pipeline_name: The pipeline to execute.
+        request: Request body containing input data.
+        current_user: The authenticated user (injected).
+
+    Returns:
+        PipelineExecuteResponse with success status and output/error.
+    """
+    context = PipelineContext(
+        source=PipelineSource.API,
+        user_id=current_user.id,
+    )
+
+    logger.info(
+        f"Executing pipeline '{pipeline_name}' for user {current_user.id}",
+        extra={"pipeline": pipeline_name, "user_id": str(current_user.id)},
+    )
+
+    result = await execute_pipeline(pipeline_name, request.input, context)
+
+    return PipelineExecuteResponse(
+        success=result.success,
+        output=result.output.model_dump() if result.output else None,
+        error=result.error,
+        metadata=result.metadata,
+    )
+
+
+@router.post(
+    "/webhook/{pipeline_name}",
+    response_model=PipelineExecuteResponse,
+)
+async def webhook_execute_pipeline(
+    pipeline_name: str,
+    payload: PipelineWebhookPayload,
+    api_key: ValidAPIKey,
+) -> PipelineExecuteResponse:
+    """Execute a pipeline via incoming webhook.
+
+    Requires API key authentication via header.
+    Useful for integrations with external services like Zapier, n8n, etc.
+
+    Args:
+        pipeline_name: The pipeline to execute.
+        payload: Webhook payload containing input and optional metadata.
+        api_key: Valid API key (injected, validated via header).
+
+    Returns:
+        PipelineExecuteResponse with success status and output/error.
+    """
+    context = PipelineContext(
+        source=PipelineSource.WEBHOOK,
+        user_id=None,  # Webhooks don't have user context
+        metadata=payload.metadata,
+    )
+
+    logger.info(
+        f"Webhook executing pipeline '{pipeline_name}'",
+        extra={"pipeline": pipeline_name, "source": "webhook"},
+    )
+
+    result = await execute_pipeline(pipeline_name, payload.input, context)
+
+    return PipelineExecuteResponse(
+        success=result.success,
+        output=result.output.model_dump() if result.output else None,
+        error=result.error,
+        metadata=result.metadata,
+    )
+

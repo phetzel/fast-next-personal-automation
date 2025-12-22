@@ -6,6 +6,7 @@ The main conversational agent that can be extended with custom tools.
 import logging
 from dataclasses import dataclass, field
 from typing import Any
+from uuid import UUID
 
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.messages import (
@@ -21,6 +22,8 @@ from pydantic_ai.settings import ModelSettings
 
 from app.agents.tools import get_current_datetime
 from app.core.config import settings
+from app.pipelines.action_base import PipelineContext, PipelineSource
+from app.pipelines.registry import execute_pipeline, list_pipelines
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +84,84 @@ class AssistantAgent:
             Use this tool when you need to know the current date or time.
             """
             return get_current_datetime()
+
+        @agent.tool
+        async def list_available_pipelines(ctx: RunContext[Deps]) -> list[dict[str, Any]]:
+            """List all available automation pipelines.
+
+            Use this tool to discover what automations are available before running them.
+            Returns a list of pipelines with their names, descriptions, and input schemas.
+            """
+            pipelines = list_pipelines()
+            # Return simplified info for the LLM
+            return [
+                {
+                    "name": p["name"],
+                    "description": p["description"],
+                    "input_schema": p["input_schema"],
+                }
+                for p in pipelines
+            ]
+
+        @agent.tool
+        async def run_pipeline(
+            ctx: RunContext[Deps],
+            pipeline_name: str,
+            input_data: dict[str, Any] | None = None,
+        ) -> dict[str, Any]:
+            """Execute an automation pipeline by name.
+
+            IMPORTANT: You must provide BOTH pipeline_name AND input_data.
+            The input_data must be a dictionary containing the required fields
+            from the pipeline's input_schema.
+
+            Example for the 'echo' pipeline:
+                pipeline_name: "echo"
+                input_data: {"message": "Hello world", "uppercase": true}
+
+            Args:
+                pipeline_name: The name of the pipeline to execute (e.g., "echo").
+                input_data: A dictionary with the pipeline's required input fields.
+                    For echo: {"message": "text to echo", "uppercase": false}
+
+            Returns:
+                A dictionary with success status, output data, and any error messages.
+            """
+            # Validate input_data is provided
+            if input_data is None:
+                return {
+                    "success": False,
+                    "output": None,
+                    "error": f"Missing input_data. You must provide input_data with the required fields for the '{pipeline_name}' pipeline. Use list_available_pipelines to see the required input schema.",
+                }
+
+            # Build context from agent deps
+            user_id = None
+            if ctx.deps.user_id:
+                try:
+                    user_id = UUID(ctx.deps.user_id)
+                except ValueError:
+                    pass
+
+            context = PipelineContext(
+                source=PipelineSource.AGENT,
+                user_id=user_id,
+                metadata=ctx.deps.metadata,
+            )
+
+            try:
+                result = await execute_pipeline(pipeline_name, input_data, context)
+                return {
+                    "success": result.success,
+                    "output": result.output.model_dump() if result.output else None,
+                    "error": result.error,
+                }
+            except Exception as e:
+                return {
+                    "success": False,
+                    "output": None,
+                    "error": str(e),
+                }
 
     @property
     def agent(self) -> Agent[Deps, str]:

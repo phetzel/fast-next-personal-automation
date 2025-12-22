@@ -8,6 +8,7 @@ interface ChatState {
   isStreaming: boolean;
 
   addMessage: (message: ChatMessage) => void;
+  setMessages: (messages: ChatMessage[]) => void;
   updateMessage: (id: string, updater: (msg: ChatMessage) => ChatMessage) => void;
   addToolCall: (messageId: string, toolCall: ToolCall) => void;
   updateToolCall: (messageId: string, toolCallId: string, update: Partial<ToolCall>) => void;
@@ -23,6 +24,8 @@ export const useChatStore = create<ChatState>((set) => ({
     set((state) => ({
       messages: [...state.messages, message],
     })),
+
+  setMessages: (messages) => set({ messages }),
 
   updateMessage: (id, updater) =>
     set((state) => ({
