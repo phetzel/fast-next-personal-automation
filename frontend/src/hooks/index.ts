@@ -4,3 +4,4 @@ export { useChat } from "./use-chat";
 export { useLocalChat } from "./use-local-chat";
 export { useConversations } from "./use-conversations";
 export { useConfig } from "./use-config";
+export { usePipelines } from "./use-pipelines";
