@@ -38,6 +38,8 @@ class Deps:
     user_id: str | None = None
     user_name: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    # Database session for pipeline run tracking (optional)
+    db: Any = None  # AsyncSession, but using Any to avoid circular imports
 
 
 class AssistantAgent:
@@ -150,7 +152,12 @@ class AssistantAgent:
             )
 
             try:
-                result = await execute_pipeline(pipeline_name, input_data, context)
+                result = await execute_pipeline(
+                    pipeline_name,
+                    input_data,
+                    context,
+                    db=ctx.deps.db,  # Pass db for run tracking
+                )
                 return {
                     "success": result.success,
                     "output": result.output.model_dump() if result.output else None,

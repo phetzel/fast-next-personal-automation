@@ -21,6 +21,8 @@ class PipelineSource(str, Enum):
     API = "api"
     WEBHOOK = "webhook"
     AGENT = "agent"
+    CRON = "cron"
+    MANUAL = "manual"
 
 
 @dataclass

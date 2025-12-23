@@ -23,7 +23,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const body = await request.json();
 
     const data = await backendFetch<PipelineExecuteResponse>(
-      `/api/v1/pipelines/${name}/execute`,
+      `/api/v1/pipelines/${name}/execute?manual=true`,
       {
         method: "POST",
         headers: {

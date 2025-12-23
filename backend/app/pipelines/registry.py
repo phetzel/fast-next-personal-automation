@@ -4,10 +4,13 @@ Provides a central registry for action pipelines, enabling:
 - Auto-discovery via decorator
 - Lookup by name
 - Schema extraction for API docs and AI tools
+- Automatic run tracking when db session is available
 """
 
 import logging
 from typing import Any, Type
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.pipelines.action_base import ActionPipeline, ActionResult, PipelineContext
 
@@ -143,6 +146,8 @@ async def execute_pipeline(
     name: str,
     input_data: dict[str, Any],
     context: PipelineContext,
+    *,
+    db: AsyncSession | None = None,
 ) -> ActionResult:
     """Execute a pipeline by name with the given input.
 
@@ -150,15 +155,19 @@ async def execute_pipeline(
     - Pipeline lookup
     - Input validation and parsing
     - Execution with context
+    - Automatic run tracking (if db session provided)
 
     Args:
         name: The pipeline name to execute.
         input_data: Raw input data (will be validated against input schema).
         context: Execution context.
+        db: Optional database session for run tracking.
 
     Returns:
         ActionResult from the pipeline execution.
     """
+    from app.services.pipeline_run import PipelineRunService
+
     pipeline = get_pipeline(name)
     if pipeline is None:
         return ActionResult(
@@ -191,11 +200,48 @@ async def execute_pipeline(
             error="Pipeline input validation failed",
         )
 
+    # Create run record if db session available
+    run = None
+    run_service = None
+    if db is not None:
+        run_service = PipelineRunService(db)
+        run = await run_service.create_run(
+            pipeline_name=name,
+            source=context.source,
+            user_id=context.user_id,
+            input_data=input_data,
+            run_metadata=context.metadata,
+        )
+        run = await run_service.start_run(run)
+
     # Execute the pipeline
     try:
-        return await pipeline.execute(validated_input, context)
+        result = await pipeline.execute(validated_input, context)
+
+        # Record success
+        if run is not None and run_service is not None:
+            output_data = result.output.model_dump() if result.output else None
+            if result.success:
+                await run_service.complete_run(
+                    run,
+                    output_data=output_data,
+                    run_metadata=result.metadata,
+                )
+            else:
+                await run_service.fail_run(
+                    run,
+                    error_message=result.error or "Unknown error",
+                    run_metadata=result.metadata,
+                )
+
+        return result
     except Exception as e:
         logger.exception(f"Pipeline '{name}' execution failed: {e}")
+
+        # Record failure
+        if run is not None and run_service is not None:
+            await run_service.fail_run(run, error_message=str(e))
+
         return ActionResult(
             success=False,
             error=f"Pipeline execution failed: {e}",

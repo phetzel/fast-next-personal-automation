@@ -34,6 +34,7 @@ from app.services.session import SessionService
 from app.services.webhook import WebhookService
 from app.services.item import ItemService
 from app.services.conversation import ConversationService
+from app.services.pipeline_run import PipelineRunService
 
 
 def get_user_service(db: DBSession) -> UserService:
@@ -72,6 +73,14 @@ def get_conversation_service(db: DBSession) -> ConversationService:
 
 
 ConversationSvc = Annotated[ConversationService, Depends(get_conversation_service)]
+
+
+def get_pipeline_run_service(db: DBSession) -> PipelineRunService:
+    """Create PipelineRunService instance with database session."""
+    return PipelineRunService(db)
+
+
+PipelineRunSvc = Annotated[PipelineRunService, Depends(get_pipeline_run_service)]
 
 # === Authentication Dependencies ===
 
