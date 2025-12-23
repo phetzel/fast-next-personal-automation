@@ -83,6 +83,15 @@ export function useConversations() {
       try {
         // Backend returns array directly, not wrapped in { items: [...] }
         const response = await apiClient.get<ConversationMessage[]>(`/conversations/${id}/messages`);
+        console.log("[selectConversation] Fetched messages:", response.length);
+        response.forEach((msg, i) => {
+          console.log(`[selectConversation] Message ${i}: role=${msg.role}, tool_calls=${msg.tool_calls?.length || 0}`);
+          if (msg.tool_calls) {
+            msg.tool_calls.forEach(tc => {
+              console.log(`[selectConversation]   Tool call: ${tc.tool_name} status=${tc.status}`);
+            });
+          }
+        });
         // Setting currentMessages triggers useEffect in ChatContainer that syncs to chat store
         setCurrentMessages(response);
       } catch (err) {

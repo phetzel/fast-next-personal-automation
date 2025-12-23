@@ -135,9 +135,17 @@ async def list_messages(
     Returns messages ordered by creation time (oldest first).
     Includes tool calls for each message.
     """
-    return await conversation_service.list_messages(
+    import logging
+    logger = logging.getLogger(__name__)
+    messages = await conversation_service.list_messages(
         conversation_id, skip=skip, limit=limit, include_tool_calls=True
     )
+    for msg in messages:
+        logger.info(f"[LIST_MESSAGES] Message {msg.id} role={msg.role} has {len(msg.tool_calls) if msg.tool_calls else 0} tool calls")
+        if msg.tool_calls:
+            for tc in msg.tool_calls:
+                logger.info(f"[LIST_MESSAGES]   Tool call: {tc.tool_name} status={tc.status}")
+    return messages
 
 
 @router.post(

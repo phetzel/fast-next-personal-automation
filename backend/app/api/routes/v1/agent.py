@@ -1,5 +1,6 @@
 """AI Agent WebSocket routes with streaming support (PydanticAI)."""
 
+import json
 import logging
 from datetime import datetime, UTC
 from typing import Any
@@ -277,9 +278,11 @@ async def agent_websocket(
                                 async for event in handle_stream:
                                     if isinstance(event, FunctionToolCallEvent):
                                         # Track tool call for persistence
+                                        # args comes as JSON string from PydanticAI, parse to dict
+                                        args_dict = json.loads(event.part.args) if isinstance(event.part.args, str) else event.part.args
                                         pending_tool_calls[event.part.tool_call_id] = {
                                             "tool_name": event.part.tool_name,
-                                            "args": event.part.args,
+                                            "args": args_dict,
                                             "started_at": datetime.now(UTC),
                                         }
                                         await manager.send_event(
@@ -336,8 +339,10 @@ async def agent_websocket(
                                     else None,
                                 ),
                             )
+                            logger.info(f"[TOOL_CALLS] Saving {len(pending_tool_calls)} tool calls for message {assistant_message.id}")
                             # Save tool calls associated with this message
                             for tool_call_id, tc_data in pending_tool_calls.items():
+                                logger.info(f"[TOOL_CALLS] Saving tool call: {tool_call_id} -> {tc_data['tool_name']}")
                                 tool_call = await conv_service.start_tool_call(
                                     assistant_message.id,
                                     ToolCallCreate(
@@ -349,6 +354,7 @@ async def agent_websocket(
                                 )
                                 # Complete the tool call if we have a result
                                 if "result" in tc_data:
+                                    logger.info(f"[TOOL_CALLS] Completing tool call: {tool_call_id}")
                                     await conv_service.complete_tool_call(
                                         tool_call.id,
                                         ToolCallComplete(
@@ -358,7 +364,7 @@ async def agent_websocket(
                                         ),
                                     )
                     except Exception as e:
-                        logger.warning(f"Failed to persist assistant response: {e}")
+                        logger.exception(f"Failed to persist assistant response: {e}")
 
                 await manager.send_event(
                     websocket,
