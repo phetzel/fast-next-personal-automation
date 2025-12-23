@@ -206,122 +206,130 @@ async def agent_websocket(
                 model_history = build_message_history(conversation_history)
 
                 # Use iter() on the underlying PydanticAI agent to stream all events
-                async with assistant.agent.iter(
-                    user_message,
-                    deps=deps,
-                    message_history=model_history,
-                ) as agent_run:
-                    async for node in agent_run:
-                        if Agent.is_user_prompt_node(node):
-                            await manager.send_event(
-                                websocket,
-                                "user_prompt_processed",
-                                {"prompt": node.user_prompt},
-                            )
+                # Wrap in db context so pipeline runs can be tracked
+                async with get_db_context() as db:
+                    # Add db to deps for pipeline run tracking
+                    deps.db = db
+                    if user is not None:
+                        deps.user_id = str(user.id)
+                        deps.user_name = user.full_name
 
-                        elif Agent.is_model_request_node(node):
-                            await manager.send_event(websocket, "model_request_start", {})
+                    async with assistant.agent.iter(
+                        user_message,
+                        deps=deps,
+                        message_history=model_history,
+                    ) as agent_run:
+                        async for node in agent_run:
+                            if Agent.is_user_prompt_node(node):
+                                await manager.send_event(
+                                    websocket,
+                                    "user_prompt_processed",
+                                    {"prompt": node.user_prompt},
+                                )
 
-                            async with node.stream(agent_run.ctx) as request_stream:
-                                async for event in request_stream:
-                                    if isinstance(event, PartStartEvent):
-                                        await manager.send_event(
-                                            websocket,
-                                            "part_start",
-                                            {
-                                                "index": event.index,
-                                                "part_type": type(event.part).__name__,
-                                            },
-                                        )
-                                        # Send initial content from TextPart if present
-                                        if isinstance(event.part, TextPart) and event.part.content:
+                            elif Agent.is_model_request_node(node):
+                                await manager.send_event(websocket, "model_request_start", {})
+
+                                async with node.stream(agent_run.ctx) as request_stream:
+                                    async for event in request_stream:
+                                        if isinstance(event, PartStartEvent):
                                             await manager.send_event(
                                                 websocket,
-                                                "text_delta",
+                                                "part_start",
                                                 {
                                                     "index": event.index,
-                                                    "content": event.part.content,
+                                                    "part_type": type(event.part).__name__,
                                                 },
                                             )
+                                            # Send initial content from TextPart if present
+                                            if isinstance(event.part, TextPart) and event.part.content:
+                                                await manager.send_event(
+                                                    websocket,
+                                                    "text_delta",
+                                                    {
+                                                        "index": event.index,
+                                                        "content": event.part.content,
+                                                    },
+                                                )
 
-                                    elif isinstance(event, PartDeltaEvent):
-                                        if isinstance(event.delta, TextPartDelta):
+                                        elif isinstance(event, PartDeltaEvent):
+                                            if isinstance(event.delta, TextPartDelta):
+                                                await manager.send_event(
+                                                    websocket,
+                                                    "text_delta",
+                                                    {
+                                                        "index": event.index,
+                                                        "content": event.delta.content_delta,
+                                                    },
+                                                )
+                                            elif isinstance(event.delta, ToolCallPartDelta):
+                                                await manager.send_event(
+                                                    websocket,
+                                                    "tool_call_delta",
+                                                    {
+                                                        "index": event.index,
+                                                        "args_delta": event.delta.args_delta,
+                                                    },
+                                                )
+
+                                        elif isinstance(event, FinalResultEvent):
                                             await manager.send_event(
                                                 websocket,
-                                                "text_delta",
-                                                {
-                                                    "index": event.index,
-                                                    "content": event.delta.content_delta,
-                                                },
-                                            )
-                                        elif isinstance(event.delta, ToolCallPartDelta):
-                                            await manager.send_event(
-                                                websocket,
-                                                "tool_call_delta",
-                                                {
-                                                    "index": event.index,
-                                                    "args_delta": event.delta.args_delta,
-                                                },
+                                                "final_result_start",
+                                                {"tool_name": event.tool_name},
                                             )
 
-                                    elif isinstance(event, FinalResultEvent):
-                                        await manager.send_event(
-                                            websocket,
-                                            "final_result_start",
-                                            {"tool_name": event.tool_name},
-                                        )
+                            elif Agent.is_call_tools_node(node):
+                                await manager.send_event(websocket, "call_tools_start", {})
 
-                        elif Agent.is_call_tools_node(node):
-                            await manager.send_event(websocket, "call_tools_start", {})
-
-                            async with node.stream(agent_run.ctx) as handle_stream:
-                                async for event in handle_stream:
-                                    if isinstance(event, FunctionToolCallEvent):
-                                        # Track tool call for persistence
-                                        # args comes as JSON string from PydanticAI, parse to dict
-                                        args_dict = json.loads(event.part.args) if isinstance(event.part.args, str) else event.part.args
-                                        pending_tool_calls[event.part.tool_call_id] = {
-                                            "tool_name": event.part.tool_name,
-                                            "args": args_dict,
-                                            "started_at": datetime.now(UTC),
-                                        }
-                                        await manager.send_event(
-                                            websocket,
-                                            "tool_call",
-                                            {
+                                async with node.stream(agent_run.ctx) as handle_stream:
+                                    async for event in handle_stream:
+                                        if isinstance(event, FunctionToolCallEvent):
+                                            # Track tool call for persistence
+                                            # args comes as JSON string from PydanticAI, parse to dict
+                                            args_dict = json.loads(event.part.args) if isinstance(event.part.args, str) else event.part.args
+                                            pending_tool_calls[event.part.tool_call_id] = {
                                                 "tool_name": event.part.tool_name,
-                                                "args": event.part.args,
-                                                "tool_call_id": event.part.tool_call_id,
-                                            },
-                                        )
+                                                "args": args_dict,
+                                                "started_at": datetime.now(UTC),
+                                            }
+                                            await manager.send_event(
+                                                websocket,
+                                                "tool_call",
+                                                {
+                                                    "tool_name": event.part.tool_name,
+                                                    "args": event.part.args,
+                                                    "tool_call_id": event.part.tool_call_id,
+                                                },
+                                            )
 
-                                    elif isinstance(event, FunctionToolResultEvent):
-                                        # Update tool call with result
-                                        if event.tool_call_id in pending_tool_calls:
-                                            pending_tool_calls[event.tool_call_id]["result"] = str(event.result.content)
-                                            pending_tool_calls[event.tool_call_id]["completed_at"] = datetime.now(UTC)
-                                        await manager.send_event(
-                                            websocket,
-                                            "tool_result",
-                                            {
-                                                "tool_call_id": event.tool_call_id,
-                                                "content": str(event.result.content),
-                                            },
-                                        )
+                                        elif isinstance(event, FunctionToolResultEvent):
+                                            # Update tool call with result
+                                            if event.tool_call_id in pending_tool_calls:
+                                                pending_tool_calls[event.tool_call_id]["result"] = str(event.result.content)
+                                                pending_tool_calls[event.tool_call_id]["completed_at"] = datetime.now(UTC)
+                                            await manager.send_event(
+                                                websocket,
+                                                "tool_result",
+                                                {
+                                                    "tool_call_id": event.tool_call_id,
+                                                    "content": str(event.result.content),
+                                                },
+                                            )
 
-                        elif Agent.is_end_node(node) and agent_run.result is not None:
-                            await manager.send_event(
-                                websocket,
-                                "final_result",
-                                {"output": agent_run.result.output},
-                            )
+                            elif Agent.is_end_node(node) and agent_run.result is not None:
+                                await manager.send_event(
+                                    websocket,
+                                    "final_result",
+                                    {"output": agent_run.result.output},
+                                )
 
-                # Update conversation history
-                conversation_history.append({"role": "user", "content": user_message})
-                if agent_run.result:
-                    conversation_history.append(
-                        {"role": "assistant", "content": agent_run.result.output}
-                    )
+                    # Update conversation history (still inside db context)
+                    conversation_history.append({"role": "user", "content": user_message})
+                    if agent_run.result:
+                        conversation_history.append(
+                            {"role": "assistant", "content": agent_run.result.output}
+                        )
 
                 # Save assistant response and tool calls to database
                 if current_conversation_id and agent_run.result:

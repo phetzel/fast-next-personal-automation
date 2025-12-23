@@ -13,6 +13,8 @@ from app.repositories import conversation as conversation_repo
 
 from app.repositories import webhook as webhook_repo
 
+from app.repositories import pipeline_run as pipeline_run_repo
+
 __all__ = [
     "BaseRepository",
     "user_repo",
@@ -20,4 +22,5 @@ __all__ = [
     "item_repo",
     "conversation_repo",
     "webhook_repo",
+    "pipeline_run_repo",
 ]

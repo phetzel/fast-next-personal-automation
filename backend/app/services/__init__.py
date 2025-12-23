@@ -15,4 +15,13 @@ from app.services.conversation import ConversationService
 
 from app.services.webhook import WebhookService
 
-__all__ = ["UserService", "SessionService", "ItemService", "ConversationService", "WebhookService"]
+from app.services.pipeline_run import PipelineRunService
+
+__all__ = [
+    "UserService",
+    "SessionService",
+    "ItemService",
+    "ConversationService",
+    "WebhookService",
+    "PipelineRunService",
+]
