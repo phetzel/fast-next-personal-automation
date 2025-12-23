@@ -12,6 +12,7 @@ Welcome to the documentation for **personal_automations** - a full-stack AI chat
 | [AI Agent](./ai-agent.md) | PydanticAI agent setup, tools, and WebSocket streaming |
 | [Authentication](./authentication.md) | JWT, OAuth, and API key authentication |
 | [Getting Started](./getting-started.md) | Setup and development guide |
+| [Deployment](./deployment.md) | Production deployment to DigitalOcean |
 
 ## Tech Stack
 
