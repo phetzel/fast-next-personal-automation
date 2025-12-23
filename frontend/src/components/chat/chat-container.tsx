@@ -32,24 +32,19 @@ function AuthenticatedChatContainer() {
   // Sync conversation messages to chat store when loading a conversation from sidebar
   // This replaces all messages atomically to avoid race conditions
   useEffect(() => {
-    console.log("[ChatContainer] Syncing messages, count:", currentMessages.length);
-    const convertedMessages = currentMessages.map((msg) => {
-      const toolCalls = msg.tool_calls?.map((tc) => ({
+    const convertedMessages = currentMessages.map((msg) => ({
+      id: msg.id,
+      role: msg.role as "user" | "assistant" | "system",
+      content: msg.content,
+      timestamp: new Date(msg.created_at),
+      toolCalls: msg.tool_calls?.map((tc) => ({
         id: tc.tool_call_id,
         name: tc.tool_name,
         args: tc.args,
         result: tc.result,
         status: (tc.status === "failed" ? "error" : tc.status) as "pending" | "running" | "completed" | "error",
-      }));
-      console.log(`[ChatContainer] Message ${msg.id}: role=${msg.role}, toolCalls=${toolCalls?.length || 0}`);
-      return {
-        id: msg.id,
-        role: msg.role as "user" | "assistant" | "system",
-        content: msg.content,
-        timestamp: new Date(msg.created_at),
-        toolCalls,
-      };
-    });
+      })),
+    }));
     setChatMessages(convertedMessages);
   }, [currentMessages, setChatMessages]);
 

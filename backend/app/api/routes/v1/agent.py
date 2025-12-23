@@ -339,10 +339,8 @@ async def agent_websocket(
                                     else None,
                                 ),
                             )
-                            logger.info(f"[TOOL_CALLS] Saving {len(pending_tool_calls)} tool calls for message {assistant_message.id}")
                             # Save tool calls associated with this message
                             for tool_call_id, tc_data in pending_tool_calls.items():
-                                logger.info(f"[TOOL_CALLS] Saving tool call: {tool_call_id} -> {tc_data['tool_name']}")
                                 tool_call = await conv_service.start_tool_call(
                                     assistant_message.id,
                                     ToolCallCreate(
@@ -354,7 +352,6 @@ async def agent_websocket(
                                 )
                                 # Complete the tool call if we have a result
                                 if "result" in tc_data:
-                                    logger.info(f"[TOOL_CALLS] Completing tool call: {tool_call_id}")
                                     await conv_service.complete_tool_call(
                                         tool_call.id,
                                         ToolCallComplete(
