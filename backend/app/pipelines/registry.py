@@ -8,7 +8,7 @@ Provides a central registry for action pipelines, enabling:
 """
 
 import logging
-from typing import Any, Type
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,13 +17,13 @@ from app.pipelines.action_base import ActionPipeline, ActionResult, PipelineCont
 logger = logging.getLogger(__name__)
 
 # Global registry mapping pipeline names to classes
-_PIPELINE_REGISTRY: dict[str, Type[ActionPipeline]] = {}
+_PIPELINE_REGISTRY: dict[str, type[ActionPipeline]] = {}
 
 # Cache of instantiated pipelines (singletons)
 _PIPELINE_INSTANCES: dict[str, ActionPipeline] = {}
 
 
-def register_pipeline(pipeline_cls: Type[ActionPipeline]) -> Type[ActionPipeline]:
+def register_pipeline(pipeline_cls: type[ActionPipeline]) -> type[ActionPipeline]:
     """Decorator to register a pipeline in the global registry.
 
     Example:
@@ -77,7 +77,7 @@ def get_pipeline(name: str) -> ActionPipeline | None:
     return _PIPELINE_INSTANCES[name]
 
 
-def get_pipeline_class(name: str) -> Type[ActionPipeline] | None:
+def get_pipeline_class(name: str) -> type[ActionPipeline] | None:
     """Get a pipeline class by name (without instantiating).
 
     Useful for schema extraction without creating an instance.

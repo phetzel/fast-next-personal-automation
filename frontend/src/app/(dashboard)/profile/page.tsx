@@ -1,14 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { useAuth } from "@/hooks";
+import { useState, useEffect } from "react";
+import { useAuth, useProfile } from "@/hooks";
 import { Button, Card, Input, Label, Badge } from "@/components/ui";
 import { ThemeToggle } from "@/components/theme";
+import { ProfileForm } from "@/components/profile";
 import { User, Mail, Calendar, Shield, Settings } from "lucide-react";
 
 export default function ProfilePage() {
   const { user, isAuthenticated, logout } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const { profile, isLoading: profileLoading, fetchProfile, saveProfile } = useProfile();
+
+  // Fetch profile on mount
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
 
   if (!isAuthenticated || !user) {
     return (
@@ -99,6 +106,13 @@ export default function ProfilePage() {
             </div>
           )}
         </Card>
+
+        {/* Job Search Profile */}
+        <ProfileForm
+          profile={profile}
+          isLoading={profileLoading}
+          onSave={saveProfile}
+        />
 
         <Card className="p-4 sm:p-6">
           <h3 className="mb-4 text-base font-semibold sm:text-lg">Preferences</h3>

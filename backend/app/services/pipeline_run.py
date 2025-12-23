@@ -6,14 +6,14 @@ Provides a service layer for pipeline run tracking, including:
 - Statistics and metrics
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
 
 def _utcnow() -> datetime:
     """Return current UTC time as timezone-aware datetime."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,7 +21,6 @@ from app.core.exceptions import NotFoundError
 from app.db.models.pipeline_run import PipelineRun, PipelineRunStatus, PipelineTriggerType
 from app.pipelines.action_base import PipelineSource
 from app.repositories import pipeline_run_repo
-
 
 # Map PipelineSource to PipelineTriggerType
 SOURCE_TO_TRIGGER: dict[PipelineSource, PipelineTriggerType] = {

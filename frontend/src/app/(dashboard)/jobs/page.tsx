@@ -1,0 +1,118 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useJobs } from "@/hooks";
+import {
+  JobList,
+  JobFilters,
+  JobDetailModal,
+  JobStatsCard,
+} from "@/components/jobs";
+import { Button } from "@/components/ui";
+import type { Job } from "@/types";
+import { RefreshCw, Search } from "lucide-react";
+import Link from "next/link";
+
+export default function JobsPage() {
+  const {
+    jobs,
+    total,
+    isLoading,
+    filters,
+    stats,
+    statsLoading,
+    selectedJob,
+    fetchJobs,
+    fetchStats,
+    updateJobStatus,
+    deleteJob,
+    setFilters,
+    resetFilters,
+    setSelectedJob,
+    goToPage,
+  } = useJobs();
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Fetch jobs on mount and when filters change
+  useEffect(() => {
+    fetchJobs();
+  }, [filters.page, filters.status, filters.sort_by, filters.sort_order, filters.search]);
+
+  // Fetch stats on mount
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const handleJobClick = (job: Job) => {
+    setSelectedJob(job);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedJob(null);
+  };
+
+  const handleRefresh = () => {
+    fetchJobs();
+    fetchStats();
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Jobs</h1>
+          <p className="text-muted-foreground">
+            View and manage jobs from your searches
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+          <Button asChild>
+            <Link href="/pipelines">
+              <Search className="mr-2 h-4 w-4" />
+              Run Job Search
+            </Link>
+          </Button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <JobStatsCard stats={stats} isLoading={statsLoading} />
+
+      {/* Filters */}
+      <JobFilters
+        filters={filters}
+        onFiltersChange={setFilters}
+        onReset={resetFilters}
+      />
+
+      {/* Job List */}
+      <JobList
+        jobs={jobs}
+        total={total}
+        page={filters.page || 1}
+        pageSize={filters.page_size || 20}
+        isLoading={isLoading}
+        onJobClick={handleJobClick}
+        onPageChange={goToPage}
+      />
+
+      {/* Detail Modal */}
+      <JobDetailModal
+        job={selectedJob}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onUpdate={updateJobStatus}
+        onDelete={deleteJob}
+      />
+    </div>
+  );
+}
+

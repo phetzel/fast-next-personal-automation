@@ -32,6 +32,7 @@ export const ROUTES = {
   DASHBOARD: "/dashboard",
   CHAT: "/chat",
   PIPELINES: "/pipelines",
+  JOBS: "/jobs",
   PROFILE: "/profile",
   SETTINGS: "/settings",
 } as const;

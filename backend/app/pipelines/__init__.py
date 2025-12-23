@@ -7,8 +7,6 @@ It also includes action pipelines - reusable automation units that can be
 invoked from REST API, webhooks, or the AI agent.
 """
 
-from app.pipelines.base import BasePipeline, PipelineResult
-
 # Action pipeline base classes
 from app.pipelines.action_base import (
     ActionPipeline,
@@ -16,6 +14,7 @@ from app.pipelines.action_base import (
     PipelineContext,
     PipelineSource,
 )
+from app.pipelines.base import BasePipeline, PipelineResult
 
 # Registry functions
 from app.pipelines.registry import (

@@ -27,6 +27,23 @@ from app.schemas.webhook import (
     WebhookTestResponse,
 )
 
+from app.schemas.job import (
+    JobCreate,
+    JobUpdate,
+    JobResponse,
+    JobSummary,
+    JobListResponse,
+    JobStatsResponse,
+    JobFilters,
+)
+
+from app.schemas.user_profile import (
+    UserProfileCreate,
+    UserProfileUpdate,
+    UserProfileResponse,
+    UserProfileSummary,
+)
+
 __all__ = [
     "UserCreate",
     "UserRead",
@@ -52,4 +69,17 @@ __all__ = [
     "WebhookListResponse",
     "WebhookDeliveryListResponse",
     "WebhookTestResponse",
+    # Job
+    "JobCreate",
+    "JobUpdate",
+    "JobResponse",
+    "JobSummary",
+    "JobListResponse",
+    "JobStatsResponse",
+    "JobFilters",
+    # UserProfile
+    "UserProfileCreate",
+    "UserProfileUpdate",
+    "UserProfileResponse",
+    "UserProfileSummary",
 ]

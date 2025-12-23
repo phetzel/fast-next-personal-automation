@@ -17,6 +17,10 @@ from app.services.webhook import WebhookService
 
 from app.services.pipeline_run import PipelineRunService
 
+from app.services.job import JobService
+
+from app.services.user_profile import UserProfileService
+
 __all__ = [
     "UserService",
     "SessionService",
@@ -24,4 +28,6 @@ __all__ = [
     "ConversationService",
     "WebhookService",
     "PipelineRunService",
+    "JobService",
+    "UserProfileService",
 ]

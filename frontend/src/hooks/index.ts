@@ -6,3 +6,5 @@ export { useConversations } from "./use-conversations";
 export { useConfig } from "./use-config";
 export { usePipelines } from "./use-pipelines";
 export { usePipelineRuns } from "./use-pipeline-runs";
+export { useJobs, useJobsOnMount } from "./use-jobs";
+export { useProfile } from "./use-profile";
