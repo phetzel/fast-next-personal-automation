@@ -15,6 +15,16 @@ from app.repositories import webhook as webhook_repo
 
 from app.repositories import pipeline_run as pipeline_run_repo
 
+from app.repositories import job as job_repo
+
+from app.repositories import job_profile as job_profile_repo
+
+from app.repositories import resume as resume_repo
+
+from app.repositories import story as story_repo
+
+from app.repositories import project as project_repo
+
 __all__ = [
     "BaseRepository",
     "user_repo",
@@ -23,4 +33,9 @@ __all__ = [
     "conversation_repo",
     "webhook_repo",
     "pipeline_run_repo",
+    "job_repo",
+    "job_profile_repo",
+    "resume_repo",
+    "story_repo",
+    "project_repo",
 ]

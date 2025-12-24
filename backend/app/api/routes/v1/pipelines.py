@@ -21,6 +21,7 @@ from app.pipelines.registry import (
     execute_pipeline,
     get_pipeline_info,
     list_pipelines,
+    list_pipelines_filtered,
 )
 from app.schemas.pipeline import (
     PipelineExecuteRequest,
@@ -41,13 +42,28 @@ router = APIRouter()
 
 
 @router.get("", response_model=PipelineListResponse)
-async def list_available_pipelines() -> PipelineListResponse:
-    """List all available pipelines.
+async def list_available_pipelines(
+    area: str | None = Query(None, description="Filter by primary area (e.g., 'jobs')"),
+    tags: str | None = Query(None, description="Filter by tags (comma-separated, e.g., 'ai,scraping')"),
+) -> PipelineListResponse:
+    """List all available pipelines with optional filtering.
 
-    Returns pipeline names, descriptions, and input/output schemas.
+    Returns pipeline names, descriptions, input/output schemas, tags, and area.
     This endpoint is public to allow frontend to discover available automations.
+
+    Filtering:
+    - area: Only return pipelines with this exact area (pipelines without area are excluded)
+    - tags: Only return pipelines that have ALL specified tags
     """
-    pipelines = list_pipelines()
+    # Parse comma-separated tags
+    tag_list = [t.strip() for t in tags.split(",")] if tags else None
+
+    # Get filtered or all pipelines
+    if area is not None or tag_list:
+        pipelines = list_pipelines_filtered(area=area, tags=tag_list)
+    else:
+        pipelines = list_pipelines()
+
     return PipelineListResponse(
         pipelines=[PipelineInfo(**p) for p in pipelines],
         total=len(pipelines),
@@ -171,7 +187,7 @@ async def webhook_execute_pipeline(
 
     return PipelineExecuteResponse(
         success=result.success,
-        output=result.output.model_dump() if result.output else None,
+        output=result.output.model_dump(mode='json') if result.output else None,
         error=result.error,
         metadata=result.metadata,
     )
@@ -245,7 +261,7 @@ async def execute_pipeline_endpoint(
 
     return PipelineExecuteResponse(
         success=result.success,
-        output=result.output.model_dump() if result.output else None,
+        output=result.output.model_dump(mode='json') if result.output else None,
         error=result.error,
         metadata=result.metadata,
     )

@@ -27,6 +27,47 @@ from app.schemas.webhook import (
     WebhookTestResponse,
 )
 
+from app.schemas.job import (
+    JobCreate,
+    JobUpdate,
+    JobResponse,
+    JobSummary,
+    JobListResponse,
+    JobStatsResponse,
+    JobFilters,
+)
+
+from app.schemas.job_profile import (
+    JobProfileCreate,
+    JobProfileUpdate,
+    JobProfileResponse,
+    JobProfileSummary,
+    ProfileRequiredError,
+)
+
+from app.schemas.resume import (
+    ResumeCreate,
+    ResumeUpdate,
+    ResumeResponse,
+    ResumeSummary,
+    ResumeTextResponse,
+)
+
+from app.schemas.story import (
+    StoryCreate,
+    StoryUpdate,
+    StoryResponse,
+    StorySummary,
+)
+
+from app.schemas.project import (
+    ProjectCreate,
+    ProjectUpdate,
+    ProjectResponse,
+    ProjectSummary,
+    ProjectTextResponse,
+)
+
 __all__ = [
     "UserCreate",
     "UserRead",
@@ -52,4 +93,35 @@ __all__ = [
     "WebhookListResponse",
     "WebhookDeliveryListResponse",
     "WebhookTestResponse",
+    # Job
+    "JobCreate",
+    "JobUpdate",
+    "JobResponse",
+    "JobSummary",
+    "JobListResponse",
+    "JobStatsResponse",
+    "JobFilters",
+    # JobProfile
+    "JobProfileCreate",
+    "JobProfileUpdate",
+    "JobProfileResponse",
+    "JobProfileSummary",
+    "ProfileRequiredError",
+    # Resume
+    "ResumeCreate",
+    "ResumeUpdate",
+    "ResumeResponse",
+    "ResumeSummary",
+    "ResumeTextResponse",
+    # Story
+    "StoryCreate",
+    "StoryUpdate",
+    "StoryResponse",
+    "StorySummary",
+    # Project
+    "ProjectCreate",
+    "ProjectUpdate",
+    "ProjectResponse",
+    "ProjectSummary",
+    "ProjectTextResponse",
 ]

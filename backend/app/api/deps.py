@@ -35,6 +35,11 @@ from app.services.webhook import WebhookService
 from app.services.item import ItemService
 from app.services.conversation import ConversationService
 from app.services.pipeline_run import PipelineRunService
+from app.services.job import JobService
+from app.services.job_profile import JobProfileService
+from app.services.resume import ResumeService
+from app.services.story import StoryService
+from app.services.project import ProjectService
 
 
 def get_user_service(db: DBSession) -> UserService:
@@ -81,6 +86,46 @@ def get_pipeline_run_service(db: DBSession) -> PipelineRunService:
 
 
 PipelineRunSvc = Annotated[PipelineRunService, Depends(get_pipeline_run_service)]
+
+
+def get_job_service(db: DBSession) -> JobService:
+    """Create JobService instance with database session."""
+    return JobService(db)
+
+
+JobSvc = Annotated[JobService, Depends(get_job_service)]
+
+
+def get_job_profile_service(db: DBSession) -> JobProfileService:
+    """Create JobProfileService instance with database session."""
+    return JobProfileService(db)
+
+
+JobProfileSvc = Annotated[JobProfileService, Depends(get_job_profile_service)]
+
+
+def get_resume_service(db: DBSession) -> ResumeService:
+    """Create ResumeService instance with database session."""
+    return ResumeService(db)
+
+
+ResumeSvc = Annotated[ResumeService, Depends(get_resume_service)]
+
+
+def get_story_service(db: DBSession) -> StoryService:
+    """Create StoryService instance with database session."""
+    return StoryService(db)
+
+
+StorySvc = Annotated[StoryService, Depends(get_story_service)]
+
+
+def get_project_service(db: DBSession) -> ProjectService:
+    """Create ProjectService instance with database session."""
+    return ProjectService(db)
+
+
+ProjectSvc = Annotated[ProjectService, Depends(get_project_service)]
 
 # === Authentication Dependencies ===
 

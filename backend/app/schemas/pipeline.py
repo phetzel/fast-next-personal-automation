@@ -48,6 +48,14 @@ class PipelineInfo(BaseModel):
         ...,
         description="JSON Schema for pipeline output",
     )
+    tags: list[str] = Field(
+        default_factory=list,
+        description="Tags for fine-grained filtering",
+    )
+    area: str | None = Field(
+        default=None,
+        description="Primary area association for grouping",
+    )
 
 
 class PipelineListResponse(BaseModel):

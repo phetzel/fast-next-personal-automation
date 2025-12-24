@@ -4,21 +4,29 @@ The AI agent is built with [PydanticAI](https://ai.pydantic.dev/), providing typ
 
 ## Overview
 
-The agent architecture:
+The agent architecture supports both general-purpose assistants and area-specific agents with filtered pipelines and CRUD toolsets:
 
 ```
 WebSocket Connection
         │
         ▼
-   Agent Router (/ws/agent)
+   Agent Router (/ws/agent?area=jobs)
         │
         ▼
-   AssistantAgent
+   AssistantAgent (with optional AreaAgentConfig)
         │
-   ┌────┴────┐
-   ▼         ▼
- Tools    LLM (OpenAI)
+   ┌────┼────────────┐
+   ▼    ▼            ▼
+ Tools  Toolsets   LLM (OpenAI)
+        (CRUD)
 ```
+
+### General vs Area Agents
+
+| Type | Access | Use Case |
+|------|--------|----------|
+| **General** | All pipelines, basic tools | General-purpose chat |
+| **Area** (e.g., "jobs") | Filtered pipelines, area CRUD tools | Domain-specific tasks |
 
 ## Configuration
 
@@ -91,6 +99,61 @@ async for event in agent.iter("Tell me a story", history=[]):
         print(event.delta, end="")
 ```
 
+## Area Agents
+
+Area agents are specialized assistants with access to filtered pipelines and domain-specific CRUD tools.
+
+### Configuration
+
+Area configurations are defined in `backend/app/agents/areas.py`:
+
+```python
+from pydantic_ai import CombinedToolset
+from app.agents.area_config import AreaAgentConfig
+from app.agents.tools.jobs import jobs_toolset, job_profiles_toolset
+
+JOBS_AGENT_CONFIG = AreaAgentConfig(
+    area="jobs",
+    system_prompt="""You are a specialized job search assistant...""",
+    allowed_pipeline_tags=["jobs"],  # Only pipelines tagged with "jobs"
+    toolsets=[
+        CombinedToolset([
+            jobs_toolset.prefixed("jobs"),       # jobs_list_jobs, jobs_get_job, etc.
+            job_profiles_toolset.prefixed("profiles"),  # profiles_list_profiles, etc.
+        ])
+    ],
+)
+```
+
+### Using Area Agents
+
+```python
+from app.agents.assistant import get_agent_for_area, Deps
+
+# Get jobs area agent
+agent = get_agent_for_area("jobs")
+
+# Agent has access to:
+# - Pipelines tagged with "jobs" (via run_pipeline tool)
+# - Jobs CRUD tools (list_jobs, get_job, update_job_status, etc.)
+# - Profile CRUD tools (list_profiles, create_profile, etc.)
+
+output, tools, deps = await agent.run(
+    user_input="Show me my high-scoring jobs",
+    history=[],
+    deps=Deps(user_id="123", db=db_session),
+)
+```
+
+### Available Area Toolsets
+
+**Jobs Area (`jobs`):**
+
+| Toolset | Tools | Description |
+|---------|-------|-------------|
+| `jobs_*` | `list_jobs`, `get_job`, `update_job_status`, `get_job_stats`, `delete_job` | Manage saved job listings |
+| `profiles_*` | `list_profiles`, `get_profile`, `get_default_profile`, `create_profile` | Manage job search profiles |
+
 ## Adding Custom Tools
 
 Tools are functions the AI can call. Add them in `backend/app/agents/tools/`:
@@ -155,6 +218,69 @@ async def search_user_items(ctx: RunContext[Deps], query: str) -> list[dict]:
             query=query
         )
     return [{"name": i.name, "id": str(i.id)} for i in items]
+```
+
+## Adding Area Toolsets
+
+For areas that need CRUD operations, create toolsets using PydanticAI's `FunctionToolset`.
+
+### 1. Create Toolset Module
+
+```python
+# app/agents/tools/myarea/myentity_tools.py
+from uuid import UUID
+from pydantic_ai import RunContext
+from pydantic_ai.toolsets import FunctionToolset
+
+from app.repositories import myentity as myentity_repo
+
+myentity_toolset = FunctionToolset()
+
+@myentity_toolset.tool
+async def list_entities(ctx: RunContext, page: int = 1) -> dict:
+    """List entities for the current user.
+    
+    Args:
+        page: Page number (starts at 1)
+    
+    Returns:
+        List of entities with pagination info
+    """
+    if not ctx.deps.db or not ctx.deps.user_id:
+        return {"success": False, "error": "Not authenticated"}
+    
+    user_id = UUID(ctx.deps.user_id)
+    entities = await myentity_repo.get_by_user(ctx.deps.db, user_id)
+    
+    return {
+        "success": True,
+        "entities": [e.model_dump() for e in entities],
+    }
+```
+
+### 2. Export from Module
+
+```python
+# app/agents/tools/myarea/__init__.py
+from app.agents.tools.myarea.myentity_tools import myentity_toolset
+
+__all__ = ["myentity_toolset"]
+```
+
+### 3. Add to Area Config
+
+```python
+# app/agents/areas.py
+from app.agents.tools.myarea import myentity_toolset
+
+MYAREA_AGENT_CONFIG = AreaAgentConfig(
+    area="myarea",
+    system_prompt="You are a myarea assistant...",
+    allowed_pipeline_tags=["myarea"],
+    toolsets=[myentity_toolset.prefixed("myarea")],
+)
+
+AREA_CONFIGS["myarea"] = MYAREA_AGENT_CONFIG
 ```
 
 ## WebSocket Events

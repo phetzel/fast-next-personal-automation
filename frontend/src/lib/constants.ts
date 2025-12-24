@@ -32,6 +32,13 @@ export const ROUTES = {
   DASHBOARD: "/dashboard",
   CHAT: "/chat",
   PIPELINES: "/pipelines",
+  // Jobs area routes
+  JOBS: "/jobs",
+  JOBS_LIST: "/jobs/list",
+  JOBS_PROFILES: "/jobs/profiles",
+  JOBS_PIPELINES: "/jobs/pipelines",
+  JOBS_ASSISTANT: "/jobs/assistant",
+  // Other routes
   PROFILE: "/profile",
   SETTINGS: "/settings",
 } as const;

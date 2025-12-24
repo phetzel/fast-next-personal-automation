@@ -7,6 +7,11 @@ from app.db.models.item import Item
 from app.db.models.conversation import Conversation, Message, ToolCall
 from app.db.models.webhook import Webhook, WebhookDelivery
 from app.db.models.pipeline_run import PipelineRun, PipelineRunStatus, PipelineTriggerType
+from app.db.models.job import Job, JobStatus
+from app.db.models.job_profile import JobProfile
+from app.db.models.resume import Resume
+from app.db.models.story import Story
+from app.db.models.project import Project
 
 __all__ = [
     "User",
@@ -20,4 +25,10 @@ __all__ = [
     "PipelineRun",
     "PipelineRunStatus",
     "PipelineTriggerType",
+    "Job",
+    "JobStatus",
+    "JobProfile",
+    "Resume",
+    "Story",
+    "Project",
 ]

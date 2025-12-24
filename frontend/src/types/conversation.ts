@@ -9,6 +9,7 @@ export interface Conversation {
   created_at: string;
   updated_at: string;
   is_archived: boolean;
+  area?: string | null;
 }
 
 export interface ConversationMessage {

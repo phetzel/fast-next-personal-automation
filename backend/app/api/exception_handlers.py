@@ -21,7 +21,7 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
     """
     # Handle both HTTP requests and WebSocket connections
     method = getattr(request, "method", "WEBSOCKET")
-    
+
     log_extra = {
         "error_code": exc.code,
         "status_code": exc.status_code,
@@ -60,7 +60,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     """
     # Handle both HTTP requests and WebSocket connections
     method = getattr(request, "method", "WEBSOCKET")
-    
+
     logger.exception(
         "Unhandled exception",
         extra={

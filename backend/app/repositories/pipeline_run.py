@@ -1,6 +1,6 @@
 """Pipeline run repository for tracking execution history."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import and_, func, select
@@ -11,7 +11,7 @@ from app.db.models.pipeline_run import PipelineRun, PipelineRunStatus, PipelineT
 
 def _utcnow() -> datetime:
     """Return current UTC time as timezone-aware datetime."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 async def get_by_id(db: AsyncSession, run_id: UUID) -> PipelineRun | None:

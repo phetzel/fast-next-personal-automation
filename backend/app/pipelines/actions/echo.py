@@ -43,6 +43,8 @@ class EchoPipeline(ActionPipeline[EchoInput, EchoOutput]):
 
     name = "echo"
     description = "Echo back the input message. Useful for testing pipeline connectivity."
+    tags = ["utility", "testing"]
+    # area = None (general purpose, available everywhere)
 
     async def execute(
         self, input: EchoInput, context: PipelineContext

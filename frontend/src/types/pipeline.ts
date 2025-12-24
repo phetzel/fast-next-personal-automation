@@ -10,7 +10,8 @@ export interface JSONSchemaProperty {
   description?: string;
   default?: unknown;
   enum?: string[];
-  format?: "email" | "date" | "date-time" | "uri" | "uuid";
+  /** Standard formats plus custom x-profile-select for job profile selection */
+  format?: "email" | "date" | "date-time" | "uri" | "uuid" | "x-profile-select";
   minLength?: number;
   maxLength?: number;
   minimum?: number;
@@ -18,6 +19,8 @@ export interface JSONSchemaProperty {
   items?: JSONSchemaProperty;
   properties?: Record<string, JSONSchemaProperty>;
   required?: string[];
+  /** Custom extension to hide field from form (uses default value) */
+  "x-hidden"?: boolean;
 }
 
 export interface JSONSchema {
@@ -36,6 +39,10 @@ export interface PipelineInfo {
   description: string;
   input_schema: JSONSchema;
   output_schema: JSONSchema;
+  /** Tags for fine-grained filtering (e.g., ["jobs", "ai"]) */
+  tags: string[];
+  /** Primary area association for grouping (e.g., "jobs") */
+  area: string | null;
 }
 
 /**
@@ -66,6 +73,8 @@ export interface ExecutionState {
   result: PipelineExecuteResponse | null;
   startedAt: Date | null;
   completedAt: Date | null;
+  /** The input that was used for this execution, used for retry */
+  lastInput: Record<string, unknown> | null;
 }
 
 // ===========================================================================
@@ -137,5 +146,15 @@ export interface PipelineRunFilters {
   my_runs_only?: boolean;
   page?: number;
   page_size?: number;
+}
+
+/**
+ * Filters for querying available pipelines.
+ */
+export interface PipelineFilters {
+  /** Filter by primary area (exact match) */
+  area?: string;
+  /** Filter by tags (must have ALL specified tags) */
+  tags?: string[];
 }
 

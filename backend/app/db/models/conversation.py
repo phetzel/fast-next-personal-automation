@@ -18,6 +18,7 @@ class Conversation(Base, TimestampMixin):
         user_id: Optional user who owns this conversation (if auth enabled)
         title: Auto-generated or user-defined title
         is_archived: Whether the conversation is archived
+        area: Optional area identifier for area-specific conversations (e.g., "jobs")
         messages: List of messages in this conversation
     """
 
@@ -32,6 +33,7 @@ class Conversation(Base, TimestampMixin):
     )
     title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    area: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
 
     # Relationships
     messages: Mapped[list["Message"]] = relationship(

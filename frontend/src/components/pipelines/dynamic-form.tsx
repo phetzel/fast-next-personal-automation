@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { Input, Label, Button } from "@/components/ui";
 import type { JSONSchema, JSONSchemaProperty } from "@/types";
 import { cn } from "@/lib/utils";
+import { ProfileSelectField } from "./profile-select-field";
 
 interface DynamicFormProps {
   schema: JSONSchema;
@@ -55,16 +56,18 @@ export function DynamicForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {schema.properties &&
-        Object.entries(schema.properties).map(([key, prop]) => (
-          <FormField
-            key={key}
-            name={key}
-            property={prop}
-            value={formData[key]}
-            onChange={(value) => handleChange(key, value)}
-            required={requiredFields.has(key)}
-          />
-        ))}
+        Object.entries(schema.properties)
+          .filter(([, prop]) => !prop["x-hidden"]) // Skip hidden fields
+          .map(([key, prop]) => (
+            <FormField
+              key={key}
+              name={key}
+              property={prop}
+              value={formData[key]}
+              onChange={(value) => handleChange(key, value)}
+              required={requiredFields.has(key)}
+            />
+          ))}
 
       <Button type="submit" disabled={isSubmitting} className="w-full">
         {isSubmitting ? "Running..." : submitLabel}
@@ -84,6 +87,19 @@ interface FormFieldProps {
 function FormField({ name, property, value, onChange, required }: FormFieldProps) {
   const id = `field-${name}`;
   const description = property.description;
+
+  // Handle custom x-profile-select format for profile selection
+  if (property.format === "x-profile-select") {
+    return (
+      <ProfileSelectField
+        id={id}
+        value={value}
+        onChange={(v) => onChange(v)}
+        required={required}
+        description={description}
+      />
+    );
+  }
 
   // Handle enum (select dropdown)
   if (property.enum && property.enum.length > 0) {

@@ -74,21 +74,11 @@ async def error_client(
     app.dependency_overrides.clear()
 
 
-@pytest.mark.anyio
-async def test_register_duplicate_email_returns_409(error_client: AsyncClient):
-    """Test that registering with existing email returns 409."""
-    response = await error_client.post(
-        f"{settings.API_V1_STR}/auth/register",
-        json={
-            "email": "existing@example.com",
-            "password": "password123",
-            "full_name": "Test User",
-        },
-    )
-    assert response.status_code == 409
-    data = response.json()
-    assert "error" in data
-    assert data["error"]["code"] == "ALREADY_EXISTS"
+# NOTE: Registration is disabled in production, test removed
+# @pytest.mark.anyio
+# async def test_register_duplicate_email_returns_409(error_client: AsyncClient):
+#     """Test that registering with existing email returns 409."""
+#     ...
 
 
 @pytest.mark.anyio

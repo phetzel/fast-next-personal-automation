@@ -14,6 +14,11 @@ from app.api.routes.v1 import ws
 from app.api.routes.v1 import agent
 from app.api.routes.v1 import config
 from app.api.routes.v1 import pipelines
+from app.api.routes.v1 import jobs
+from app.api.routes.v1 import job_profile
+from app.api.routes.v1 import resumes
+from app.api.routes.v1 import stories
+from app.api.routes.v1 import projects
 
 v1_router = APIRouter()
 
@@ -52,3 +57,18 @@ v1_router.include_router(pipelines.router, prefix="/pipelines", tags=["pipelines
 
 # Public config routes (no auth required)
 v1_router.include_router(config.router, prefix="/config", tags=["config"])
+
+# Jobs routes (job search results)
+v1_router.include_router(jobs.router, prefix="/jobs", tags=["jobs"])
+
+# Job profile routes (resume and preferences)
+v1_router.include_router(job_profile.router, prefix="/job-profiles", tags=["job-profiles"])
+
+# Resume routes (resume file management)
+v1_router.include_router(resumes.router, prefix="/resumes", tags=["resumes"])
+
+# Story routes (user story/narrative management)
+v1_router.include_router(stories.router, prefix="/stories", tags=["stories"])
+
+# Project routes (project description management)
+v1_router.include_router(projects.router, prefix="/projects", tags=["projects"])

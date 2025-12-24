@@ -77,6 +77,7 @@ class ConversationService:
             self.db,
             user_id=data.user_id,
             title=data.title,
+            area=data.area,
         )
 
     async def update_conversation(
