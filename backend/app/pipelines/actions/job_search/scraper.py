@@ -151,6 +151,7 @@ class JobSpyScraper(JobScraperBase):
                                     if hasattr(date_posted, "to_pydatetime"):
                                         date_posted = date_posted.to_pydatetime()
                                 except Exception:
+                                    # Date parsing failed, leave date_posted as None
                                     pass
 
                             # Build salary range

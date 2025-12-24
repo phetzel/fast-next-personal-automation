@@ -58,11 +58,8 @@ test.describe("Jobs Area", () => {
 
       test("should have filter controls", async ({ page }) => {
         await page.goto("/jobs/list");
-        // Look for filter UI elements
-        const filters = page.getByRole("combobox").or(
-          page.getByRole("textbox", { name: /search|filter/i })
-        );
         // Filters may or may not be present depending on data
+        // Just verify the page loads successfully
         await expect(page.getByRole("main")).toBeVisible();
       });
     });

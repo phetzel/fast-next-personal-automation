@@ -938,7 +938,7 @@ function StoryForm({
 }) {
   const [name, setName] = useState(story?.name || "");
   const [content, setContent] = useState(story?.content || "");
-  const [isPrimary, setIsPrimary] = useState(story?.is_primary || false);
+  const isPrimary = story?.is_primary || false;
 
   const isEditing = !!story;
 
@@ -1217,12 +1217,7 @@ function StoryTab() {
 // Projects Components
 // ============================================================================
 
-// Accepted file types for project uploads
-const PROJECT_ACCEPTED_TYPES = [
-  "text/markdown",
-  "text/x-markdown",
-  "text/plain",
-];
+// Accepted file extensions for project uploads
 const PROJECT_ACCEPTED_EXTENSIONS = ".md,.txt";
 
 function ProjectUploadZone({

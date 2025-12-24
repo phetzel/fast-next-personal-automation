@@ -98,8 +98,6 @@ function AreaSection({
 
   const isCollapsed = isAreaCollapsed(area.id);
 
-  // Check if any child route is active
-  const isAreaActive = area.children.some((child) => pathname === child.href);
   // Check if we're in the area (for highlighting parent when on child route)
   const isInArea = pathname.startsWith(area.children[0]?.href?.split("/").slice(0, 2).join("/") || "");
 

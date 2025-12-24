@@ -11,7 +11,6 @@ import {
   Textarea,
 } from "@/components/ui";
 import type { Job, JobStatus, JobUpdate } from "@/types";
-import { StatusBadge } from "./status-badge";
 import { ScoreBadge } from "./score-badge";
 import {
   Building2,
@@ -21,7 +20,7 @@ import {
   Loader2,
   Trash2,
 } from "lucide-react";
-import { formatDistanceToNow, format } from "date-fns";
+import { format } from "date-fns";
 
 interface JobDetailModalProps {
   job: Job | null;
