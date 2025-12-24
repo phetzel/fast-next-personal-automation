@@ -4,7 +4,7 @@ Main pipeline that orchestrates job scraping, analysis, and storage.
 """
 
 import logging
-from typing import Literal
+from typing import ClassVar, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -95,8 +95,8 @@ class JobSearchPipeline(ActionPipeline[JobSearchInput, JobSearchOutput]):
 
     name = "job_search"
     description = "Search for jobs and analyze fit against your resume"
-    tags = ["jobs", "scraping", "ai"]
-    area = "jobs"
+    tags: ClassVar[list[str]] = ["jobs", "scraping", "ai"]
+    area: ClassVar[str | None] = "jobs"
 
     async def execute(
         self,
@@ -213,9 +213,7 @@ class JobSearchPipeline(ActionPipeline[JobSearchInput, JobSearchOutput]):
         search_terms = target_roles if target_roles else ["Software Engineer"]
         search_locations = target_locations if target_locations else ["Remote"]
 
-        logger.info(
-            f"Searching for: terms={search_terms}, locations={search_locations}"
-        )
+        logger.info(f"Searching for: terms={search_terms}, locations={search_locations}")
 
         # Step 1: Scrape jobs
         try:
@@ -311,19 +309,21 @@ class JobSearchPipeline(ActionPipeline[JobSearchInput, JobSearchOutput]):
 
             # Save if high-scoring or save_all is True
             if input.save_all or analysis.relevance_score >= min_score:
-                jobs_to_save.append({
-                    "title": scraped_job.title,
-                    "company": scraped_job.company,
-                    "location": scraped_job.location,
-                    "description": scraped_job.description,
-                    "job_url": scraped_job.job_url,
-                    "salary_range": scraped_job.salary_range,
-                    "date_posted": scraped_job.date_posted,
-                    "source": scraped_job.source,
-                    "relevance_score": analysis.relevance_score,
-                    "reasoning": analysis.reasoning,
-                    "search_terms": search_terms_str,
-                })
+                jobs_to_save.append(
+                    {
+                        "title": scraped_job.title,
+                        "company": scraped_job.company,
+                        "location": scraped_job.location,
+                        "description": scraped_job.description,
+                        "job_url": scraped_job.job_url,
+                        "salary_range": scraped_job.salary_range,
+                        "date_posted": scraped_job.date_posted,
+                        "source": scraped_job.source,
+                        "relevance_score": analysis.relevance_score,
+                        "reasoning": analysis.reasoning,
+                        "search_terms": search_terms_str,
+                    }
+                )
 
         # Save to database
         saved_jobs = []
@@ -331,14 +331,10 @@ class JobSearchPipeline(ActionPipeline[JobSearchInput, JobSearchOutput]):
             async with get_db_context() as db:
                 from app.repositories import job_repo
 
-                saved_jobs = await job_repo.create_bulk(
-                    db, context.user_id, jobs_to_save
-                )
+                saved_jobs = await job_repo.create_bulk(db, context.user_id, jobs_to_save)
                 await db.commit()
 
-        logger.info(
-            f"Saved {len(saved_jobs)} jobs ({high_scoring} high-scoring)"
-        )
+        logger.info(f"Saved {len(saved_jobs)} jobs ({high_scoring} high-scoring)")
 
         # Get top 5 jobs for output
         sorted_jobs = sorted(
@@ -385,4 +381,3 @@ class JobSearchPipeline(ActionPipeline[JobSearchInput, JobSearchOutput]):
                 "profile_name": profile.name,
             },
         )
-

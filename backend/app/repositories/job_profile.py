@@ -7,7 +7,7 @@ should be handled by JobProfileService in app/services/job_profile.py.
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.job_profile import JobProfile
@@ -28,9 +28,7 @@ async def get_by_user_id(db: AsyncSession, user_id: UUID) -> list[JobProfile]:
     return list(result.scalars().all())
 
 
-async def get_by_user_and_name(
-    db: AsyncSession, user_id: UUID, name: str
-) -> JobProfile | None:
+async def get_by_user_and_name(db: AsyncSession, user_id: UUID, name: str) -> JobProfile | None:
     """Get a profile by user ID and name."""
     result = await db.execute(
         select(JobProfile).where(
@@ -107,7 +105,7 @@ async def set_default(
     profile_id: UUID,
 ) -> JobProfile | None:
     """Set a profile as the default, unsetting any other default.
-    
+
     Returns the updated profile, or None if not found.
     """
     # First, unset all defaults for this user
@@ -146,4 +144,3 @@ async def delete_by_user_id(db: AsyncSession, user_id: UUID) -> int:
         await db.delete(profile)
     await db.flush()
     return count
-

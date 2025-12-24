@@ -152,13 +152,9 @@ class ProjectService:
         project = await self.get_by_id(project_id, user_id)
         data = update_data.model_dump(exclude_unset=True)
 
-        return await project_repo.update(
-            self.db, db_project=project, update_data=data
-        )
+        return await project_repo.update(self.db, db_project=project, update_data=data)
 
-    async def toggle_active(
-        self, user_id: UUID, project_id: UUID, is_active: bool
-    ) -> Project:
+    async def toggle_active(self, user_id: UUID, project_id: UUID, is_active: bool) -> Project:
         """Toggle the active status of a project.
 
         Raises:
@@ -167,9 +163,7 @@ class ProjectService:
         # Verify ownership
         await self.get_by_id(project_id, user_id)
 
-        result = await project_repo.toggle_active(
-            self.db, project_id, user_id, is_active
-        )
+        result = await project_repo.toggle_active(self.db, project_id, user_id, is_active)
         if not result:
             raise NotFoundError(
                 message="Project not found",
@@ -219,11 +213,11 @@ class ProjectService:
         storage = await get_storage_instance()
         try:
             file_data = await storage.load(project.file_path)
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             raise ValidationError(
                 message="Project file not found in storage",
                 details={"file_path": project.file_path},
-            )
+            ) from e
 
         # Extract text
         try:
@@ -232,7 +226,7 @@ class ProjectService:
             raise ValidationError(
                 message=f"Failed to decode file: {e}",
                 details={"project_id": str(project_id)},
-            )
+            ) from e
 
         # Update database
         return await project_repo.update(
@@ -240,4 +234,3 @@ class ProjectService:
             db_project=project,
             update_data={"text_content": text_content},
         )
-

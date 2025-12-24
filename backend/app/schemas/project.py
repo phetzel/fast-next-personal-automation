@@ -63,4 +63,3 @@ class ProjectTextResponse(BaseSchema):
     id: UUID
     name: str
     text_content: str | None
-

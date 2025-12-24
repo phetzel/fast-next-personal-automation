@@ -96,9 +96,7 @@ class StoryService:
         story = await self.get_by_id(story_id, user_id)
         data = update_data.model_dump(exclude_unset=True)
 
-        updated = await story_repo.update(
-            self.db, db_story=story, update_data=data
-        )
+        updated = await story_repo.update(self.db, db_story=story, update_data=data)
 
         # If marked as primary, unset other primary
         if data.get("is_primary"):
@@ -149,14 +147,9 @@ class StoryService:
 
         return deleted
 
-    async def _ensure_single_primary(
-        self, user_id: UUID, primary_story_id: UUID
-    ) -> None:
+    async def _ensure_single_primary(self, user_id: UUID, primary_story_id: UUID) -> None:
         """Ensure only one story is marked as primary."""
         stories = await story_repo.get_by_user_id(self.db, user_id)
         for story in stories:
             if story.id != primary_story_id and story.is_primary:
-                await story_repo.update(
-                    self.db, db_story=story, update_data={"is_primary": False}
-                )
-
+                await story_repo.update(self.db, db_story=story, update_data={"is_primary": False})

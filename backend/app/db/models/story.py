@@ -17,15 +17,13 @@ class Story(Base, TimestampMixin):
     """Story model for storing user narrative text.
 
     Stores personal story/narrative text that users want to emphasize
-    during job applications. Users can have multiple stories and 
+    during job applications. Users can have multiple stories and
     one can be marked as primary for quick access.
     """
 
     __tablename__ = "stories"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
@@ -34,23 +32,16 @@ class Story(Base, TimestampMixin):
     )
 
     # User-friendly name for the story
-    name: Mapped[str] = mapped_column(
-        String(100), nullable=False
-    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
 
     # The story content (markdown supported)
-    content: Mapped[str] = mapped_column(
-        Text, nullable=False
-    )
+    content: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Primary story flag (user's main story)
-    is_primary: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
-    )
+    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     # Relationship
     user: Mapped["User"] = relationship("User", lazy="selectin")
 
     def __repr__(self) -> str:
         return f"<Story(id={self.id}, name={self.name}, user_id={self.user_id})>"
-

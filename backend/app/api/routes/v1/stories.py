@@ -151,4 +151,3 @@ async def set_primary_story(
         created_at=story.created_at,
         updated_at=story.updated_at,
     )
-

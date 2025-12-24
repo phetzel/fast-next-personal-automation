@@ -23,9 +23,7 @@ class Resume(Base, TimestampMixin):
 
     __tablename__ = "resumes"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
@@ -34,42 +32,26 @@ class Resume(Base, TimestampMixin):
     )
 
     # User-friendly name for the resume
-    name: Mapped[str] = mapped_column(
-        String(100), nullable=False
-    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
 
     # Original filename from upload
-    original_filename: Mapped[str] = mapped_column(
-        String(255), nullable=False
-    )
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
 
     # Storage path (relative to storage root)
-    file_path: Mapped[str] = mapped_column(
-        String(500), nullable=False
-    )
+    file_path: Mapped[str] = mapped_column(String(500), nullable=False)
 
     # File metadata
-    file_size: Mapped[int] = mapped_column(
-        Integer, nullable=False
-    )
-    mime_type: Mapped[str] = mapped_column(
-        String(100), nullable=False
-    )
+    file_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    mime_type: Mapped[str] = mapped_column(String(100), nullable=False)
 
     # Extracted text content for AI analysis
-    text_content: Mapped[str | None] = mapped_column(
-        Text, nullable=True
-    )
+    text_content: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Primary resume flag (user's main resume)
-    is_primary: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
-    )
+    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     # Relationship
     user: Mapped["User"] = relationship("User", lazy="selectin")
 
     def __repr__(self) -> str:
         return f"<Resume(id={self.id}, name={self.name}, user_id={self.user_id})>"
-
-

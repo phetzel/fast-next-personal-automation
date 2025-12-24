@@ -80,12 +80,8 @@ class JobProfileResponse(JobProfileBase, TimestampSchema):
     id: UUID
     user_id: UUID
     is_default: bool = Field(description="Whether this is the user's default profile")
-    resume_id: UUID | None = Field(
-        default=None, description="ID of the linked resume"
-    )
-    resume: ResumeInfo | None = Field(
-        default=None, description="Linked resume details"
-    )
+    resume_id: UUID | None = Field(default=None, description="ID of the linked resume")
+    resume: ResumeInfo | None = Field(default=None, description="Linked resume details")
 
 
 class JobProfileSummary(BaseSchema):
@@ -122,4 +118,3 @@ class ProfileRequiredError(BaseSchema):
         default="/jobs/profiles",
         description="URL to create a new profile",
     )
-

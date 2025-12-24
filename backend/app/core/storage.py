@@ -31,13 +31,13 @@ class StorageBackend(ABC):
         subdir: str = "resumes",
     ) -> str:
         """Save a file and return its storage path.
-        
+
         Args:
             file_data: The raw file bytes
             user_id: The user who owns the file
             filename: The original filename
             subdir: Subdirectory for file type (resumes, projects, etc.)
-            
+
         Returns:
             The storage path (relative to storage root)
         """
@@ -46,13 +46,13 @@ class StorageBackend(ABC):
     @abstractmethod
     async def load(self, file_path: str) -> bytes:
         """Load a file from storage.
-        
+
         Args:
             file_path: The storage path returned by save()
-            
+
         Returns:
             The file contents as bytes
-            
+
         Raises:
             FileNotFoundError: If the file doesn't exist
         """
@@ -61,10 +61,10 @@ class StorageBackend(ABC):
     @abstractmethod
     async def delete(self, file_path: str) -> bool:
         """Delete a file from storage.
-        
+
         Args:
             file_path: The storage path to delete
-            
+
         Returns:
             True if deleted, False if file didn't exist
         """
@@ -73,10 +73,10 @@ class StorageBackend(ABC):
     @abstractmethod
     async def exists(self, file_path: str) -> bool:
         """Check if a file exists in storage.
-        
+
         Args:
             file_path: The storage path to check
-            
+
         Returns:
             True if exists, False otherwise
         """
@@ -85,7 +85,7 @@ class StorageBackend(ABC):
 
 class LocalStorage(StorageBackend):
     """Local filesystem storage backend for development.
-    
+
     Files are stored in:
     uploads/resumes/{user_id}/{uuid}_{filename}
     """
@@ -154,10 +154,10 @@ class LocalStorage(StorageBackend):
 
 class S3Storage(StorageBackend):
     """S3/MinIO storage backend for production.
-    
+
     Files are stored in:
     s3://{bucket}/resumes/{user_id}/{uuid}_{filename}
-    
+
     Supports AWS S3 and S3-compatible services (MinIO, etc.)
     via custom endpoint configuration.
     """
@@ -172,13 +172,10 @@ class S3Storage(StorageBackend):
     ):
         self.bucket = bucket
         self.endpoint_url = endpoint_url
-        
+
         # Configure boto3 client
-        config = Config(
-            signature_version='s3v4',
-            retries={'max_attempts': 3, 'mode': 'standard'}
-        )
-        
+        config = Config(signature_version="s3v4", retries={"max_attempts": 3, "mode": "standard"})
+
         client_kwargs = {
             "service_name": "s3",
             "aws_access_key_id": access_key,
@@ -186,11 +183,11 @@ class S3Storage(StorageBackend):
             "region_name": region,
             "config": config,
         }
-        
+
         # Add custom endpoint for MinIO/S3-compatible services
         if endpoint_url:
             client_kwargs["endpoint_url"] = endpoint_url
-        
+
         self._client = boto3.client(**client_kwargs)
         self._ensure_bucket()
 
@@ -221,7 +218,7 @@ class S3Storage(StorageBackend):
     ) -> str:
         """Save a file to S3."""
         key = self._build_key(user_id, filename, subdir)
-        
+
         try:
             self._client.put_object(
                 Bucket=self.bucket,
@@ -232,7 +229,7 @@ class S3Storage(StorageBackend):
             return key
         except ClientError as e:
             logger.error(f"Failed to save to S3: {e}")
-            raise IOError(f"Failed to save file to S3: {e}")
+            raise OSError(f"Failed to save file to S3: {e}") from e
 
     async def load(self, file_path: str) -> bytes:
         """Load a file from S3."""
@@ -242,7 +239,7 @@ class S3Storage(StorageBackend):
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "")
             if error_code in ("404", "NoSuchKey"):
-                raise FileNotFoundError(f"File not found: {file_path}")
+                raise FileNotFoundError(f"File not found: {file_path}") from e
             raise
 
     async def delete(self, file_path: str) -> bool:
@@ -277,12 +274,12 @@ StorageType = Literal["local", "s3"]
 
 def get_storage_backend() -> StorageType:
     """Determine which storage backend to use based on configuration.
-    
+
     If STORAGE_BACKEND is "auto" (default), uses S3 if credentials are configured.
     Otherwise uses the explicitly configured backend.
     """
     backend = settings.STORAGE_BACKEND
-    
+
     if backend == "s3":
         return "s3"
     elif backend == "local":
@@ -296,12 +293,12 @@ def get_storage_backend() -> StorageType:
 
 def get_storage() -> StorageBackend:
     """Get the configured storage backend.
-    
+
     Returns:
         The storage backend instance based on configuration.
     """
     backend = get_storage_backend()
-    
+
     if backend == "s3":
         logger.info(f"Using S3 storage: bucket={settings.S3_BUCKET}")
         return S3Storage(
@@ -326,4 +323,3 @@ async def get_storage_instance() -> StorageBackend:
     if _storage is None:
         _storage = get_storage()
     return _storage
-

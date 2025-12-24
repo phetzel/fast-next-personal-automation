@@ -1,14 +1,15 @@
 """Tests for pipeline infrastructure."""
 
 import pytest
+from pydantic import BaseModel
 
-from app.pipelines.base import BasePipeline, PipelineResult
 from app.pipelines.action_base import (
     ActionPipeline,
     ActionResult,
     PipelineContext,
     PipelineSource,
 )
+from app.pipelines.base import BasePipeline, PipelineResult
 from app.pipelines.registry import (
     clear_registry,
     execute_pipeline,
@@ -17,7 +18,6 @@ from app.pipelines.registry import (
     list_pipelines,
     register_pipeline,
 )
-from pydantic import BaseModel
 
 
 class TestPipelineResult:
@@ -259,9 +259,7 @@ class TestPipelineRegistry:
             name = "my_pipeline"
             description = "My pipeline"
 
-            async def execute(
-                self, input: Input, context: PipelineContext
-            ) -> ActionResult[Output]:
+            async def execute(self, input: Input, context: PipelineContext) -> ActionResult[Output]:
                 return ActionResult(success=True, output=Output(y=input.x * 2))
 
         pipeline = get_pipeline("my_pipeline")

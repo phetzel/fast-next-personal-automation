@@ -16,4 +16,3 @@ async def get_public_config():
     return {
         "registration_enabled": settings.REGISTRATION_ENABLED,
     }
-

@@ -83,7 +83,7 @@ async def set_primary(
     story_id: UUID,
 ) -> Story | None:
     """Set a story as primary, unsetting any other primary.
-    
+
     Returns the updated story, or None if not found.
     """
     # First, unset all primary for this user
@@ -122,4 +122,3 @@ async def delete_by_user_id(db: AsyncSession, user_id: UUID) -> int:
         await db.delete(story)
     await db.flush()
     return count
-

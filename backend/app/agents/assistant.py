@@ -3,6 +3,7 @@
 The main conversational agent that can be extended with custom tools.
 """
 
+import contextlib
 import logging
 from dataclasses import dataclass, field
 from typing import Any
@@ -87,7 +88,9 @@ class AssistantAgent:
 
         if self._allowed_pipeline_names is None:
             all_pipelines = list_pipelines()
-            self._allowed_pipeline_names = self.area_config.get_allowed_pipeline_names(all_pipelines)
+            self._allowed_pipeline_names = self.area_config.get_allowed_pipeline_names(
+                all_pipelines
+            )
 
         return self._allowed_pipeline_names
 
@@ -202,7 +205,9 @@ class AssistantAgent:
             """
             # Check if pipeline is allowed for this area
             if not assistant_self._is_pipeline_allowed(pipeline_name):
-                area_name = assistant_self.area_config.area if assistant_self.area_config else "unknown"
+                area_name = (
+                    assistant_self.area_config.area if assistant_self.area_config else "unknown"
+                )
                 return {
                     "success": False,
                     "output": None,
@@ -220,10 +225,8 @@ class AssistantAgent:
             # Build context from agent deps
             user_id = None
             if ctx.deps.user_id:
-                try:
+                with contextlib.suppress(ValueError):
                     user_id = UUID(ctx.deps.user_id)
-                except ValueError:
-                    pass
 
             context = PipelineContext(
                 source=PipelineSource.AGENT,
@@ -240,7 +243,7 @@ class AssistantAgent:
                 )
                 return {
                     "success": result.success,
-                    "output": result.output.model_dump(mode='json') if result.output else None,
+                    "output": result.output.model_dump(mode="json") if result.output else None,
                     "error": result.error,
                 }
             except Exception as e:

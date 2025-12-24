@@ -105,14 +105,16 @@ def list_pipelines() -> list[dict[str, Any]]:
     """
     pipelines = []
     for name, cls in _PIPELINE_REGISTRY.items():
-        pipelines.append({
-            "name": name,
-            "description": cls.description,
-            "input_schema": cls.get_input_schema(),
-            "output_schema": cls.get_output_schema(),
-            "tags": getattr(cls, "tags", []),
-            "area": getattr(cls, "area", None),
-        })
+        pipelines.append(
+            {
+                "name": name,
+                "description": cls.description,
+                "input_schema": cls.get_input_schema(),
+                "output_schema": cls.get_output_schema(),
+                "tags": getattr(cls, "tags", []),
+                "area": getattr(cls, "area", None),
+            }
+        )
     return pipelines
 
 
@@ -161,10 +163,7 @@ def list_pipelines_filtered(
         pipelines = [p for p in pipelines if p["area"] == area]
 
     if tags:
-        pipelines = [
-            p for p in pipelines
-            if all(tag in p["tags"] for tag in tags)
-        ]
+        pipelines = [p for p in pipelines if all(tag in p["tags"] for tag in tags)]
 
     return pipelines
 
@@ -280,7 +279,7 @@ async def execute_pipeline(
         # Record success
         if run is not None and run_service is not None:
             # Use mode='json' to ensure UUIDs and other types are serialized to JSON-compatible types
-            output_data = result.output.model_dump(mode='json') if result.output else None
+            output_data = result.output.model_dump(mode="json") if result.output else None
             if result.success:
                 await run_service.complete_run(
                     run,
@@ -312,4 +311,3 @@ def clear_registry() -> None:
     """Clear the pipeline registry. Useful for testing."""
     _PIPELINE_REGISTRY.clear()
     _PIPELINE_INSTANCES.clear()
-

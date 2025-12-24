@@ -40,9 +40,7 @@ class PipelineRun(Base, TimestampMixin):
 
     __tablename__ = "pipeline_runs"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     # Pipeline identification
     pipeline_name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
@@ -73,12 +71,8 @@ class PipelineRun(Base, TimestampMixin):
     run_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Timing information
-    started_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    completed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Relationship to user (optional)
@@ -88,4 +82,3 @@ class PipelineRun(Base, TimestampMixin):
 
     def __repr__(self) -> str:
         return f"<PipelineRun {self.id} pipeline={self.pipeline_name} status={self.status}>"
-

@@ -54,7 +54,4 @@ class StorySummary(BaseSchema):
     id: UUID
     name: str
     is_primary: bool
-    content_preview: str = Field(
-        description="First 100 characters of content"
-    )
-
+    content_preview: str = Field(description="First 100 characters of content")

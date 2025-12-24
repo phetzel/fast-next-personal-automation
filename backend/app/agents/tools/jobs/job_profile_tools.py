@@ -190,4 +190,3 @@ async def create_profile(
         "message": f"Created profile '{name}'",
         "profile": _profile_to_summary(profile),
     }
-

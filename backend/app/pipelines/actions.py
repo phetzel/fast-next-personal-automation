@@ -65,7 +65,7 @@ class ActionResult(Generic[OutputT]):
             "metadata": self.metadata,
         }
         if self.output is not None:
-            result["output"] = self.output.model_dump(mode='json')
+            result["output"] = self.output.model_dump(mode="json")
         else:
             result["output"] = None
         return result
@@ -109,9 +109,7 @@ class ActionPipeline(ABC, Generic[InputT, OutputT]):
     description: str
 
     @abstractmethod
-    async def execute(
-        self, input: InputT, context: PipelineContext
-    ) -> ActionResult[OutputT]:
+    async def execute(self, input: InputT, context: PipelineContext) -> ActionResult[OutputT]:
         """Execute the pipeline action.
 
         Args:
@@ -174,4 +172,3 @@ class ActionPipeline(ABC, Generic[InputT, OutputT]):
         if output_type is None:
             return {}
         return output_type.model_json_schema()
-

@@ -6,6 +6,8 @@ A simple pipeline that echoes input back, useful for:
 - Verifying the system is working
 """
 
+from typing import ClassVar
+
 from pydantic import BaseModel, Field
 
 from app.pipelines.action_base import ActionPipeline, ActionResult, PipelineContext
@@ -43,12 +45,10 @@ class EchoPipeline(ActionPipeline[EchoInput, EchoOutput]):
 
     name = "echo"
     description = "Echo back the input message. Useful for testing pipeline connectivity."
-    tags = ["utility", "testing"]
+    tags: ClassVar[list[str]] = ["utility", "testing"]
     # area = None (general purpose, available everywhere)
 
-    async def execute(
-        self, input: EchoInput, context: PipelineContext
-    ) -> ActionResult[EchoOutput]:
+    async def execute(self, input: EchoInput, context: PipelineContext) -> ActionResult[EchoOutput]:
         """Execute the echo pipeline.
 
         Args:
@@ -77,4 +77,3 @@ class EchoPipeline(ActionPipeline[EchoInput, EchoOutput]):
                 "user_id": str(context.user_id) if context.user_id else None,
             },
         )
-

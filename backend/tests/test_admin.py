@@ -461,11 +461,13 @@ class TestGetSyncEngine:
     def setup_method(self):
         """Reset the cached engine before each test."""
         import app.admin as admin_module
+
         admin_module._sync_engine = None
 
     def teardown_method(self):
         """Reset the cached engine after each test."""
         import app.admin as admin_module
+
         admin_module._sync_engine = None
 
     @patch("sqlalchemy.create_engine")
@@ -748,7 +750,9 @@ class TestAdminAuth:
         self, mock_get_engine, auth_backend, mock_request
     ):
         """Test that authenticate fails for invalid user."""
-        mock_request.session.get = MagicMock(side_effect=lambda k, d=None: {"admin_user_id": "user-123"}.get(k, d))
+        mock_request.session.get = MagicMock(
+            side_effect=lambda k, d=None: {"admin_user_id": "user-123"}.get(k, d)
+        )
 
         mock_session = MagicMock()
         mock_session.query.return_value.filter.return_value.first.return_value = None
@@ -769,7 +773,9 @@ class TestAdminAuth:
         self, mock_get_engine, auth_backend, mock_request
     ):
         """Test that authenticate fails for inactive user."""
-        mock_request.session.get = MagicMock(side_effect=lambda k, d=None: {"admin_user_id": "user-123"}.get(k, d))
+        mock_request.session.get = MagicMock(
+            side_effect=lambda k, d=None: {"admin_user_id": "user-123"}.get(k, d)
+        )
 
         mock_user = MagicMock()
         mock_user.is_superuser = True
@@ -794,7 +800,9 @@ class TestAdminAuth:
         self, mock_get_engine, auth_backend, mock_request
     ):
         """Test that authenticate fails for non-superuser."""
-        mock_request.session.get = MagicMock(side_effect=lambda k, d=None: {"admin_user_id": "user-123"}.get(k, d))
+        mock_request.session.get = MagicMock(
+            side_effect=lambda k, d=None: {"admin_user_id": "user-123"}.get(k, d)
+        )
 
         mock_user = MagicMock()
         mock_user.is_superuser = False
@@ -819,7 +827,9 @@ class TestAdminAuth:
         self, mock_get_engine, auth_backend, mock_request
     ):
         """Test that authenticate succeeds for valid superuser."""
-        mock_request.session.get = MagicMock(side_effect=lambda k, d=None: {"admin_user_id": "user-123"}.get(k, d))
+        mock_request.session.get = MagicMock(
+            side_effect=lambda k, d=None: {"admin_user_id": "user-123"}.get(k, d)
+        )
 
         mock_user = MagicMock()
         mock_user.is_superuser = True

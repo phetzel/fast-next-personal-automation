@@ -86,7 +86,9 @@ async def list_jobs(
         min_score=min_score,
         max_score=max_score,
         source=source,
-        sort_by=sort_by if sort_by in ["created_at", "relevance_score", "date_posted", "company"] else "created_at",
+        sort_by=sort_by
+        if sort_by in ["created_at", "relevance_score", "date_posted", "company"]
+        else "created_at",
         sort_order=sort_order if sort_order in ["asc", "desc"] else "desc",
         page=max(1, page),
         page_size=min(100, max(1, page_size)),
@@ -278,4 +280,3 @@ async def delete_job(ctx: RunContext, job_id: str) -> dict:
         "success": True,
         "message": f"Deleted job: {deleted_job.title} at {deleted_job.company}",
     }
-

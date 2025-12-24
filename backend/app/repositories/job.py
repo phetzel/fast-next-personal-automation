@@ -18,23 +18,15 @@ async def get_by_id(db: AsyncSession, job_id: UUID) -> Job | None:
     return await db.get(Job, job_id)
 
 
-async def get_by_id_and_user(
-    db: AsyncSession, job_id: UUID, user_id: UUID
-) -> Job | None:
+async def get_by_id_and_user(db: AsyncSession, job_id: UUID, user_id: UUID) -> Job | None:
     """Get job by ID ensuring it belongs to the user."""
-    result = await db.execute(
-        select(Job).where(Job.id == job_id, Job.user_id == user_id)
-    )
+    result = await db.execute(select(Job).where(Job.id == job_id, Job.user_id == user_id))
     return result.scalar_one_or_none()
 
 
-async def get_by_url_and_user(
-    db: AsyncSession, job_url: str, user_id: UUID
-) -> Job | None:
+async def get_by_url_and_user(db: AsyncSession, job_url: str, user_id: UUID) -> Job | None:
     """Check if a job URL already exists for a user."""
-    result = await db.execute(
-        select(Job).where(Job.job_url == job_url, Job.user_id == user_id)
-    )
+    result = await db.execute(select(Job).where(Job.job_url == job_url, Job.user_id == user_id))
     return result.scalar_one_or_none()
 
 
@@ -226,10 +218,14 @@ async def delete(db: AsyncSession, job_id: UUID, user_id: UUID) -> Job | None:
 async def get_stats(db: AsyncSession, user_id: UUID) -> dict:
     """Get job statistics for a user."""
     # Count by status
-    status_query = select(
-        Job.status,
-        func.count(Job.id).label("count"),
-    ).where(Job.user_id == user_id).group_by(Job.status)
+    status_query = (
+        select(
+            Job.status,
+            func.count(Job.id).label("count"),
+        )
+        .where(Job.user_id == user_id)
+        .group_by(Job.status)
+    )
 
     result = await db.execute(status_query)
     status_counts = {row.status: row.count for row in result}
@@ -265,4 +261,3 @@ async def get_stats(db: AsyncSession, user_id: UUID) -> dict:
         "avg_score": round(avg_score, 2) if avg_score else None,
         "high_scoring": high_scoring,
     }
-

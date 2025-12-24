@@ -113,4 +113,3 @@ class JobService:
         """Check if a job URL already exists for user."""
         existing = await job_repo.get_by_url_and_user(self.db, job_url, user_id)
         return existing is not None
-

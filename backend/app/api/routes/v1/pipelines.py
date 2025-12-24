@@ -44,7 +44,9 @@ router = APIRouter()
 @router.get("", response_model=PipelineListResponse)
 async def list_available_pipelines(
     area: str | None = Query(None, description="Filter by primary area (e.g., 'jobs')"),
-    tags: str | None = Query(None, description="Filter by tags (comma-separated, e.g., 'ai,scraping')"),
+    tags: str | None = Query(
+        None, description="Filter by tags (comma-separated, e.g., 'ai,scraping')"
+    ),
 ) -> PipelineListResponse:
     """List all available pipelines with optional filtering.
 
@@ -83,7 +85,9 @@ async def list_pipeline_runs(
     status: PipelineRunStatus | None = Query(None, description="Filter by status"),
     trigger_type: PipelineTriggerType | None = Query(None, description="Filter by trigger type"),
     started_after: datetime | None = Query(None, description="Filter runs started after this time"),
-    started_before: datetime | None = Query(None, description="Filter runs started before this time"),
+    started_before: datetime | None = Query(
+        None, description="Filter runs started before this time"
+    ),
     success_only: bool = Query(False, description="Only return successful runs"),
     error_only: bool = Query(False, description="Only return failed runs"),
     my_runs_only: bool = Query(False, description="Only show runs triggered by current user"),
@@ -187,7 +191,7 @@ async def webhook_execute_pipeline(
 
     return PipelineExecuteResponse(
         success=result.success,
-        output=result.output.model_dump(mode='json') if result.output else None,
+        output=result.output.model_dump(mode="json") if result.output else None,
         error=result.error,
         metadata=result.metadata,
     )
@@ -261,7 +265,7 @@ async def execute_pipeline_endpoint(
 
     return PipelineExecuteResponse(
         success=result.success,
-        output=result.output.model_dump(mode='json') if result.output else None,
+        output=result.output.model_dump(mode="json") if result.output else None,
         error=result.error,
         metadata=result.metadata,
     )

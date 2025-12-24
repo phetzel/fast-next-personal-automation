@@ -82,4 +82,3 @@ class PipelineWebhookPayload(BaseModel):
         default_factory=dict,
         description="Additional metadata to pass to the pipeline context",
     )
-

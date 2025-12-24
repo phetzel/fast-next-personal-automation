@@ -117,4 +117,3 @@ async def delete_job(
     """Delete a job from the user's list."""
     job = await job_service.delete(job_id, current_user.id)
     return JobResponse.model_validate(job)
-

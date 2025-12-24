@@ -103,7 +103,9 @@ class ConversationCreate(ConversationBase):
     """Schema for creating a conversation."""
 
     user_id: UUID | None = Field(default=None, description="Owner user ID")
-    area: str | None = Field(default=None, max_length=50, description="Area identifier for specialized agents")
+    area: str | None = Field(
+        default=None, max_length=50, description="Area identifier for specialized agents"
+    )
 
 
 class ConversationUpdate(BaseSchema):

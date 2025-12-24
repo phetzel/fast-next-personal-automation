@@ -298,4 +298,3 @@ async def delete_old_runs(
 
     await db.flush()
     return len(runs)
-

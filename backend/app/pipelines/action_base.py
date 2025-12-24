@@ -9,7 +9,7 @@ Action pipelines are reusable automation units that can be invoked from:
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Generic, TypeVar, get_args, get_origin
+from typing import Any, ClassVar, Generic, TypeVar, get_args, get_origin
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -67,7 +67,7 @@ class ActionResult(Generic[OutputT]):
             "metadata": self.metadata,
         }
         if self.output is not None:
-            result["output"] = self.output.model_dump(mode='json')
+            result["output"] = self.output.model_dump(mode="json")
         else:
             result["output"] = None
         return result
@@ -117,13 +117,11 @@ class ActionPipeline(ABC, Generic[InputT, OutputT]):
     description: str
 
     # Optional tagging for filtering and organization
-    tags: list[str] = []
-    area: str | None = None
+    tags: ClassVar[list[str]] = []
+    area: ClassVar[str | None] = None
 
     @abstractmethod
-    async def execute(
-        self, input: InputT, context: PipelineContext
-    ) -> ActionResult[OutputT]:
+    async def execute(self, input: InputT, context: PipelineContext) -> ActionResult[OutputT]:
         """Execute the pipeline action.
 
         Args:
@@ -186,4 +184,3 @@ class ActionPipeline(ABC, Generic[InputT, OutputT]):
         if output_type is None:
             return {}
         return output_type.model_json_schema()
-

@@ -43,13 +43,14 @@ async def upload_project(
     """
     # Validate file type
     mime_type = file.content_type or "text/plain"
-    
+
     # Handle common markdown MIME type variations
     if file.filename and file.filename.endswith(".md"):
         mime_type = "text/markdown"
 
     if mime_type not in SUPPORTED_PROJECT_MIME_TYPES:
         from fastapi import HTTPException
+
         raise HTTPException(
             status_code=400,
             detail={
@@ -64,6 +65,7 @@ async def upload_project(
     # Validate file size
     if len(file_data) > MAX_FILE_SIZE:
         from fastapi import HTTPException
+
         raise HTTPException(
             status_code=400,
             detail={
@@ -261,4 +263,3 @@ async def re_extract_text(
         created_at=project.created_at,
         updated_at=project.updated_at,
     )
-

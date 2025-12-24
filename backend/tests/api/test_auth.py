@@ -10,7 +10,6 @@ from httpx import AsyncClient
 
 from app.api.deps import get_user_service
 from app.core.config import settings
-from app.core.security import create_access_token, create_refresh_token
 from app.main import app
 
 

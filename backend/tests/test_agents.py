@@ -8,7 +8,6 @@ from app.agents.area_config import AreaAgentConfig
 from app.agents.areas import JOBS_AGENT_CONFIG, get_area_config, list_available_areas
 from app.agents.assistant import AssistantAgent, Deps, get_agent, get_agent_for_area
 from app.agents.tools import get_current_datetime, job_profiles_toolset, jobs_toolset
-from app.agents.tools.datetime_tool import get_current_datetime
 
 
 class TestDeps:

@@ -19,16 +19,14 @@ class JobProfile(Base, TimestampMixin):
 
     Contains target roles, locations, and preferences used by job-related
     pipelines for matching and scoring. Resume is linked via the Resume entity.
-    
+
     A user can have multiple profiles with different configurations.
     One profile can be marked as default for quick access.
     """
 
     __tablename__ = "job_profiles"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
@@ -37,12 +35,8 @@ class JobProfile(Base, TimestampMixin):
     )
 
     # Profile identification
-    name: Mapped[str] = mapped_column(
-        String(100), nullable=False, default="Default Profile"
-    )
-    is_default: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
-    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False, default="Default Profile")
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     # Resume reference (nullable - profile can exist without resume)
     resume_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -61,9 +55,7 @@ class JobProfile(Base, TimestampMixin):
     )  # ["Remote", "San Francisco, CA"]
 
     # Scoring preferences
-    min_score_threshold: Mapped[float] = mapped_column(
-        Float, default=7.0, nullable=False
-    )
+    min_score_threshold: Mapped[float] = mapped_column(Float, default=7.0, nullable=False)
 
     # Additional preferences (extensible)
     preferences: Mapped[dict[str, Any] | None] = mapped_column(
@@ -76,4 +68,3 @@ class JobProfile(Base, TimestampMixin):
 
     def __repr__(self) -> str:
         return f"<JobProfile(id={self.id}, name={self.name}, user_id={self.user_id})>"
-

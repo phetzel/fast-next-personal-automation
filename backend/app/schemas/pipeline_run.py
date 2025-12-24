@@ -16,15 +16,9 @@ class PipelineRunBase(BaseModel):
     """Base schema for pipeline runs."""
 
     pipeline_name: str = Field(..., description="Name of the executed pipeline")
-    trigger_type: PipelineTriggerType = Field(
-        ..., description="How the pipeline was triggered"
-    )
-    input_data: dict[str, Any] | None = Field(
-        None, description="Input data passed to the pipeline"
-    )
-    run_metadata: dict[str, Any] | None = Field(
-        None, description="Additional context/metadata"
-    )
+    trigger_type: PipelineTriggerType = Field(..., description="How the pipeline was triggered")
+    input_data: dict[str, Any] | None = Field(None, description="Input data passed to the pipeline")
+    run_metadata: dict[str, Any] | None = Field(None, description="Additional context/metadata")
 
 
 class PipelineRunCreate(PipelineRunBase):
@@ -39,20 +33,12 @@ class PipelineRunResponse(BaseModel):
     id: UUID = Field(..., description="Unique run identifier")
     pipeline_name: str = Field(..., description="Name of the executed pipeline")
     status: PipelineRunStatus = Field(..., description="Current run status")
-    trigger_type: PipelineTriggerType = Field(
-        ..., description="How the pipeline was triggered"
-    )
+    trigger_type: PipelineTriggerType = Field(..., description="How the pipeline was triggered")
     user_id: UUID | None = Field(None, description="User who triggered the run")
-    input_data: dict[str, Any] | None = Field(
-        None, description="Input data passed to the pipeline"
-    )
-    output_data: dict[str, Any] | None = Field(
-        None, description="Output data from the pipeline"
-    )
+    input_data: dict[str, Any] | None = Field(None, description="Input data passed to the pipeline")
+    output_data: dict[str, Any] | None = Field(None, description="Output data from the pipeline")
     error_message: str | None = Field(None, description="Error message if failed")
-    run_metadata: dict[str, Any] | None = Field(
-        None, description="Additional context/metadata"
-    )
+    run_metadata: dict[str, Any] | None = Field(None, description="Additional context/metadata")
     started_at: datetime | None = Field(None, description="When execution started")
     completed_at: datetime | None = Field(None, description="When execution completed")
     duration_ms: int | None = Field(None, description="Execution duration in milliseconds")
@@ -77,12 +63,8 @@ class PipelineRunFilters(BaseModel):
 
     pipeline_name: str | None = Field(None, description="Filter by pipeline name")
     status: PipelineRunStatus | None = Field(None, description="Filter by status")
-    trigger_type: PipelineTriggerType | None = Field(
-        None, description="Filter by trigger type"
-    )
-    started_after: datetime | None = Field(
-        None, description="Filter runs started after this time"
-    )
+    trigger_type: PipelineTriggerType | None = Field(None, description="Filter by trigger type")
+    started_after: datetime | None = Field(None, description="Filter runs started after this time")
     started_before: datetime | None = Field(
         None, description="Filter runs started before this time"
     )
@@ -107,4 +89,3 @@ class PipelineRunWithUser(PipelineRunResponse):
 
     user_email: str | None = Field(None, description="Email of user who triggered run")
     user_name: str | None = Field(None, description="Name of user who triggered run")
-

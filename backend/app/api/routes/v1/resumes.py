@@ -47,6 +47,7 @@ async def upload_resume(
 
     if mime_type not in supported_types:
         from fastapi import HTTPException
+
         raise HTTPException(
             status_code=400,
             detail={
@@ -61,6 +62,7 @@ async def upload_resume(
     # Validate file size
     if len(file_data) > MAX_FILE_SIZE:
         from fastapi import HTTPException
+
         raise HTTPException(
             status_code=400,
             detail={
@@ -259,5 +261,3 @@ async def re_extract_text(
         created_at=resume.created_at,
         updated_at=resume.updated_at,
     )
-
-

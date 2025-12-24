@@ -34,7 +34,7 @@ def _profile_to_response(profile: JobProfile) -> JobProfileResponse:
             original_filename=profile.resume.original_filename,
             has_text=bool(profile.resume.text_content),
         )
-    
+
     return JobProfileResponse(
         id=profile.id,
         user_id=profile.user_id,
@@ -162,4 +162,3 @@ async def set_default_profile(
     """
     profile = await profile_service.set_default(current_user.id, profile_id)
     return _profile_to_response(profile)
-

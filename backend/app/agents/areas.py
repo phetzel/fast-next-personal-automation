@@ -17,10 +17,12 @@ from app.agents.tools.jobs import job_profiles_toolset, jobs_toolset
 # =============================================================================
 
 # Combine jobs toolsets with prefixes to avoid name conflicts
-_jobs_combined_toolset = CombinedToolset([
-    jobs_toolset.prefixed("jobs"),
-    job_profiles_toolset.prefixed("profiles"),
-])
+_jobs_combined_toolset = CombinedToolset(
+    [
+        jobs_toolset.prefixed("jobs"),
+        job_profiles_toolset.prefixed("profiles"),
+    ]
+)
 
 JOBS_AGENT_CONFIG = AreaAgentConfig(
     area="jobs",
@@ -52,14 +54,14 @@ Note: To update or delete profiles, guide users to /jobs/profiles in the web int
 
 ## Guidelines
 
-When users want to search for jobs (via pipelines), ensure they have a job profile 
-with a linked resume first. Guide them to /jobs/profiles if they need to create 
+When users want to search for jobs (via pipelines), ensure they have a job profile
+with a linked resume first. Guide them to /jobs/profiles if they need to create
 or update their profile.
 
 Be proactive about helping users optimize their job search strategy. When reviewing
 job listings, highlight key requirements and potential fit based on their profile.
 
-If a user asks about something outside your job-search scope, politely explain 
+If a user asks about something outside your job-search scope, politely explain
 that you specialize in job-related tasks and suggest they use the general assistant.""",
     allowed_pipeline_tags=["jobs"],
     toolsets=[_jobs_combined_toolset],
@@ -101,9 +103,10 @@ def list_available_areas() -> list[dict]:
         # Remove "You are a" prefix if present
         description = first_line.replace("You are a ", "").replace("You are an ", "")
 
-        areas.append({
-            "area": area_id,
-            "description": description,
-        })
+        areas.append(
+            {
+                "area": area_id,
+                "description": description,
+            }
+        )
     return areas
-

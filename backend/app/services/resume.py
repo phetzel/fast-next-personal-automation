@@ -159,9 +159,7 @@ class ResumeService:
         resume = await self.get_by_id(resume_id, user_id)
         data = update_data.model_dump(exclude_unset=True)
 
-        updated = await resume_repo.update(
-            self.db, db_resume=resume, update_data=data
-        )
+        updated = await resume_repo.update(self.db, db_resume=resume, update_data=data)
 
         # If marked as primary, unset other primary
         if data.get("is_primary"):
@@ -236,11 +234,11 @@ class ResumeService:
         storage = await get_storage_instance()
         try:
             file_data = await storage.load(resume.file_path)
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             raise ValidationError(
                 message="Resume file not found in storage",
                 details={"file_path": resume.file_path},
-            )
+            ) from e
 
         # Extract text
         try:
@@ -249,7 +247,7 @@ class ResumeService:
             raise ValidationError(
                 message=str(e),
                 details={"resume_id": str(resume_id)},
-            )
+            ) from e
 
         # Update database
         return await resume_repo.update(
@@ -258,9 +256,7 @@ class ResumeService:
             update_data={"text_content": text_content},
         )
 
-    async def _ensure_single_primary(
-        self, user_id: UUID, primary_resume_id: UUID
-    ) -> None:
+    async def _ensure_single_primary(self, user_id: UUID, primary_resume_id: UUID) -> None:
         """Ensure only one resume is marked as primary."""
         resumes = await resume_repo.get_by_user_id(self.db, user_id)
         for resume in resumes:
@@ -268,5 +264,3 @@ class ResumeService:
                 await resume_repo.update(
                     self.db, db_resume=resume, update_data={"is_primary": False}
                 )
-
-

@@ -17,12 +17,8 @@ logger = logging.getLogger(__name__)
 class SearchConfig(BaseModel):
     """Configuration for a job search query."""
 
-    terms: list[str] = Field(
-        default=["Python Developer"], description="Search terms to query"
-    )
-    locations: list[str] = Field(
-        default=["Remote"], description="Locations to search"
-    )
+    terms: list[str] = Field(default=["Python Developer"], description="Search terms to query")
+    locations: list[str] = Field(default=["Remote"], description="Locations to search")
     is_remote: bool = Field(default=True, description="Filter for remote jobs only")
     hours_old: int = Field(default=24, description="Max age of postings in hours")
     results_per_term: int = Field(default=5, description="Results per search term")
@@ -179,9 +175,7 @@ class JobSpyScraper(JobScraperBase):
                             logger.warning(f"Error parsing job row: {e}")
                             continue
 
-                    logger.info(
-                        f"Found {len(jobs_df)} jobs for '{term}' in '{location}'"
-                    )
+                    logger.info(f"Found {len(jobs_df)} jobs for '{term}' in '{location}'")
 
                 except Exception as e:
                     logger.error(f"Search failed for '{term}' in '{location}': {e}")
@@ -221,4 +215,3 @@ def get_scraper(
     if scraper_class is None:
         raise ValueError(f"Unknown scraper type: {scraper_type}")
     return scraper_class()
-

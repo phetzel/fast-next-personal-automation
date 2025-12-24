@@ -30,12 +30,14 @@ async def get_by_user_id(db: AsyncSession, user_id: UUID) -> list[Project]:
 async def get_active_for_user(db: AsyncSession, user_id: UUID) -> list[Project]:
     """Get all active projects for a user."""
     result = await db.execute(
-        select(Project).where(
+        select(Project)
+        .where(
             and_(
                 Project.user_id == user_id,
                 Project.is_active == True,  # noqa: E712
             )
-        ).order_by(Project.created_at.desc())
+        )
+        .order_by(Project.created_at.desc())
     )
     return list(result.scalars().all())
 
@@ -92,7 +94,7 @@ async def toggle_active(
     is_active: bool,
 ) -> Project | None:
     """Toggle the active status of a project.
-    
+
     Returns the updated project, or None if not found.
     """
     project = await get_by_id(db, project_id)
@@ -122,4 +124,3 @@ async def delete_by_user_id(db: AsyncSession, user_id: UUID) -> int:
         await db.delete(project)
     await db.flush()
     return count
-

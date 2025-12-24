@@ -103,11 +103,8 @@ class JobFilters(BaseSchema):
     source: str | None = None
     min_score: float | None = Field(default=None, ge=0.0, le=10.0)
     max_score: float | None = Field(default=None, ge=0.0, le=10.0)
-    search: str | None = Field(
-        default=None, description="Search in title, company, description"
-    )
+    search: str | None = Field(default=None, description="Search in title, company, description")
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=20, ge=1, le=100)
     sort_by: Literal["created_at", "relevance_score", "date_posted", "company"] = "created_at"
     sort_order: Literal["asc", "desc"] = "desc"
-

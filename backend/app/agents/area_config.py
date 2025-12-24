@@ -7,8 +7,9 @@ with filtered pipelines and custom system prompts.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pydantic_ai.toolsets import AbstractToolset
@@ -37,7 +38,7 @@ class AreaAgentConfig:
     system_prompt: str
     allowed_pipeline_tags: list[str] | None = None
     allowed_pipelines: list[str] | None = None
-    toolsets: list["AbstractToolset"] | None = field(default_factory=lambda: None)
+    toolsets: list[AbstractToolset] | None = field(default_factory=lambda: None)
     additional_tools: list[Callable] | None = field(default_factory=lambda: None)
 
     def get_allowed_pipeline_names(self, all_pipelines: list[dict]) -> set[str]:
@@ -65,4 +66,3 @@ class AreaAgentConfig:
 
         # No restrictions - return all pipeline names
         return {p["name"] for p in all_pipelines}
-

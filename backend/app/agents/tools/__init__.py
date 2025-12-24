@@ -11,9 +11,7 @@ from app.agents.tools.datetime_tool import get_current_datetime
 from app.agents.tools.jobs import job_profiles_toolset, jobs_toolset
 
 __all__ = [
-    # Individual tools
     "get_current_datetime",
-    # Area toolsets
-    "jobs_toolset",
     "job_profiles_toolset",
+    "jobs_toolset",
 ]

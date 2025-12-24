@@ -148,7 +148,7 @@ async def chat_with_area_agent(
         )
 
         # Run the agent
-        output, tool_events, _ = await assistant.run(
+        output, _tool_events, _ = await assistant.run(
             request.message,
             history=request.history,
             deps=deps,
@@ -274,9 +274,7 @@ async def agent_websocket(
     if area:
         assistant = get_agent_for_area(area)
         if assistant is None:
-            await manager.send_event(
-                websocket, "error", {"message": f"Area '{area}' not found"}
-            )
+            await manager.send_event(websocket, "error", {"message": f"Area '{area}' not found"})
             manager.disconnect(websocket)
             return
     else:
@@ -392,7 +390,10 @@ async def agent_websocket(
                                                 },
                                             )
                                             # Send initial content from TextPart if present
-                                            if isinstance(event.part, TextPart) and event.part.content:
+                                            if (
+                                                isinstance(event.part, TextPart)
+                                                and event.part.content
+                                            ):
                                                 await manager.send_event(
                                                     websocket,
                                                     "text_delta",
@@ -437,7 +438,11 @@ async def agent_websocket(
                                         if isinstance(event, FunctionToolCallEvent):
                                             # Track tool call for persistence
                                             # args comes as JSON string from PydanticAI, parse to dict
-                                            args_dict = json.loads(event.part.args) if isinstance(event.part.args, str) else event.part.args
+                                            args_dict = (
+                                                json.loads(event.part.args)
+                                                if isinstance(event.part.args, str)
+                                                else event.part.args
+                                            )
                                             pending_tool_calls[event.part.tool_call_id] = {
                                                 "tool_name": event.part.tool_name,
                                                 "args": args_dict,
@@ -456,8 +461,12 @@ async def agent_websocket(
                                         elif isinstance(event, FunctionToolResultEvent):
                                             # Update tool call with result
                                             if event.tool_call_id in pending_tool_calls:
-                                                pending_tool_calls[event.tool_call_id]["result"] = str(event.result.content)
-                                                pending_tool_calls[event.tool_call_id]["completed_at"] = datetime.now(UTC)
+                                                pending_tool_calls[event.tool_call_id]["result"] = (
+                                                    str(event.result.content)
+                                                )
+                                                pending_tool_calls[event.tool_call_id][
+                                                    "completed_at"
+                                                ] = datetime.now(UTC)
                                             await manager.send_event(
                                                 websocket,
                                                 "tool_result",

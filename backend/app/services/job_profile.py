@@ -77,9 +77,7 @@ class JobProfileService:
             ValidationError: If resume_id is provided but doesn't belong to user.
         """
         # Check for duplicate name
-        existing = await job_profile_repo.get_by_user_and_name(
-            self.db, user_id, profile_in.name
-        )
+        existing = await job_profile_repo.get_by_user_and_name(self.db, user_id, profile_in.name)
         if existing:
             raise ValidationError(
                 message=f"A profile named '{profile_in.name}' already exists",
@@ -98,9 +96,7 @@ class JobProfileService:
         # If this is set as default, or it's the first profile, make it default
         is_default = profile_in.is_default
         if not is_default:
-            existing_profiles = await job_profile_repo.get_by_user_id(
-                self.db, user_id
-            )
+            existing_profiles = await job_profile_repo.get_by_user_id(self.db, user_id)
             if not existing_profiles:
                 is_default = True
 
@@ -150,7 +146,7 @@ class JobProfileService:
                 )
 
         # Validate resume ownership if provided
-        if "resume_id" in update_data and update_data["resume_id"]:
+        if update_data.get("resume_id"):
             resume = await resume_repo.get_by_id(self.db, update_data["resume_id"])
             if not resume or resume.user_id != user_id:
                 raise ValidationError(
@@ -190,9 +186,7 @@ class JobProfileService:
         if was_default:
             remaining = await job_profile_repo.get_by_user_id(self.db, user_id)
             if remaining:
-                await job_profile_repo.set_default(
-                    self.db, user_id, remaining[0].id
-                )
+                await job_profile_repo.set_default(self.db, user_id, remaining[0].id)
 
         return deleted
 
@@ -205,9 +199,7 @@ class JobProfileService:
         # Verify ownership
         await self.get_by_id(profile_id, user_id)
 
-        result = await job_profile_repo.set_default(
-            self.db, user_id, profile_id
-        )
+        result = await job_profile_repo.set_default(self.db, user_id, profile_id)
         if not result:
             raise NotFoundError(
                 message="Profile not found",
@@ -220,40 +212,32 @@ class JobProfileService:
         if profile_id:
             profile = await job_profile_repo.get_by_id(self.db, profile_id)
         else:
-            profile = await job_profile_repo.get_default_for_user(
-                self.db, user_id
-            )
+            profile = await job_profile_repo.get_default_for_user(self.db, user_id)
 
         if not profile or not profile.resume_id:
             return False
-        
+
         # Check if the linked resume has text content
         resume = await resume_repo.get_by_id(self.db, profile.resume_id)
         return bool(resume and resume.text_content and resume.text_content.strip())
 
-    async def get_resume_text(
-        self, user_id: UUID, profile_id: UUID | None = None
-    ) -> str | None:
+    async def get_resume_text(self, user_id: UUID, profile_id: UUID | None = None) -> str | None:
         """Get resume text from the resume linked to the specified or default profile."""
         if profile_id:
             profile = await job_profile_repo.get_by_id(self.db, profile_id)
         else:
-            profile = await job_profile_repo.get_default_for_user(
-                self.db, user_id
-            )
+            profile = await job_profile_repo.get_default_for_user(self.db, user_id)
 
         if not profile or not profile.resume_id:
             return None
-        
+
         # Get text from linked resume
         resume = await resume_repo.get_by_id(self.db, profile.resume_id)
         if not resume:
             return None
         return resume.text_content
 
-    async def _ensure_single_default(
-        self, user_id: UUID, default_profile_id: UUID
-    ) -> None:
+    async def _ensure_single_default(self, user_id: UUID, default_profile_id: UUID) -> None:
         """Ensure only one profile is marked as default."""
         profiles = await job_profile_repo.get_by_user_id(self.db, user_id)
         for profile in profiles:
@@ -261,4 +245,3 @@ class JobProfileService:
                 await job_profile_repo.update(
                     self.db, db_profile=profile, update_data={"is_default": False}
                 )
-

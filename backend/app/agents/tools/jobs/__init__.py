@@ -8,8 +8,6 @@ from app.agents.tools.jobs.job_profile_tools import job_profiles_toolset
 from app.agents.tools.jobs.job_tools import jobs_toolset
 
 __all__ = [
-    "jobs_toolset",
     "job_profiles_toolset",
+    "jobs_toolset",
 ]
-
-

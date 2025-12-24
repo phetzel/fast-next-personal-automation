@@ -113,11 +113,11 @@ async def analyze_job(
 Analyze this job opportunity:
 Title: {job.title}
 Company: {job.company}
-Location: {job.location or 'Not specified'}
-{f'Salary: {job.salary_range}' if job.salary_range else ''}
+Location: {job.location or "Not specified"}
+{f"Salary: {job.salary_range}" if job.salary_range else ""}
 
 Description:
-{job.description or 'No description available'}
+{job.description or "No description available"}
 """
 
     try:
@@ -165,4 +165,3 @@ async def analyze_jobs_batch(
     )
 
     return results
-
