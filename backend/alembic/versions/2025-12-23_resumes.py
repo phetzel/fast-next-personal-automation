@@ -107,3 +107,4 @@ def downgrade() -> None:
     op.drop_index("resumes_user_id_idx", table_name="resumes")
     op.drop_table("resumes")
 
+

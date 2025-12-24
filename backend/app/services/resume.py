@@ -269,3 +269,4 @@ class ResumeService:
                     self.db, db_resume=resume, update_data={"is_primary": False}
                 )
 
+

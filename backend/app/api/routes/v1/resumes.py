@@ -260,3 +260,4 @@ async def re_extract_text(
         updated_at=resume.updated_at,
     )
 
+

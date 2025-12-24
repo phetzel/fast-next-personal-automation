@@ -131,3 +131,4 @@ async def delete_by_user_id(db: AsyncSession, user_id: UUID) -> int:
     await db.flush()
     return count
 
+

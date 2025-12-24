@@ -168,3 +168,4 @@ def extract_text_from_file(file_bytes: bytes, mime_type: str) -> str:
     else:
         raise ValueError(f"Unsupported file type: {file_type}")
 
+

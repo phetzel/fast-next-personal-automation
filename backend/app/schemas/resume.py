@@ -64,3 +64,4 @@ class ResumeTextResponse(BaseSchema):
     name: str
     text_content: str | None
 
+

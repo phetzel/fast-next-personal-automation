@@ -62,3 +62,4 @@ export function TriggerBadge({ trigger, className }: TriggerBadgeProps) {
   );
 }
 
+

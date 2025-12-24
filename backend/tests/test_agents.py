@@ -60,18 +60,20 @@ class TestAssistantAgent:
         assert agent.temperature == 0.5
         assert agent.system_prompt == "Custom prompt"
 
+    @patch("app.agents.assistant.Agent")
     @patch("app.agents.assistant.OpenAIProvider")
     @patch("app.agents.assistant.OpenAIChatModel")
-    def test_agent_property_creates_agent(self, mock_model, mock_provider):
+    def test_agent_property_creates_agent(self, mock_model, mock_provider, mock_agent_cls):
         """Test agent property creates agent on first access."""
         agent = AssistantAgent()
         _ = agent.agent
         assert agent._agent is not None
         mock_model.assert_called_once()
 
+    @patch("app.agents.assistant.Agent")
     @patch("app.agents.assistant.OpenAIProvider")
     @patch("app.agents.assistant.OpenAIChatModel")
-    def test_agent_property_caches_agent(self, mock_model, mock_provider):
+    def test_agent_property_caches_agent(self, mock_model, mock_provider, mock_agent_cls):
         """Test agent property caches the agent instance."""
         agent = AssistantAgent()
         agent1 = agent.agent
@@ -264,9 +266,10 @@ class TestGetAgentForArea:
         assert agent is not None
         assert "job search" in agent.system_prompt.lower()
 
+    @patch("app.agents.assistant.Agent")
     @patch("app.agents.assistant.OpenAIProvider")
     @patch("app.agents.assistant.OpenAIChatModel")
-    def test_jobs_agent_creates_with_toolsets(self, mock_model, mock_provider):
+    def test_jobs_agent_creates_with_toolsets(self, mock_model, mock_provider, mock_agent_cls):
         """Test jobs area agent creates with toolsets."""
         agent = get_agent_for_area("jobs")
         assert agent is not None
