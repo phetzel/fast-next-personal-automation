@@ -28,6 +28,7 @@ class StorageBackend(ABC):
         file_data: bytes,
         user_id: uuid.UUID,
         filename: str,
+        subdir: str = "resumes",
     ) -> str:
         """Save a file and return its storage path.
         
@@ -35,6 +36,7 @@ class StorageBackend(ABC):
             file_data: The raw file bytes
             user_id: The user who owns the file
             filename: The original filename
+            subdir: Subdirectory for file type (resumes, projects, etc.)
             
         Returns:
             The storage path (relative to storage root)
@@ -105,10 +107,11 @@ class LocalStorage(StorageBackend):
         file_data: bytes,
         user_id: uuid.UUID,
         filename: str,
+        subdir: str = "resumes",
     ) -> str:
         """Save a file to local storage."""
         # Create user directory
-        user_dir = self.base_path / "resumes" / str(user_id)
+        user_dir = self.base_path / subdir / str(user_id)
         user_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate unique filename to avoid collisions
@@ -118,7 +121,7 @@ class LocalStorage(StorageBackend):
         storage_filename = f"{unique_id}_{safe_filename}"
 
         # Build relative path
-        relative_path = f"resumes/{user_id}/{storage_filename}"
+        relative_path = f"{subdir}/{user_id}/{storage_filename}"
         full_path = self.base_path / relative_path
 
         # Write file
@@ -203,20 +206,21 @@ class S3Storage(StorageBackend):
             else:
                 raise
 
-    def _build_key(self, user_id: uuid.UUID, filename: str) -> str:
+    def _build_key(self, user_id: uuid.UUID, filename: str, subdir: str = "resumes") -> str:
         """Build S3 object key."""
         unique_id = uuid.uuid4().hex[:8]
         safe_filename = Path(filename).name
-        return f"resumes/{user_id}/{unique_id}_{safe_filename}"
+        return f"{subdir}/{user_id}/{unique_id}_{safe_filename}"
 
     async def save(
         self,
         file_data: bytes,
         user_id: uuid.UUID,
         filename: str,
+        subdir: str = "resumes",
     ) -> str:
         """Save a file to S3."""
-        key = self._build_key(user_id, filename)
+        key = self._build_key(user_id, filename, subdir)
         
         try:
             self._client.put_object(

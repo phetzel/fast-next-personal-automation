@@ -7,6 +7,16 @@ export { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "./shee
 export { DottedGlowBackground } from "./dotted-glow-background";
 export { Textarea } from "./textarea";
 export {
+  Table,
+  TableBody,
+  TableCell,
+  TableCaption,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./table";
+export {
   Dialog,
   DialogPortal,
   DialogOverlay,

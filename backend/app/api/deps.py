@@ -38,6 +38,8 @@ from app.services.pipeline_run import PipelineRunService
 from app.services.job import JobService
 from app.services.job_profile import JobProfileService
 from app.services.resume import ResumeService
+from app.services.story import StoryService
+from app.services.project import ProjectService
 
 
 def get_user_service(db: DBSession) -> UserService:
@@ -108,6 +110,22 @@ def get_resume_service(db: DBSession) -> ResumeService:
 
 
 ResumeSvc = Annotated[ResumeService, Depends(get_resume_service)]
+
+
+def get_story_service(db: DBSession) -> StoryService:
+    """Create StoryService instance with database session."""
+    return StoryService(db)
+
+
+StorySvc = Annotated[StoryService, Depends(get_story_service)]
+
+
+def get_project_service(db: DBSession) -> ProjectService:
+    """Create ProjectService instance with database session."""
+    return ProjectService(db)
+
+
+ProjectSvc = Annotated[ProjectService, Depends(get_project_service)]
 
 # === Authentication Dependencies ===
 

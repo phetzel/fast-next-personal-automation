@@ -10,6 +10,8 @@ from app.db.models.pipeline_run import PipelineRun, PipelineRunStatus, PipelineT
 from app.db.models.job import Job, JobStatus
 from app.db.models.job_profile import JobProfile
 from app.db.models.resume import Resume
+from app.db.models.story import Story
+from app.db.models.project import Project
 
 __all__ = [
     "User",
@@ -27,4 +29,6 @@ __all__ = [
     "JobStatus",
     "JobProfile",
     "Resume",
+    "Story",
+    "Project",
 ]

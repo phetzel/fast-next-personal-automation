@@ -226,6 +226,99 @@ export interface JobSearchOutput {
 }
 
 // ===========================================================================
+// Story Types
+// ===========================================================================
+
+/**
+ * A user's story/narrative text.
+ */
+export interface Story {
+  id: string;
+  user_id: string;
+  name: string;
+  content: string;
+  is_primary: boolean;
+  created_at: string;
+  updated_at: string | null;
+}
+
+/**
+ * Summary of story for lists and selectors.
+ */
+export interface StorySummary {
+  id: string;
+  name: string;
+  is_primary: boolean;
+  content_preview: string;
+}
+
+/**
+ * Request to create a story.
+ */
+export interface StoryCreate {
+  name: string;
+  content: string;
+  is_primary?: boolean;
+}
+
+/**
+ * Partial update to story.
+ */
+export interface StoryUpdate {
+  name?: string;
+  content?: string;
+  is_primary?: boolean;
+}
+
+// ===========================================================================
+// Project Types
+// ===========================================================================
+
+/**
+ * A user's project description.
+ */
+export interface Project {
+  id: string;
+  user_id: string;
+  name: string;
+  original_filename: string;
+  file_size: number;
+  mime_type: string;
+  is_active: boolean;
+  has_text: boolean;
+  created_at: string;
+  updated_at: string | null;
+}
+
+/**
+ * Summary of project for lists.
+ */
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  original_filename: string;
+  is_active: boolean;
+  has_text: boolean;
+}
+
+/**
+ * Project text content response.
+ */
+export interface ProjectTextResponse {
+  id: string;
+  name: string;
+  text_content: string | null;
+}
+
+/**
+ * Partial update to project.
+ */
+export interface ProjectUpdate {
+  name?: string;
+  is_active?: boolean;
+}
+
+// ===========================================================================
 // Pipeline Error Types
 // ===========================================================================
 

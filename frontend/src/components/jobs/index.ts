@@ -1,5 +1,6 @@
 export { JobCard } from "./job-card";
 export { JobList } from "./job-list";
+export { JobTable } from "./job-table";
 export { JobFilters } from "./job-filters";
 export { JobDetailModal } from "./job-detail-modal";
 export { JobStatsCard } from "./job-stats-card";

@@ -21,6 +21,10 @@ from app.repositories import job_profile as job_profile_repo
 
 from app.repositories import resume as resume_repo
 
+from app.repositories import story as story_repo
+
+from app.repositories import project as project_repo
+
 __all__ = [
     "BaseRepository",
     "user_repo",
@@ -32,4 +36,6 @@ __all__ = [
     "job_repo",
     "job_profile_repo",
     "resume_repo",
+    "story_repo",
+    "project_repo",
 ]

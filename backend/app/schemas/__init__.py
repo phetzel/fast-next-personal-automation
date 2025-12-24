@@ -53,6 +53,21 @@ from app.schemas.resume import (
     ResumeTextResponse,
 )
 
+from app.schemas.story import (
+    StoryCreate,
+    StoryUpdate,
+    StoryResponse,
+    StorySummary,
+)
+
+from app.schemas.project import (
+    ProjectCreate,
+    ProjectUpdate,
+    ProjectResponse,
+    ProjectSummary,
+    ProjectTextResponse,
+)
+
 __all__ = [
     "UserCreate",
     "UserRead",
@@ -98,4 +113,15 @@ __all__ = [
     "ResumeResponse",
     "ResumeSummary",
     "ResumeTextResponse",
+    # Story
+    "StoryCreate",
+    "StoryUpdate",
+    "StoryResponse",
+    "StorySummary",
+    # Project
+    "ProjectCreate",
+    "ProjectUpdate",
+    "ProjectResponse",
+    "ProjectSummary",
+    "ProjectTextResponse",
 ]

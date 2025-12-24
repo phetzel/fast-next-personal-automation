@@ -139,7 +139,7 @@ export default function JobsOverviewPage() {
                 />
               ))}
             </div>
-          ) : jobs.length === 0 ? (
+          ) : jobs.slice(0, 6).length === 0 ? (
             <div className="py-12 text-center">
               <p className="text-muted-foreground">No jobs found yet</p>
               <p className="text-sm text-muted-foreground mt-1">
@@ -154,7 +154,7 @@ export default function JobsOverviewPage() {
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {jobs.map((job) => (
+              {jobs.slice(0, 6).map((job) => (
                 <JobCard
                   key={job.id}
                   job={job}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { usePipelineStore } from "@/stores";
 import { apiClient } from "@/lib/api-client";
 import type {
@@ -28,8 +28,13 @@ export function usePipelines(filters?: PipelineFilters) {
     getExecutionState,
   } = usePipelineStore();
 
-  // Fetch pipelines on mount
+  // Track if we've already fetched to prevent infinite loops
+  const hasFetchedRef = useRef(false);
+
+  // Fetch pipelines
   const fetchPipelines = useCallback(async (fetchFilters?: PipelineFilters) => {
+    // Mark as fetched to prevent auto-fetch loop
+    hasFetchedRef.current = true;
     setLoading(true);
     setError(null);
 
@@ -109,9 +114,10 @@ export function usePipelines(filters?: PipelineFilters) {
     return Array.from(tags).sort();
   }, [pipelines]);
 
-  // Auto-fetch on mount
+  // Auto-fetch on mount (only once)
   useEffect(() => {
-    if (pipelines.length === 0 && !isLoading) {
+    // Only auto-fetch if we haven't fetched yet and there's no data
+    if (!hasFetchedRef.current && pipelines.length === 0 && !isLoading) {
       fetchPipelines();
     }
   }, [pipelines.length, isLoading, fetchPipelines]);

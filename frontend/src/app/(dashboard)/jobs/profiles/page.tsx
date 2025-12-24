@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useJobProfiles, useResumes } from "@/hooks";
+import { useJobProfiles, useResumes, useStories, useProjects } from "@/hooks";
 import {
   Button,
   Card,
@@ -11,9 +11,10 @@ import {
   CardTitle,
   Input,
   Badge,
+  Textarea,
 } from "@/components/ui";
 import { ResumeSelector } from "@/components/jobs";
-import type { JobProfile, JobProfileCreate, JobProfileUpdate, ResumeSummary } from "@/types";
+import type { JobProfile, JobProfileCreate, JobProfileUpdate, ResumeSummary, StorySummary, Story, StoryCreate, StoryUpdate, ProjectSummary } from "@/types";
 import {
   Loader2,
   Plus,
@@ -31,6 +32,10 @@ import {
   AlertCircle,
   CheckCircle2,
   UserCircle,
+  BookOpen,
+  FolderOpen,
+  ToggleLeft,
+  ToggleRight,
 } from "lucide-react";
 
 // Accepted file types for resume upload
@@ -61,12 +66,14 @@ function getFileIcon(filename: string) {
 // Tab Navigation
 // ============================================================================
 
-type TabId = "profiles" | "resumes";
+type TabId = "profiles" | "resumes" | "story" | "projects";
 
 function TabNav({ activeTab, onTabChange }: { activeTab: TabId; onTabChange: (tab: TabId) => void }) {
   const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
     { id: "profiles", label: "Profiles", icon: <UserCircle className="h-4 w-4" /> },
     { id: "resumes", label: "Resumes", icon: <FileText className="h-4 w-4" /> },
+    { id: "story", label: "Story", icon: <BookOpen className="h-4 w-4" /> },
+    { id: "projects", label: "Projects", icon: <FolderOpen className="h-4 w-4" /> },
   ];
 
   return (
@@ -909,6 +916,623 @@ function ResumesTab() {
 }
 
 // ============================================================================
+// Story Components
+// ============================================================================
+
+interface StoryFormData {
+  name: string;
+  content: string;
+  is_primary: boolean;
+}
+
+function StoryForm({
+  story,
+  onSave,
+  onCancel,
+  isLoading,
+}: {
+  story?: Story | null;
+  onSave: (data: StoryFormData) => Promise<void>;
+  onCancel: () => void;
+  isLoading?: boolean;
+}) {
+  const [name, setName] = useState(story?.name || "");
+  const [content, setContent] = useState(story?.content || "");
+  const [isPrimary, setIsPrimary] = useState(story?.is_primary || false);
+
+  const isEditing = !!story;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await onSave({ name, content, is_primary: isPrimary });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{isEditing ? "Edit Story" : "Create New Story"}</CardTitle>
+        <CardDescription>
+          {isEditing
+            ? "Update your personal story or narrative"
+            : "Write a story about yourself - things you want to emphasize during job applications"}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Story Name */}
+          <div>
+            <label className="mb-2 block text-sm font-medium">Story Name</label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., My Career Journey"
+              required
+              maxLength={100}
+            />
+            <p className="text-muted-foreground mt-1 text-xs">
+              Give this story a memorable name
+            </p>
+          </div>
+
+          {/* Story Content */}
+          <div>
+            <label className="mb-2 block text-sm font-medium">Your Story</label>
+            <Textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Write about yourself... What makes you unique? What are you passionate about? What do you want employers to know?"
+              required
+              className="min-h-[300px]"
+            />
+            <p className="text-muted-foreground mt-1 text-xs">
+              Markdown is supported. This content will be used to help personalize job applications.
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2">
+            <Button type="submit" disabled={isLoading || !name.trim() || !content.trim()}>
+              {isLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              {isEditing ? "Save Changes" : "Create Story"}
+            </Button>
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function StoryListItem({
+  story,
+  onEdit,
+  onDelete,
+  onSetPrimary,
+  isLoading,
+}: {
+  story: StorySummary;
+  onEdit: () => void;
+  onDelete: () => void;
+  onSetPrimary: () => void;
+  isLoading?: boolean;
+}) {
+  return (
+    <Card className={story.is_primary ? "border-primary/50 ring-1 ring-primary/20" : ""}>
+      <CardContent className="flex items-start gap-4 py-4">
+        <BookOpen className="mt-1 h-5 w-5 text-purple-500" />
+        
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="truncate font-medium">{story.name}</p>
+            {story.is_primary && (
+              <Badge variant="default" className="shrink-0">
+                <Star className="mr-1 h-3 w-3" />
+                Primary
+              </Badge>
+            )}
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
+            {story.content_preview}
+          </p>
+        </div>
+
+        <div className="flex shrink-0 gap-1">
+          {!story.is_primary && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onSetPrimary}
+              disabled={isLoading}
+              title="Set as primary"
+            >
+              <StarOff className="h-4 w-4" />
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={onEdit} disabled={isLoading}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onDelete}
+            disabled={isLoading}
+            className="hover:text-destructive"
+            title="Delete story"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function StoryTab() {
+  const {
+    stories,
+    isLoading,
+    error,
+    fetchStories,
+    getStory,
+    createStory,
+    updateStory,
+    deleteStory,
+    setPrimary,
+  } = useStories();
+
+  const [view, setView] = useState<"list" | "create" | "edit">("list");
+  const [editingStory, setEditingStory] = useState<Story | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchStories();
+  }, [fetchStories]);
+
+  const handleCreate = async (data: StoryFormData) => {
+    setIsSubmitting(true);
+    const result = await createStory(data as StoryCreate);
+    setIsSubmitting(false);
+    if (result) {
+      setView("list");
+    }
+  };
+
+  const handleUpdate = async (data: StoryFormData) => {
+    if (!editingStory) return;
+    setIsSubmitting(true);
+    const result = await updateStory(editingStory.id, data as StoryUpdate);
+    setIsSubmitting(false);
+    if (result) {
+      setEditingStory(null);
+      setView("list");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this story?")) return;
+    await deleteStory(id);
+  };
+
+  const handleSetPrimary = async (id: string) => {
+    await setPrimary(id);
+  };
+
+  const handleEdit = async (storySummary: StorySummary) => {
+    const fullStory = await getStory(storySummary.id);
+    if (fullStory) {
+      setEditingStory(fullStory);
+      setView("edit");
+    }
+  };
+
+  const handleCancel = () => {
+    setEditingStory(null);
+    setView("list");
+  };
+
+  if (isLoading && stories.length === 0) {
+    return (
+      <div className="flex min-h-[30vh] items-center justify-center">
+        <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (view === "create" || view === "edit") {
+    return (
+      <StoryForm
+        story={editingStory}
+        onSave={view === "create" ? handleCreate : handleUpdate}
+        onCancel={handleCancel}
+        isLoading={isSubmitting}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header with create button */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Write personal narratives to emphasize during job applications
+        </p>
+        <Button onClick={() => setView("create")} size="sm">
+          <Plus className="mr-2 h-4 w-4" />
+          New Story
+        </Button>
+      </div>
+
+      {error && (
+        <Card className="border-destructive bg-destructive/10">
+          <CardContent className="py-4">
+            <p className="text-destructive text-sm">{error}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {stories.length === 0 && (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="mb-4 rounded-full bg-purple-500/10 p-4">
+              <BookOpen className="h-10 w-10 text-purple-600" />
+            </div>
+            <h2 className="mb-2 text-xl font-semibold">No Stories Yet</h2>
+            <p className="text-muted-foreground mb-4 max-w-md">
+              Write your first story to share what makes you unique. This helps
+              personalize your job applications.
+            </p>
+            <Button onClick={() => setView("create")}>
+              <Plus className="mr-2 h-4 w-4" />
+              Write Your First Story
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {stories.length > 0 && (
+        <div className="space-y-2">
+          {stories.map((story) => (
+            <StoryListItem
+              key={story.id}
+              story={story}
+              onEdit={() => handleEdit(story)}
+              onDelete={() => handleDelete(story.id)}
+              onSetPrimary={() => handleSetPrimary(story.id)}
+              isLoading={isLoading}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// Projects Components
+// ============================================================================
+
+// Accepted file types for project uploads
+const PROJECT_ACCEPTED_TYPES = [
+  "text/markdown",
+  "text/x-markdown",
+  "text/plain",
+];
+const PROJECT_ACCEPTED_EXTENSIONS = ".md,.txt";
+
+function ProjectUploadZone({
+  onUpload,
+  isUploading,
+}: {
+  onUpload: (file: File, name: string) => Promise<void>;
+  isUploading: boolean;
+}) {
+  const [isDragging, setIsDragging] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [name, setName] = useState("");
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files[0];
+    if (file && (file.name.endsWith(".md") || file.name.endsWith(".txt"))) {
+      setSelectedFile(file);
+      const defaultName = file.name.replace(/\.[^/.]+$/, "");
+      setName(defaultName);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const defaultName = file.name.replace(/\.[^/.]+$/, "");
+      setName(defaultName);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile || !name.trim()) return;
+    await onUpload(selectedFile, name.trim());
+    setSelectedFile(null);
+    setName("");
+  };
+
+  const handleCancel = () => {
+    setSelectedFile(null);
+    setName("");
+  };
+
+  return (
+    <div className="space-y-4">
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onClick={() => fileInputRef.current?.click()}
+        className={`
+          cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors
+          ${isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"}
+        `}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={PROJECT_ACCEPTED_EXTENSIONS}
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+        <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
+        <p className="mt-2 text-sm font-medium">Drop a file here or click to browse</p>
+        <p className="text-xs text-muted-foreground">Markdown (.md) or Text (.txt) files (max 5MB)</p>
+      </div>
+
+      {selectedFile && (
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-start gap-4">
+              <FileText className="h-5 w-5 text-blue-500" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium">{selectedFile.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatFileSize(selectedFile.size)}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium">Project Name</label>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g., E-commerce Platform"
+                  maxLength={100}
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleUpload}
+                  disabled={isUploading || !name.trim()}
+                  className="flex-1"
+                >
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload
+                    </>
+                  )}
+                </Button>
+                <Button variant="outline" onClick={handleCancel} disabled={isUploading}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function ProjectListItem({
+  project,
+  onDelete,
+  onToggleActive,
+  isLoading,
+}: {
+  project: ProjectSummary;
+  onDelete: () => void;
+  onToggleActive: () => void;
+  isLoading?: boolean;
+}) {
+  return (
+    <Card className={project.is_active ? "border-green-500/30 ring-1 ring-green-500/20" : "opacity-60"}>
+      <CardContent className="flex items-center gap-4 py-4">
+        <FolderOpen className={`h-5 w-5 ${project.is_active ? "text-green-500" : "text-gray-400"}`} />
+        
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="truncate font-medium">{project.name}</p>
+            {project.is_active && (
+              <Badge variant="outline" className="shrink-0 border-green-500 text-green-600">
+                Active
+              </Badge>
+            )}
+          </div>
+          <p className="truncate text-sm text-muted-foreground">
+            {project.original_filename}
+          </p>
+          <div className="mt-1 flex items-center gap-2 text-xs">
+            {project.has_text ? (
+              <span className="flex items-center gap-1 text-green-600">
+                <CheckCircle2 className="h-3 w-3" />
+                Content loaded
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-amber-600">
+                <AlertCircle className="h-3 w-3" />
+                No content
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex shrink-0 gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggleActive}
+            disabled={isLoading}
+            title={project.is_active ? "Deactivate project" : "Activate project"}
+          >
+            {project.is_active ? (
+              <ToggleRight className="h-5 w-5 text-green-500" />
+            ) : (
+              <ToggleLeft className="h-5 w-5 text-gray-400" />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onDelete}
+            disabled={isLoading}
+            className="hover:text-destructive"
+            title="Delete project"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ProjectsTab() {
+  const {
+    projects,
+    isLoading,
+    error,
+    fetchProjects,
+    uploadProject,
+    deleteProject,
+    toggleActive,
+  } = useProjects();
+
+  const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
+
+  const handleUpload = async (file: File, name: string) => {
+    setIsUploading(true);
+    await uploadProject(file, name, true);
+    setIsUploading(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this project?")) return;
+    await deleteProject(id);
+  };
+
+  const handleToggleActive = async (project: ProjectSummary) => {
+    await toggleActive(project.id, !project.is_active);
+  };
+
+  const activeCount = projects.filter((p) => p.is_active).length;
+
+  return (
+    <div className="space-y-6">
+      {/* Upload Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Upload Project</CardTitle>
+          <CardDescription>
+            Upload project descriptions in Markdown or text format. Multiple projects
+            can be active at the same time.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ProjectUploadZone onUpload={handleUpload} isUploading={isUploading} />
+        </CardContent>
+      </Card>
+
+      {error && (
+        <Card className="border-destructive bg-destructive/10">
+          <CardContent className="py-4">
+            <p className="text-destructive text-sm">{error}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {isLoading && projects.length === 0 && (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      )}
+
+      {projects.length > 0 && (
+        <div>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Your Projects</h2>
+            <span className="text-sm text-muted-foreground">
+              {activeCount} of {projects.length} active
+            </span>
+          </div>
+          <div className="space-y-2">
+            {projects.map((project) => (
+              <ProjectListItem
+                key={project.id}
+                project={project}
+                onDelete={() => handleDelete(project.id)}
+                onToggleActive={() => handleToggleActive(project)}
+                isLoading={isLoading}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!isLoading && projects.length === 0 && (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <FolderOpen className="h-12 w-12 text-muted-foreground/50" />
+            <h3 className="mt-4 font-semibold">No Projects Yet</h3>
+            <p className="text-sm text-muted-foreground">
+              Upload your first project description to showcase your work.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
 // Main Page Component
 // ============================================================================
 
@@ -921,9 +1545,9 @@ export default function ProfilesPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Profiles & Resumes</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Profiles & Materials</h1>
         <p className="text-muted-foreground">
-          Manage your job search profiles and resume files
+          Manage your job search profiles, resumes, stories, and projects
         </p>
       </div>
 
@@ -933,6 +1557,8 @@ export default function ProfilesPage() {
       {/* Tab Content */}
       {activeTab === "profiles" && <ProfilesTab />}
       {activeTab === "resumes" && <ResumesTab />}
+      {activeTab === "story" && <StoryTab />}
+      {activeTab === "projects" && <ProjectsTab />}
     </div>
   );
 }

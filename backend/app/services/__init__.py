@@ -23,6 +23,10 @@ from app.services.job_profile import JobProfileService
 
 from app.services.resume import ResumeService
 
+from app.services.story import StoryService
+
+from app.services.project import ProjectService
+
 __all__ = [
     "UserService",
     "SessionService",
@@ -33,4 +37,6 @@ __all__ = [
     "JobService",
     "JobProfileService",
     "ResumeService",
+    "StoryService",
+    "ProjectService",
 ]

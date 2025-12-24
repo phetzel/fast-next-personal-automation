@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useJobs } from "@/hooks";
 import {
-  JobList,
+  JobTable,
   JobFilters,
   JobDetailModal,
   JobStatsCard,
@@ -60,6 +60,22 @@ export default function JobsListPage() {
     fetchStats();
   };
 
+  const handleSort = (sortBy: string, sortOrder: "asc" | "desc") => {
+    setFilters({
+      sort_by: sortBy as "created_at" | "relevance_score" | "date_posted" | "company",
+      sort_order: sortOrder,
+    });
+  };
+
+  const handleDelete = async (jobId: string): Promise<boolean> => {
+    const success = await deleteJob(jobId);
+    if (success) {
+      // Refresh stats after successful deletion
+      fetchStats();
+    }
+    return success;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -94,15 +110,17 @@ export default function JobsListPage() {
         onReset={resetFilters}
       />
 
-      {/* Job List */}
-      <JobList
+      {/* Job Table */}
+      <JobTable
         jobs={jobs}
         total={total}
         page={filters.page || 1}
         pageSize={filters.page_size || 20}
         isLoading={isLoading}
         onJobClick={handleJobClick}
+        onDelete={handleDelete}
         onPageChange={goToPage}
+        onSort={handleSort}
       />
 
       {/* Detail Modal */}
@@ -111,7 +129,7 @@ export default function JobsListPage() {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         onUpdate={updateJobStatus}
-        onDelete={deleteJob}
+        onDelete={handleDelete}
       />
     </div>
   );

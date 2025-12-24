@@ -374,10 +374,10 @@ class TestEchoPipeline:
         """Initialize pipelines before each test."""
         # Clear registry first
         clear_registry()
-        # Now initialize pipelines fresh with force_reload to re-register
+        # Now initialize pipelines fresh
         from app.pipelines import init_pipelines
 
-        init_pipelines(force_reload=True)
+        init_pipelines()
 
     # No teardown - let next test's setup handle clearing
 
