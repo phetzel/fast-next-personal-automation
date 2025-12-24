@@ -140,6 +140,8 @@ class Settings(BaseSettings):
     SENTRY_DSN: str | None = None
 
     # === File Storage (S3/MinIO) ===
+    STORAGE_BACKEND: Literal["local", "s3", "auto"] = "auto"  # auto = use S3 if configured
+    STORAGE_LOCAL_PATH: str = "./uploads"
     S3_ENDPOINT: str | None = None
     S3_ACCESS_KEY: str = ""
     S3_SECRET_KEY: str = ""

@@ -13,8 +13,6 @@ import {
   ChevronRight,
   LayoutList,
   UserCircle,
-  Search,
-  FileText,
   Bot,
   type LucideIcon,
 } from "lucide-react";
@@ -52,9 +50,8 @@ const areaNavigation: NavArea[] = [
       { name: "Overview", href: ROUTES.JOBS, icon: LayoutDashboard },
       { name: "Listings", href: ROUTES.JOBS_LIST, icon: LayoutList },
       { name: "Profiles", href: ROUTES.JOBS_PROFILES, icon: UserCircle },
-      { name: "Resumes", href: ROUTES.JOBS_RESUMES, icon: FileText },
-      { name: "Search", href: ROUTES.JOBS_SEARCH, icon: Search },
-      { name: "Chat", href: ROUTES.JOBS_CHAT, icon: Bot },
+      { name: "Pipelines", href: ROUTES.JOBS_PIPELINES, icon: Workflow },
+      { name: "Assistant", href: ROUTES.JOBS_ASSISTANT, icon: Bot },
     ],
   },
 ];

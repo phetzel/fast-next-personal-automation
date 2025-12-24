@@ -1,13 +1,18 @@
 """File storage abstraction for resume uploads.
 
 Provides a simple interface for storing and retrieving files.
-Currently supports local storage for development.
+Supports local storage for development and S3 for production.
 """
 
 import logging
 import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Literal
+
+import boto3
+from botocore.config import Config
+from botocore.exceptions import ClientError
 
 from app.core.config import settings
 
@@ -144,9 +149,145 @@ class LocalStorage(StorageBackend):
         return full_path.exists()
 
 
-# Storage backend configuration
-STORAGE_BACKEND = getattr(settings, "STORAGE_BACKEND", "local")
-STORAGE_LOCAL_PATH = getattr(settings, "STORAGE_LOCAL_PATH", "./uploads")
+class S3Storage(StorageBackend):
+    """S3/MinIO storage backend for production.
+    
+    Files are stored in:
+    s3://{bucket}/resumes/{user_id}/{uuid}_{filename}
+    
+    Supports AWS S3 and S3-compatible services (MinIO, etc.)
+    via custom endpoint configuration.
+    """
+
+    def __init__(
+        self,
+        bucket: str,
+        access_key: str,
+        secret_key: str,
+        region: str = "us-east-1",
+        endpoint_url: str | None = None,
+    ):
+        self.bucket = bucket
+        self.endpoint_url = endpoint_url
+        
+        # Configure boto3 client
+        config = Config(
+            signature_version='s3v4',
+            retries={'max_attempts': 3, 'mode': 'standard'}
+        )
+        
+        client_kwargs = {
+            "service_name": "s3",
+            "aws_access_key_id": access_key,
+            "aws_secret_access_key": secret_key,
+            "region_name": region,
+            "config": config,
+        }
+        
+        # Add custom endpoint for MinIO/S3-compatible services
+        if endpoint_url:
+            client_kwargs["endpoint_url"] = endpoint_url
+        
+        self._client = boto3.client(**client_kwargs)
+        self._ensure_bucket()
+
+    def _ensure_bucket(self) -> None:
+        """Ensure the bucket exists, create if needed."""
+        try:
+            self._client.head_bucket(Bucket=self.bucket)
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "")
+            if error_code in ("404", "NoSuchBucket"):
+                logger.info(f"Creating S3 bucket: {self.bucket}")
+                self._client.create_bucket(Bucket=self.bucket)
+            else:
+                raise
+
+    def _build_key(self, user_id: uuid.UUID, filename: str) -> str:
+        """Build S3 object key."""
+        unique_id = uuid.uuid4().hex[:8]
+        safe_filename = Path(filename).name
+        return f"resumes/{user_id}/{unique_id}_{safe_filename}"
+
+    async def save(
+        self,
+        file_data: bytes,
+        user_id: uuid.UUID,
+        filename: str,
+    ) -> str:
+        """Save a file to S3."""
+        key = self._build_key(user_id, filename)
+        
+        try:
+            self._client.put_object(
+                Bucket=self.bucket,
+                Key=key,
+                Body=file_data,
+            )
+            logger.info(f"Saved file to s3://{self.bucket}/{key} ({len(file_data)} bytes)")
+            return key
+        except ClientError as e:
+            logger.error(f"Failed to save to S3: {e}")
+            raise IOError(f"Failed to save file to S3: {e}")
+
+    async def load(self, file_path: str) -> bytes:
+        """Load a file from S3."""
+        try:
+            response = self._client.get_object(Bucket=self.bucket, Key=file_path)
+            return response["Body"].read()
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "")
+            if error_code in ("404", "NoSuchKey"):
+                raise FileNotFoundError(f"File not found: {file_path}")
+            raise
+
+    async def delete(self, file_path: str) -> bool:
+        """Delete a file from S3."""
+        try:
+            # Check if exists first
+            self._client.head_object(Bucket=self.bucket, Key=file_path)
+            self._client.delete_object(Bucket=self.bucket, Key=file_path)
+            logger.info(f"Deleted file: s3://{self.bucket}/{file_path}")
+            return True
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "")
+            if error_code in ("404", "NoSuchKey"):
+                return False
+            raise
+
+    async def exists(self, file_path: str) -> bool:
+        """Check if a file exists in S3."""
+        try:
+            self._client.head_object(Bucket=self.bucket, Key=file_path)
+            return True
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "")
+            if error_code in ("404", "NoSuchKey"):
+                return False
+            raise
+
+
+# Type alias for storage backend selection
+StorageType = Literal["local", "s3"]
+
+
+def get_storage_backend() -> StorageType:
+    """Determine which storage backend to use based on configuration.
+    
+    If STORAGE_BACKEND is "auto" (default), uses S3 if credentials are configured.
+    Otherwise uses the explicitly configured backend.
+    """
+    backend = settings.STORAGE_BACKEND
+    
+    if backend == "s3":
+        return "s3"
+    elif backend == "local":
+        return "local"
+    else:  # auto
+        # Check if S3 credentials are configured
+        if settings.S3_ACCESS_KEY and settings.S3_SECRET_KEY:
+            return "s3"
+        return "local"
 
 
 def get_storage() -> StorageBackend:
@@ -155,11 +296,20 @@ def get_storage() -> StorageBackend:
     Returns:
         The storage backend instance based on configuration.
     """
-    if STORAGE_BACKEND == "local":
-        return LocalStorage(STORAGE_LOCAL_PATH)
+    backend = get_storage_backend()
+    
+    if backend == "s3":
+        logger.info(f"Using S3 storage: bucket={settings.S3_BUCKET}")
+        return S3Storage(
+            bucket=settings.S3_BUCKET,
+            access_key=settings.S3_ACCESS_KEY,
+            secret_key=settings.S3_SECRET_KEY,
+            region=settings.S3_REGION,
+            endpoint_url=settings.S3_ENDPOINT,
+        )
     else:
-        # Default to local storage
-        return LocalStorage(STORAGE_LOCAL_PATH)
+        logger.info(f"Using local file storage: {settings.STORAGE_LOCAL_PATH}")
+        return LocalStorage(settings.STORAGE_LOCAL_PATH)
 
 
 # Singleton instance for convenience

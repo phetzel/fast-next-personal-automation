@@ -9,7 +9,7 @@ import { ROUTES } from "@/lib/constants";
 import type { Job } from "@/types";
 import {
   LayoutList,
-  Search,
+  Workflow,
   UserCircle,
   ArrowRight,
   Sparkles,
@@ -77,16 +77,16 @@ export default function JobsOverviewPage() {
           </Card>
         </Link>
 
-        <Link href={ROUTES.JOBS_SEARCH} className="block">
+        <Link href={ROUTES.JOBS_PIPELINES} className="block">
           <Card className="h-full transition-all hover:shadow-md hover:ring-2 hover:ring-primary/20">
             <CardContent className="flex items-center gap-4 p-6">
               <div className="rounded-lg bg-green-500/10 p-3">
-                <Search className="h-6 w-6 text-green-600" />
+                <Workflow className="h-6 w-6 text-green-600" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold">Run Search</h3>
+                <h3 className="font-semibold">Run Pipelines</h3>
                 <p className="text-sm text-muted-foreground">
-                  Find new job matches
+                  Search for jobs and more
                 </p>
               </div>
               <ArrowRight className="h-5 w-5 text-muted-foreground" />
@@ -146,8 +146,8 @@ export default function JobsOverviewPage() {
                 Run a job search to find matching positions
               </p>
               <Button className="mt-4" asChild>
-                <Link href={ROUTES.JOBS_SEARCH}>
-                  <Search className="mr-2 h-4 w-4" />
+                <Link href={ROUTES.JOBS_PIPELINES}>
+                  <Workflow className="mr-2 h-4 w-4" />
                   Run Job Search
                 </Link>
               </Button>

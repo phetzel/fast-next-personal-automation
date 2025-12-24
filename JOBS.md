@@ -59,8 +59,9 @@ This document outlines the phased implementation for the Jobs/Job Search feature
    ▼ Jobs (collapsible)
      - Overview (/jobs)
      - Listings (/jobs/list)
-     - Profiles (/jobs/profiles)
-     - Search (/jobs/search) [runs job_search pipeline]
+     - Profiles (/jobs/profiles) [combined profiles + resumes with tabs]
+     - Pipelines (/jobs/pipelines) [runs job pipelines]
+     - Assistant (/jobs/assistant) [area-specific chat]
    ```
 
 3. **Update sidebar component:**
@@ -95,9 +96,9 @@ This document outlines the phased implementation for the Jobs/Job Search feature
    ```
    /jobs                    → Overview/dashboard for jobs area
    /jobs/list               → Current job listings (moved from /jobs)
-   /jobs/profiles           → Job search profile management (new)
-   /jobs/profiles/[id]      → Edit specific profile (new)
-   /jobs/search             → Trigger job search with profile selection
+   /jobs/profiles           → Combined profiles + resumes management (with tabs)
+   /jobs/pipelines          → Job-specific pipelines (search, analysis, etc.)
+   /jobs/assistant          → Area-specific AI chat assistant
    ```
 
 2. **Create Jobs Overview page:**
@@ -116,9 +117,9 @@ This document outlines the phased implementation for the Jobs/Job Search feature
 - `frontend/src/app/(dashboard)/jobs/layout.tsx`
 - `frontend/src/app/(dashboard)/jobs/page.tsx` (new overview)
 - `frontend/src/app/(dashboard)/jobs/list/page.tsx` (moved from /jobs)
-- `frontend/src/app/(dashboard)/jobs/profiles/page.tsx`
-- `frontend/src/app/(dashboard)/jobs/profiles/[id]/page.tsx`
-- `frontend/src/app/(dashboard)/jobs/search/page.tsx`
+- `frontend/src/app/(dashboard)/jobs/profiles/page.tsx` (combined profiles + resumes with tabs)
+- `frontend/src/app/(dashboard)/jobs/pipelines/page.tsx` (job-specific pipelines)
+- `frontend/src/app/(dashboard)/jobs/assistant/page.tsx` (area-specific chat)
 
 ### Files to Modify
 - `frontend/src/app/(dashboard)/jobs/page.tsx` - Replace with overview

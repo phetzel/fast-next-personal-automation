@@ -6,10 +6,10 @@ import { Briefcase, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { ROUTES } from "@/lib/constants";
 
-export default function JobsChatPage() {
+export default function JobsAssistantPage() {
   const { isAuthenticated } = useAuthStore();
 
-  // Jobs chat requires authentication
+  // Jobs assistant requires authentication
   if (!isAuthenticated) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 p-8">

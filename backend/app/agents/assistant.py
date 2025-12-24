@@ -234,7 +234,7 @@ class AssistantAgent:
                 )
                 return {
                     "success": result.success,
-                    "output": result.output.model_dump() if result.output else None,
+                    "output": result.output.model_dump(mode='json') if result.output else None,
                     "error": result.error,
                 }
             except Exception as e:

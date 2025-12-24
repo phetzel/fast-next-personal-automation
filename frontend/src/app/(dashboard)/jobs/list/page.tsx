@@ -10,7 +10,7 @@ import {
 } from "@/components/jobs";
 import { Button } from "@/components/ui";
 import type { Job } from "@/types";
-import { RefreshCw, Search } from "lucide-react";
+import { RefreshCw, Workflow } from "lucide-react";
 import Link from "next/link";
 import { ROUTES } from "@/lib/constants";
 
@@ -76,9 +76,9 @@ export default function JobsListPage() {
             Refresh
           </Button>
           <Button asChild>
-            <Link href={ROUTES.JOBS_SEARCH}>
-              <Search className="mr-2 h-4 w-4" />
-              Run Job Search
+            <Link href={ROUTES.JOBS_PIPELINES}>
+              <Workflow className="mr-2 h-4 w-4" />
+              Run Pipelines
             </Link>
           </Button>
         </div>

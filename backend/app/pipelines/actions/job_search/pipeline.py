@@ -22,50 +22,40 @@ logger = logging.getLogger(__name__)
 
 
 class JobSearchInput(BaseModel):
-    """Input for the job search pipeline."""
+    """Input for the job search pipeline.
+
+    The form only shows profile_id and scraper. Other settings use sensible
+    defaults derived from the selected profile (target_roles, target_locations, etc.).
+    """
 
     profile_id: UUID | None = Field(
         default=None,
-        description="Job profile to use. If not provided, uses default profile.",
+        description="Job profile to use for search terms and resume matching.",
         json_schema_extra={"format": "x-profile-select"},
     )
-    terms: list[str] = Field(
-        default=["Python Developer"],
-        description="Job titles/roles to search for",
+    scraper: Literal["jobspy", "mock"] = Field(
+        default="jobspy",
+        description="Data source (jobspy for real jobs, mock for testing)",
     )
-    locations: list[str] = Field(
-        default=["Remote"],
-        description="Locations to search (e.g., 'Remote', 'San Francisco, CA')",
-    )
-    is_remote: bool = Field(
-        default=True,
-        description="Filter for remote-only positions",
-    )
+    # Hidden fields with sensible defaults - not shown in form
     hours_old: int = Field(
-        default=24,
+        default=72,
         ge=1,
         le=720,
         description="Maximum age of job postings in hours",
+        json_schema_extra={"x-hidden": True},
     )
     results_per_term: int = Field(
-        default=5,
+        default=10,
         ge=1,
         le=50,
         description="Number of results per search term",
-    )
-    min_score: float = Field(
-        default=7.0,
-        ge=0.0,
-        le=10.0,
-        description="Minimum relevance score to save a job",
+        json_schema_extra={"x-hidden": True},
     )
     save_all: bool = Field(
         default=False,
         description="Save all jobs regardless of score (for review)",
-    )
-    scraper: Literal["jobspy", "mock"] = Field(
-        default="jobspy",
-        description="Scraper to use (jobspy for real data, mock for testing)",
+        json_schema_extra={"x-hidden": True},
     )
 
 
@@ -114,9 +104,7 @@ class JobSearchPipeline(ActionPipeline[JobSearchInput, JobSearchOutput]):
         context: PipelineContext,
     ) -> ActionResult[JobSearchOutput]:
         """Execute the job search pipeline."""
-        logger.info(
-            f"Starting job search: terms={input.terms}, locations={input.locations}"
-        )
+        logger.info("Starting job search pipeline")
 
         # Require user context for personalized search
         if context.user_id is None:
@@ -217,20 +205,25 @@ class JobSearchPipeline(ActionPipeline[JobSearchInput, JobSearchOutput]):
             )
 
         resume_text = profile.resume.text_content
-        target_roles = profile.target_roles
-        min_score = input.min_score
+        target_roles = profile.target_roles or []
+        target_locations = profile.target_locations or ["Remote"]
+        min_score = profile.min_score_threshold or 7.0
 
-        # Use profile threshold if not specified in input
-        if profile.min_score_threshold and input.min_score == 7.0:
-            min_score = profile.min_score_threshold
+        # Derive search terms from profile
+        search_terms = target_roles if target_roles else ["Software Engineer"]
+        search_locations = target_locations if target_locations else ["Remote"]
+
+        logger.info(
+            f"Searching for: terms={search_terms}, locations={search_locations}"
+        )
 
         # Step 1: Scrape jobs
         try:
             scraper = get_scraper(input.scraper)
             search_config = SearchConfig(
-                terms=input.terms,
-                locations=input.locations,
-                is_remote=input.is_remote,
+                terms=search_terms,
+                locations=search_locations,
+                is_remote="Remote" in search_locations,
                 hours_old=input.hours_old,
                 results_per_term=input.results_per_term,
             )
@@ -310,7 +303,7 @@ class JobSearchPipeline(ActionPipeline[JobSearchInput, JobSearchOutput]):
         # Step 4: Filter and save jobs
         high_scoring = 0
         jobs_to_save = []
-        search_terms_str = ", ".join(input.terms)
+        search_terms_str = ", ".join(search_terms)
 
         for scraped_job, analysis in analyzed_jobs:
             if analysis.relevance_score >= min_score:
@@ -386,9 +379,10 @@ class JobSearchPipeline(ActionPipeline[JobSearchInput, JobSearchOutput]):
                 top_jobs=top_jobs,
             ),
             metadata={
-                "search_terms": input.terms,
-                "locations": input.locations,
+                "search_terms": search_terms,
+                "locations": search_locations,
                 "min_score": min_score,
+                "profile_name": profile.name,
             },
         )
 

@@ -36,9 +36,8 @@ export const ROUTES = {
   JOBS: "/jobs",
   JOBS_LIST: "/jobs/list",
   JOBS_PROFILES: "/jobs/profiles",
-  JOBS_RESUMES: "/jobs/resumes",
-  JOBS_SEARCH: "/jobs/search",
-  JOBS_CHAT: "/jobs/chat",
+  JOBS_PIPELINES: "/jobs/pipelines",
+  JOBS_ASSISTANT: "/jobs/assistant",
   // Other routes
   PROFILE: "/profile",
   SETTINGS: "/settings",

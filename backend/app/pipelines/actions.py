@@ -65,7 +65,7 @@ class ActionResult(Generic[OutputT]):
             "metadata": self.metadata,
         }
         if self.output is not None:
-            result["output"] = self.output.model_dump()
+            result["output"] = self.output.model_dump(mode='json')
         else:
             result["output"] = None
         return result

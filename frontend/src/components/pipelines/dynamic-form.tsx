@@ -56,16 +56,18 @@ export function DynamicForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {schema.properties &&
-        Object.entries(schema.properties).map(([key, prop]) => (
-          <FormField
-            key={key}
-            name={key}
-            property={prop}
-            value={formData[key]}
-            onChange={(value) => handleChange(key, value)}
-            required={requiredFields.has(key)}
-          />
-        ))}
+        Object.entries(schema.properties)
+          .filter(([, prop]) => !prop["x-hidden"]) // Skip hidden fields
+          .map(([key, prop]) => (
+            <FormField
+              key={key}
+              name={key}
+              property={prop}
+              value={formData[key]}
+              onChange={(value) => handleChange(key, value)}
+              required={requiredFields.has(key)}
+            />
+          ))}
 
       <Button type="submit" disabled={isSubmitting} className="w-full">
         {isSubmitting ? "Running..." : submitLabel}

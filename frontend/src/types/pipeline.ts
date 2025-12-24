@@ -19,6 +19,8 @@ export interface JSONSchemaProperty {
   items?: JSONSchemaProperty;
   properties?: Record<string, JSONSchemaProperty>;
   required?: string[];
+  /** Custom extension to hide field from form (uses default value) */
+  "x-hidden"?: boolean;
 }
 
 export interface JSONSchema {

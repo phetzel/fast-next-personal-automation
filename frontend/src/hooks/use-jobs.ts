@@ -56,7 +56,7 @@ export function useJobs() {
         params.set("sort_order", appliedFilters.sort_order);
 
       const response = await apiClient.get<JobListResponse>(
-        `/api/jobs?${params.toString()}`
+        `/jobs?${params.toString()}`
       );
 
       setJobs(response.jobs, response.total);
@@ -74,7 +74,7 @@ export function useJobs() {
     setStatsLoading(true);
 
     try {
-      const response = await apiClient.get<JobStats>("/api/jobs/stats");
+      const response = await apiClient.get<JobStats>("/jobs/stats");
       setStats(response);
     } catch {
       // Stats are optional, don't show error
@@ -89,7 +89,7 @@ export function useJobs() {
    */
   const fetchJob = useCallback(async (jobId: string): Promise<Job | null> => {
     try {
-      const job = await apiClient.get<Job>(`/api/jobs/${jobId}`);
+      const job = await apiClient.get<Job>(`/jobs/${jobId}`);
       setSelectedJob(job);
       return job;
     } catch {
@@ -103,7 +103,7 @@ export function useJobs() {
   const updateJobStatus = useCallback(
     async (jobId: string, update: JobUpdate): Promise<Job | null> => {
       try {
-        const job = await apiClient.patch<Job>(`/api/jobs/${jobId}`, update);
+        const job = await apiClient.patch<Job>(`/jobs/${jobId}`, update);
         updateJob(job);
         return job;
       } catch {
@@ -120,7 +120,7 @@ export function useJobs() {
   const deleteJob = useCallback(
     async (jobId: string): Promise<boolean> => {
       try {
-        await apiClient.delete(`/api/jobs/${jobId}`);
+        await apiClient.delete(`/jobs/${jobId}`);
         removeJob(jobId);
         return true;
       } catch {

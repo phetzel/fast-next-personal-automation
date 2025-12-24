@@ -279,7 +279,8 @@ async def execute_pipeline(
 
         # Record success
         if run is not None and run_service is not None:
-            output_data = result.output.model_dump() if result.output else None
+            # Use mode='json' to ensure UUIDs and other types are serialized to JSON-compatible types
+            output_data = result.output.model_dump(mode='json') if result.output else None
             if result.success:
                 await run_service.complete_run(
                     run,

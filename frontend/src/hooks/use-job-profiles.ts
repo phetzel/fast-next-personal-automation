@@ -27,7 +27,7 @@ export function useJobProfiles() {
     setError(null);
 
     try {
-      const data = await apiClient.get<JobProfileSummary[]>("/api/job-profiles");
+      const data = await apiClient.get<JobProfileSummary[]>("/job-profiles");
       setProfiles(data);
       return data;
     } catch (err) {
@@ -46,7 +46,7 @@ export function useJobProfiles() {
     setError(null);
 
     try {
-      const data = await apiClient.get<JobProfile>(`/api/job-profiles/${id}`);
+      const data = await apiClient.get<JobProfile>(`/job-profiles/${id}`);
       setCurrentProfile(data);
       return data;
     } catch (err) {
@@ -65,7 +65,7 @@ export function useJobProfiles() {
     setError(null);
 
     try {
-      const data = await apiClient.get<JobProfile | null>("/api/job-profiles/default");
+      const data = await apiClient.get<JobProfile | null>("/job-profiles/default");
       setCurrentProfile(data);
       return data;
     } catch (err) {
@@ -85,7 +85,7 @@ export function useJobProfiles() {
       setError(null);
 
       try {
-        const created = await apiClient.post<JobProfile>("/api/job-profiles", data);
+        const created = await apiClient.post<JobProfile>("/job-profiles", data);
         // Refresh profiles list
         await fetchProfiles();
         return created;
@@ -108,7 +108,7 @@ export function useJobProfiles() {
       setError(null);
 
       try {
-        const updated = await apiClient.patch<JobProfile>(`/api/job-profiles/${id}`, data);
+        const updated = await apiClient.patch<JobProfile>(`/job-profiles/${id}`, data);
         // Update current profile if it's the one we updated
         if (currentProfile?.id === id) {
           setCurrentProfile(updated);
@@ -135,7 +135,7 @@ export function useJobProfiles() {
       setError(null);
 
       try {
-        await apiClient.delete(`/api/job-profiles/${id}`);
+        await apiClient.delete(`/job-profiles/${id}`);
         // Clear current profile if it's the one we deleted
         if (currentProfile?.id === id) {
           setCurrentProfile(null);
@@ -163,7 +163,7 @@ export function useJobProfiles() {
 
       try {
         const updated = await apiClient.post<JobProfile>(
-          `/api/job-profiles/${id}/set-default`
+          `/job-profiles/${id}/set-default`
         );
         // Refresh profiles list to update default status
         await fetchProfiles();

@@ -142,7 +142,7 @@ export function ResumeSelector({
           {/* Separator and upload link */}
           <div className="my-1 border-t" />
           <Link
-            href={ROUTES.JOBS_RESUMES || "/jobs/resumes"}
+            href={ROUTES.JOBS_PROFILES}
             className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-primary hover:bg-accent"
             onClick={() => setIsOpen(false)}
           >

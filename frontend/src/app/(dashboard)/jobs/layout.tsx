@@ -11,7 +11,8 @@ const routeLabels: Record<string, string> = {
   [ROUTES.JOBS]: "Overview",
   [ROUTES.JOBS_LIST]: "Listings",
   [ROUTES.JOBS_PROFILES]: "Profiles",
-  [ROUTES.JOBS_SEARCH]: "Search",
+  [ROUTES.JOBS_PIPELINES]: "Pipelines",
+  [ROUTES.JOBS_ASSISTANT]: "Assistant",
 };
 
 interface BreadcrumbItem {

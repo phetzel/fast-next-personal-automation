@@ -67,7 +67,7 @@ test.describe("Jobs Area", () => {
       });
     });
 
-    test.describe("Job Profiles", () => {
+    test.describe("Job Profiles & Resumes", () => {
       test("should load profiles page", async ({ page }) => {
         await page.goto("/jobs/profiles");
         await expect(page.getByRole("main")).toBeVisible();
@@ -95,38 +95,42 @@ test.describe("Jobs Area", () => {
           ).toBeVisible();
         }
       });
-    });
 
-    test.describe("Job Resumes", () => {
-      test("should load resumes page", async ({ page }) => {
-        await page.goto("/jobs/resumes");
-        await expect(page.getByRole("main")).toBeVisible();
+      test("should have tabs for profiles and resumes", async ({ page }) => {
+        await page.goto("/jobs/profiles");
+        // Should show tab navigation for profiles and resumes
+        await expect(page.getByRole("button", { name: /profiles/i })).toBeVisible();
+        await expect(page.getByRole("button", { name: /resumes/i })).toBeVisible();
       });
 
-      test("should display upload zone or resume list", async ({ page }) => {
-        await page.goto("/jobs/resumes");
-        // Should show either upload zone or existing resumes
+      test("should switch to resumes tab", async ({ page }) => {
+        await page.goto("/jobs/profiles");
+        
+        const resumesTab = page.getByRole("button", { name: /resumes/i });
+        await resumesTab.click();
+        
+        // Should show upload zone or resume list
         await expect(
           page.getByText(/upload|drop|resume|no resumes/i)
         ).toBeVisible({ timeout: 10000 });
       });
     });
 
-    test.describe("Jobs Chat", () => {
-      test("should load jobs chat page", async ({ page }) => {
-        await page.goto("/jobs/chat");
+    test.describe("Jobs Assistant", () => {
+      test("should load jobs assistant page", async ({ page }) => {
+        await page.goto("/jobs/assistant");
         await expect(page.getByRole("main")).toBeVisible();
       });
 
       test("should display jobs assistant header", async ({ page }) => {
-        await page.goto("/jobs/chat");
+        await page.goto("/jobs/assistant");
         await expect(
           page.getByText(/jobs assistant/i)
         ).toBeVisible();
       });
 
       test("should have chat input", async ({ page }) => {
-        await page.goto("/jobs/chat");
+        await page.goto("/jobs/assistant");
         // Look for chat input field
         await expect(
           page.getByRole("textbox").or(page.getByPlaceholder(/message|type/i))
@@ -134,17 +138,17 @@ test.describe("Jobs Area", () => {
       });
     });
 
-    test.describe("Jobs Search", () => {
-      test("should load search page", async ({ page }) => {
-        await page.goto("/jobs/search");
+    test.describe("Job Pipelines", () => {
+      test("should load pipelines page", async ({ page }) => {
+        await page.goto("/jobs/pipelines");
         await expect(page.getByRole("main")).toBeVisible();
       });
 
-      test("should display job search pipelines", async ({ page }) => {
-        await page.goto("/jobs/search");
+      test("should display job pipelines", async ({ page }) => {
+        await page.goto("/jobs/pipelines");
         // Should show job-related pipelines
         await expect(
-          page.getByText(/job.*search|pipeline|search.*jobs/i)
+          page.getByText(/job.*pipeline|pipeline|search.*jobs/i)
         ).toBeVisible({ timeout: 10000 });
       });
     });
@@ -164,8 +168,8 @@ test.describe("Jobs Area", () => {
     test("should show collapsible jobs sub-routes", async ({ page }) => {
       await page.goto("/jobs");
       
-      // Look for sub-routes like List, Profiles, Chat, Search, Resumes
-      const subRoutes = ["list", "profiles", "chat", "search", "resumes"];
+      // Look for sub-routes like List, Profiles, Assistant, Pipelines
+      const subRoutes = ["list", "profiles", "assistant", "pipelines"];
       let foundSubRoute = false;
       
       for (const route of subRoutes) {
@@ -213,7 +217,7 @@ test.describe("Pipeline Profile Selection", () => {
   test.use({ storageState: "frontend/.playwright/.auth/user.json" });
 
   test("should show profile selector in job_search pipeline", async ({ page }) => {
-    await page.goto("/jobs/search");
+    await page.goto("/jobs/pipelines");
     
     // Expand the job_search pipeline if it exists
     const pipelineCard = page.getByText(/job.*search/i).first();
@@ -227,4 +231,3 @@ test.describe("Pipeline Profile Selection", () => {
     }
   });
 });
-

@@ -187,7 +187,7 @@ async def webhook_execute_pipeline(
 
     return PipelineExecuteResponse(
         success=result.success,
-        output=result.output.model_dump() if result.output else None,
+        output=result.output.model_dump(mode='json') if result.output else None,
         error=result.error,
         metadata=result.metadata,
     )
@@ -261,7 +261,7 @@ async def execute_pipeline_endpoint(
 
     return PipelineExecuteResponse(
         success=result.success,
-        output=result.output.model_dump() if result.output else None,
+        output=result.output.model_dump(mode='json') if result.output else None,
         error=result.error,
         metadata=result.metadata,
     )
