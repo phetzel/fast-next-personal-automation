@@ -127,10 +127,16 @@ class AssistantAgent:
             provider=OpenAIProvider(api_key=settings.OPENAI_API_KEY),
         )
 
+        # Collect toolsets from area config
+        toolsets = []
+        if self.area_config and self.area_config.toolsets:
+            toolsets.extend(self.area_config.toolsets)
+
         agent = Agent[Deps, str](
             model=model,
             model_settings=ModelSettings(temperature=self.temperature),
             system_prompt=self.system_prompt,
+            toolsets=toolsets if toolsets else None,
         )
 
         self._register_tools(agent)

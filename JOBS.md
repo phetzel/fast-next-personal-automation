@@ -599,9 +599,10 @@ S3_REGION = "us-east-1"
 - [ ] API returns tags
 
 ### Phase 6
-- [ ] Area agent has restricted tools
-- [ ] Custom system prompts work
-- [ ] WebSocket area routing works
+- [x] Area agent has restricted tools
+- [x] Custom system prompts work
+- [x] WebSocket area routing works
+- [x] CRUD toolsets for jobs and profiles
 
 ### Phase 7
 - [ ] Profile selector in pipeline form
@@ -630,7 +631,7 @@ S3_REGION = "us-east-1"
 | Phase 3 | ✅ Complete | - | Renamed to JobProfile, multi-profile support |
 | Phase 4 | ✅ Complete | - | Resume file upload and management |
 | Phase 5 | ✅ Complete | - | Pipeline tagging system (tags, area) |
-| Phase 6 | ✅ Complete | - | Area-specific agents with filtered pipelines |
+| Phase 6 | ✅ Complete | - | Area-specific agents with filtered pipelines + CRUD toolsets |
 | Phase 7 | ✅ Complete | - | Profile selection in pipeline execution |
 
 ---

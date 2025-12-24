@@ -8,7 +8,10 @@ with filtered pipelines and custom system prompts.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
+
+if TYPE_CHECKING:
+    from pydantic_ai.toolsets import AbstractToolset
 
 
 @dataclass
@@ -24,13 +27,17 @@ class AreaAgentConfig:
         allowed_pipeline_tags: If set, only pipelines with these tags are accessible.
         allowed_pipelines: If set, only these specific pipelines are accessible.
             Takes precedence over tags if both are set.
+        toolsets: Optional list of FunctionToolsets to register with the agent.
+            These provide CRUD operations and other area-specific functionality.
         additional_tools: Optional list of additional tool functions to register.
+            Deprecated: prefer using toolsets instead.
     """
 
     area: str
     system_prompt: str
     allowed_pipeline_tags: list[str] | None = None
     allowed_pipelines: list[str] | None = None
+    toolsets: list["AbstractToolset"] | None = field(default_factory=lambda: None)
     additional_tools: list[Callable] | None = field(default_factory=lambda: None)
 
     def get_allowed_pipeline_names(self, all_pipelines: list[dict]) -> set[str]:
