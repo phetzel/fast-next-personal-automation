@@ -103,7 +103,7 @@ class ConversationCreate(ConversationBase):
     """Schema for creating a conversation."""
 
     user_id: UUID | None = Field(default=None, description="Owner user ID")
-    pass
+    area: str | None = Field(default=None, max_length=50, description="Area identifier for specialized agents")
 
 
 class ConversationUpdate(BaseSchema):
@@ -111,6 +111,7 @@ class ConversationUpdate(BaseSchema):
 
     title: str | None = Field(default=None, max_length=255)
     is_archived: bool | None = None
+    area: str | None = Field(default=None, max_length=50)
 
 
 class ConversationRead(ConversationBase, TimestampSchema):
@@ -119,6 +120,7 @@ class ConversationRead(ConversationBase, TimestampSchema):
     id: UUID
     user_id: UUID | None = None
     is_archived: bool = False
+    area: str | None = None
 
 
 class ConversationReadWithMessages(ConversationRead):

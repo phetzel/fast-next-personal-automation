@@ -1,0 +1,638 @@
+# Jobs Feature Implementation Plan
+
+This document outlines the phased implementation for the Jobs/Job Search feature area, including architecture decisions, refactoring needs, and enhancement roadmap.
+
+---
+
+## Current State Review
+
+### What Exists
+
+**Backend:**
+- `UserProfile` model (1:1 with User) with resume_text, target_roles, target_locations, min_score_threshold
+- `Job` model for storing scraped job listings with AI analysis
+- `JobSearchPipeline` that scrapes, analyzes, and stores jobs
+- Pipeline registry with `@register_pipeline` decorator
+- Services/repositories for jobs and user profiles
+
+**Frontend:**
+- Jobs page at `/jobs` with list, filters, stats, and detail modal
+- Profile form on user settings page (`/profile`)
+- Sidebar with Jobs as a flat nav item mixed with general features
+
+### Issues Identified
+
+1. **Sidebar Structure:** Jobs is a "project area" not a general feature like Dashboard/Chat/Pipelines
+2. **Single Profile Limitation:** `UserProfile` has `unique=True` on `user_id` - only one profile per user
+3. **Resume Management:** Resume stored as text only, no file upload/management
+4. **No Pipeline Tagging:** Cannot associate pipelines with areas (like "jobs")
+5. **No Area-Specific Agents:** All pipelines available to all agents
+6. **Profile Required Error:** Pipeline fails with error instead of prompting for profile selection
+7. **Naming:** `UserProfile` should be `JobSearchProfile` since it's job-search specific
+
+---
+
+## Phase 1: Sidebar Restructuring
+
+**Goal:** Separate general navigation from project areas with collapsible sections.
+
+### Backend Changes
+- None required
+
+### Frontend Changes
+
+1. **Update sidebar data structure:**
+   - Add `type: "general" | "area"` to nav items
+   - Add `children` array for area sub-routes
+   - Add `collapsible: boolean` for areas
+
+2. **Create new navigation schema:**
+   ```
+   General:
+   - Dashboard
+   - Chat  
+   - Pipelines
+   
+   ─────────── (separator)
+   
+   Areas:
+   ▼ Jobs (collapsible)
+     - Overview (/jobs)
+     - Listings (/jobs/list)
+     - Profiles (/jobs/profiles)
+     - Search (/jobs/search) [runs job_search pipeline]
+   ```
+
+3. **Update sidebar component:**
+   - Add separator component
+   - Add collapsible section with chevron icon
+   - Add sub-navigation indent styling
+   - Persist collapsed state in localStorage or store
+
+4. **Update constants:**
+   - Add sub-routes to `ROUTES` constant
+
+### Files to Modify
+- `frontend/src/components/layout/sidebar.tsx` - Main restructuring
+- `frontend/src/lib/constants.ts` - Add new routes
+- `frontend/src/stores/sidebar-store.ts` - Add collapsed area state
+
+### Completion Criteria
+- [ ] Sidebar shows separator between general and area sections
+- [ ] Jobs section is collapsible with sub-navigation
+- [ ] Active sub-route highlights both parent and child
+- [ ] Collapsed state persists across sessions
+
+---
+
+## Phase 2: Route Restructuring
+
+**Goal:** Reorganize jobs routes to support area-based navigation.
+
+### Frontend Changes
+
+1. **Create new route structure:**
+   ```
+   /jobs                    → Overview/dashboard for jobs area
+   /jobs/list               → Current job listings (moved from /jobs)
+   /jobs/profiles           → Job search profile management (new)
+   /jobs/profiles/[id]      → Edit specific profile (new)
+   /jobs/search             → Trigger job search with profile selection
+   ```
+
+2. **Create Jobs Overview page:**
+   - Quick stats cards
+   - Recent job matches
+   - Active profiles summary
+   - Quick action buttons
+
+3. **Move current jobs page:**
+   - Relocate current `/jobs/page.tsx` content to `/jobs/list/page.tsx`
+
+4. **Create Jobs layout:**
+   - Shared layout for `/jobs/*` routes with area-specific header/breadcrumbs
+
+### Files to Create
+- `frontend/src/app/(dashboard)/jobs/layout.tsx`
+- `frontend/src/app/(dashboard)/jobs/page.tsx` (new overview)
+- `frontend/src/app/(dashboard)/jobs/list/page.tsx` (moved from /jobs)
+- `frontend/src/app/(dashboard)/jobs/profiles/page.tsx`
+- `frontend/src/app/(dashboard)/jobs/profiles/[id]/page.tsx`
+- `frontend/src/app/(dashboard)/jobs/search/page.tsx`
+
+### Files to Modify
+- `frontend/src/app/(dashboard)/jobs/page.tsx` - Replace with overview
+
+### Completion Criteria
+- [ ] Jobs overview page shows summary
+- [ ] Job listings accessible at /jobs/list
+- [ ] Profile management routes exist
+- [ ] Breadcrumb navigation works
+
+---
+
+## Phase 3: Rename and Multi-Profile Support
+
+**Goal:** Rename `UserProfile` to `JobSearchProfile` and support multiple profiles per user.
+
+### Backend Changes
+
+1. **Create migration:**
+   - Rename table `user_profiles` → `job_search_profiles`
+   - Drop `unique=True` constraint on `user_id`
+   - Add `name` field (required, unique per user)
+   - Add `is_default` boolean field
+
+2. **Update model:**
+   - Rename `UserProfile` to `JobSearchProfile`
+   - Update relationships and indexes
+
+3. **Update repository:**
+   - Rename `user_profile_repo` → `job_search_profile_repo`
+   - Add `get_by_user_and_name()`, `get_default()`, `set_default()` methods
+   - Update `create()` to handle `name` and `is_default`
+
+4. **Update service:**
+   - Rename `UserProfileService` → `JobSearchProfileService`
+   - Add `list_by_user()`, `get_or_create_default()` methods
+   - Business logic for default profile handling
+
+5. **Update API routes:**
+   - Rename `/api/v1/profile` → `/api/v1/job-profiles`
+   - Add list endpoint: `GET /api/v1/job-profiles`
+   - Add get by ID: `GET /api/v1/job-profiles/{id}`
+   - Add create: `POST /api/v1/job-profiles`
+   - Add update: `PATCH /api/v1/job-profiles/{id}`
+   - Add delete: `DELETE /api/v1/job-profiles/{id}`
+   - Add set default: `POST /api/v1/job-profiles/{id}/set-default`
+
+6. **Update schemas:**
+   - Rename and add `name` field
+   - Add `is_default` field
+
+7. **Update pipeline:**
+   - Accept `profile_id` in `JobSearchInput`
+   - Fallback to default profile if not specified
+
+### Frontend Changes
+
+1. **Update types:**
+   - Rename `UserProfile` → `JobSearchProfile`
+   - Add `name` and `is_default` fields
+
+2. **Create profile list component:**
+   - Display all profiles for user
+   - Show which is default
+   - Add/edit/delete actions
+
+3. **Update profile form:**
+   - Add name field
+   - Add is_default toggle
+   - Support create and edit modes
+
+4. **Update API client:**
+   - Rename endpoints
+   - Add list/CRUD operations
+
+5. **Update hooks:**
+   - Rename `useProfile` → `useJobSearchProfiles`
+   - Add `createProfile`, `updateProfile`, `deleteProfile`, `setDefault` methods
+
+### Database Migration
+```sql
+-- Rename table
+ALTER TABLE user_profiles RENAME TO job_search_profiles;
+
+-- Drop unique constraint
+ALTER TABLE job_search_profiles DROP CONSTRAINT IF EXISTS user_profiles_user_id_key;
+
+-- Add new columns
+ALTER TABLE job_search_profiles 
+  ADD COLUMN name VARCHAR(100) NOT NULL DEFAULT 'Default Profile',
+  ADD COLUMN is_default BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Add unique constraint for name per user
+ALTER TABLE job_search_profiles 
+  ADD CONSTRAINT job_search_profiles_user_id_name_key UNIQUE (user_id, name);
+
+-- Set existing profiles as default
+UPDATE job_search_profiles SET is_default = TRUE;
+
+-- Add index for default lookup
+CREATE INDEX idx_job_search_profiles_user_default ON job_search_profiles(user_id, is_default) WHERE is_default = TRUE;
+```
+
+### Completion Criteria
+- [ ] Model renamed to JobSearchProfile
+- [ ] Multiple profiles per user supported
+- [ ] Name field on profiles
+- [ ] Default profile mechanism works
+- [ ] All API endpoints functional
+- [ ] Profile form on /profile page removed
+- [ ] Profile management at /jobs/profiles
+
+---
+
+## Phase 4: File/Resume Management
+
+**Goal:** Support resume file upload with reuse across profiles.
+
+### Backend Changes
+
+1. **Create Resume model:**
+   ```python
+   class Resume(Base, TimestampMixin):
+       id: UUID
+       user_id: UUID (FK)
+       name: str  # User-friendly name
+       original_filename: str
+       file_path: str  # Storage path
+       file_size: int
+       mime_type: str
+       text_content: str | None  # Extracted text for AI
+       is_primary: bool  # User's main resume
+   ```
+
+2. **Create resume repository and service**
+
+3. **Create resume API routes:**
+   - `POST /api/v1/resumes/upload` - Upload resume file
+   - `GET /api/v1/resumes` - List user's resumes
+   - `GET /api/v1/resumes/{id}` - Get resume details
+   - `DELETE /api/v1/resumes/{id}` - Delete resume
+   - `POST /api/v1/resumes/{id}/extract-text` - Re-extract text
+   - `POST /api/v1/resumes/{id}/set-primary` - Set as primary
+
+4. **Update JobSearchProfile:**
+   - Add `resume_id` FK (nullable, references Resume)
+   - Remove `resume_text` field (replaced by Resume entity)
+   - Profile uses linked resume's `text_content`
+
+5. **Add file storage abstraction:**
+   - Local storage for development
+   - S3-compatible for production
+   - Config via environment variables
+
+6. **Add text extraction:**
+   - PDF text extraction (pypdf or pdfplumber)
+   - DOCX text extraction (python-docx)
+   - Plain text passthrough
+
+### Frontend Changes
+
+1. **Create Resume types:**
+   ```typescript
+   interface Resume {
+     id: string;
+     name: string;
+     original_filename: string;
+     file_size: number;
+     mime_type: string;
+     is_primary: boolean;
+     created_at: string;
+   }
+   ```
+
+2. **Create Resume management component:**
+   - File upload dropzone
+   - List of uploaded resumes
+   - Delete/rename actions
+   - Set primary action
+
+3. **Create Resume selector component:**
+   - Dropdown for profile form
+   - Shows resume name + filename
+   - Option to paste text instead
+
+4. **Update profile form:**
+   - Add resume selector
+   - Option to select file OR paste text
+   - Show warning if neither set
+
+5. **Add resume API routes to Next.js:**
+   - Proxy upload to backend
+   - Handle file streaming
+
+### Storage Configuration
+```python
+# Local development
+STORAGE_BACKEND = "local"
+STORAGE_LOCAL_PATH = "./uploads"
+
+# Production
+STORAGE_BACKEND = "s3"
+S3_BUCKET = "personal-automations-uploads"
+S3_REGION = "us-east-1"
+```
+
+### Completion Criteria
+- [ ] Resume upload works (PDF, DOCX, TXT)
+- [ ] Text extraction works
+- [ ] Resumes can be shared across profiles
+- [ ] Profile can select resume or paste text
+- [ ] Primary resume designation works
+
+---
+
+## Phase 5: Pipeline Tagging System
+
+**Goal:** Enable tagging pipelines with areas for filtering and organization.
+
+### Backend Changes
+
+1. **Extend ActionPipeline base class:**
+   ```python
+   class ActionPipeline(ABC, Generic[InputT, OutputT]):
+       name: str
+       description: str
+       tags: list[str] = []  # NEW: ["jobs", "automation", etc.]
+       area: str | None = None  # NEW: Primary area association
+   ```
+
+2. **Update registry functions:**
+   - Add `list_pipelines_by_tag(tag: str)` 
+   - Add `list_pipelines_by_area(area: str)`
+   - Include tags/area in `list_pipelines()` response
+
+3. **Update JobSearchPipeline:**
+   ```python
+   class JobSearchPipeline(ActionPipeline[...]):
+       name = "job_search"
+       description = "..."
+       tags = ["jobs", "scraping", "ai"]
+       area = "jobs"
+   ```
+
+4. **Update API response schemas:**
+   - Add `tags` and `area` to pipeline info response
+
+### Frontend Changes
+
+1. **Update pipeline types:**
+   ```typescript
+   interface Pipeline {
+     name: string;
+     description: string;
+     tags: string[];
+     area: string | null;
+     input_schema: JSONSchema;
+     output_schema: JSONSchema;
+   }
+   ```
+
+2. **Add filtering to pipeline list:**
+   - Filter by area dropdown
+   - Filter by tags (multi-select)
+   - URL params for filters
+
+3. **Area-specific pipeline views:**
+   - `/jobs/search` shows only jobs-area pipelines
+   - Filter component for pipeline list page
+
+### Completion Criteria
+- [ ] Pipelines can be tagged
+- [ ] Pipelines can have an area
+- [ ] Registry functions filter by tag/area
+- [ ] API returns tag/area info
+- [ ] Frontend can filter pipeline list
+
+---
+
+## Phase 6: Area-Specific Agents
+
+**Goal:** Create agents that only have access to area-specific pipelines and have custom system prompts.
+
+### Backend Changes
+
+1. **Create AreaAgent configuration:**
+   ```python
+   @dataclass
+   class AreaAgentConfig:
+       area: str  # e.g., "jobs"
+       system_prompt: str
+       allowed_pipeline_tags: list[str] | None = None
+       allowed_pipelines: list[str] | None = None  # Explicit list
+       additional_tools: list[Callable] | None = None
+   ```
+
+2. **Update AssistantAgent:**
+   - Accept `area_config: AreaAgentConfig | None` parameter
+   - Filter `list_available_pipelines` to only show area pipelines
+   - Filter `run_pipeline` to only allow area pipelines
+   - Use area-specific system prompt
+
+3. **Create predefined area configs:**
+   ```python
+   JOBS_AGENT_CONFIG = AreaAgentConfig(
+       area="jobs",
+       system_prompt="""You are a job search assistant. You help users:
+       - Search for jobs matching their profile
+       - Review and organize job listings
+       - Track application status
+       - Analyze job fit
+       Only use the job-related tools available to you.""",
+       allowed_pipeline_tags=["jobs"],
+   )
+   ```
+
+4. **Add area-specific agent factory:**
+   ```python
+   def get_jobs_agent() -> AssistantAgent:
+       return AssistantAgent(area_config=JOBS_AGENT_CONFIG)
+   ```
+
+5. **Create area agent API endpoint:**
+   - `POST /api/v1/agent/areas/{area}/chat` - Chat with area-specific agent
+   - `GET /api/v1/agent/areas` - List available areas
+
+6. **Update WebSocket handler:**
+   - Accept `area` parameter
+   - Use appropriate agent based on area
+
+### Frontend Changes
+
+1. **Add area to conversation types:**
+   ```typescript
+   interface Conversation {
+     // ...existing fields
+     area: string | null;  // null = general agent
+   }
+   ```
+
+2. **Create area-aware chat:**
+   - Jobs area chat at `/jobs/chat` or within jobs section
+   - Show area badge in chat header
+   - Different styling for area chats
+
+3. **Add area selection when creating new conversation:**
+   - Option to select area or use general agent
+   - Default to general agent
+
+4. **Update conversation list:**
+   - Filter by area
+   - Show area badge
+
+### Completion Criteria
+- [x] Area agent configs defined
+- [x] Agent filters pipelines by area
+- [x] Custom system prompts work
+- [x] WebSocket supports area parameter
+- [x] Frontend can create area-specific chats
+- [x] Conversations have optional area
+
+---
+
+## Phase 7: Profile Selection in Pipeline Execution
+
+**Goal:** Replace the "no profile" error with a profile selector when triggering job search.
+
+### Backend Changes
+
+1. **Update JobSearchInput:**
+   ```python
+   class JobSearchInput(BaseModel):
+       profile_id: UUID | None = Field(
+           default=None,
+           description="Job search profile to use. If not provided, uses default profile."
+       )
+       # ...existing fields
+   ```
+
+2. **Update pipeline logic:**
+   - If `profile_id` provided, use that profile
+   - If not, get user's default profile
+   - If no default, return structured error with available profiles
+
+3. **Create structured error response:**
+   ```python
+   class ProfileRequiredError(BaseModel):
+       error_type: str = "profile_required"
+       message: str
+       available_profiles: list[JobSearchProfileSummary]
+       create_profile_url: str = "/jobs/profiles/new"
+   ```
+
+### Frontend Changes
+
+1. **Extend DynamicForm for special field types:**
+   - Add support for `x-profile-select` custom format
+   - Render profile dropdown for such fields
+
+2. **Create ProfileSelectField component:**
+   - Fetch user's job search profiles
+   - Show dropdown with profile names
+   - Link to create new profile if none exist
+   - Show profile summary on selection
+
+3. **Update pipeline execution UI:**
+   - For `job_search` pipeline, show profile selector prominently
+   - If no profiles, show CTA to create one
+   - Show selected profile details
+
+4. **Handle profile_required error:**
+   - Parse error response
+   - Show profile selector in error state
+   - Allow user to select and retry
+
+### Integration Points
+- Pipeline input schema has `profile_id` field
+- Frontend recognizes and renders special selector
+- Error handling guides user to profile creation
+
+### Completion Criteria
+- [x] `profile_id` field in JobSearchInput
+- [x] Pipeline uses specified or default profile
+- [x] Structured error when no profile available
+- [x] Frontend shows profile selector
+- [x] Error handling shows profile options
+- [x] Quick link to create profile
+
+---
+
+## Migration Strategy
+
+### Order of Implementation
+1. Phase 1 (Sidebar) - Frontend only
+2. Phase 2 (Routes) - Frontend restructuring
+3. Phase 3 (Multi-Profile) - Full stack, includes migration
+4. Phase 4 (Resume Files) - Full stack
+5. Phase 5 (Pipeline Tags) - Backend + frontend
+6. Phase 6 (Area Agents) - Full stack
+7. Phase 7 (Profile Select) - Builds on Phase 3
+
+### Approach
+- **No backward compatibility concerns** - This is a personal project, clean breaks are preferred
+- Delete old code rather than deprecate
+- Migrations can be destructive if needed
+- Prioritize clean architecture over migration complexity
+
+---
+
+## Testing Checklist
+
+### Phase 1
+- [ ] Sidebar renders correctly
+- [ ] Collapse/expand works
+- [ ] Mobile responsive
+
+### Phase 2
+- [ ] All routes accessible
+- [ ] Navigation works
+- [ ] Breadcrumbs correct
+
+### Phase 3
+- [ ] Create multiple profiles
+- [ ] Set default profile
+- [ ] Delete non-default profile
+- [ ] Migration preserves data
+
+### Phase 4
+- [ ] Upload PDF resume
+- [ ] Upload DOCX resume
+- [ ] Text extraction works
+- [ ] Resume selection in profile
+
+### Phase 5
+- [ ] Pipelines have tags
+- [ ] Filtering works
+- [ ] API returns tags
+
+### Phase 6
+- [ ] Area agent has restricted tools
+- [ ] Custom system prompts work
+- [ ] WebSocket area routing works
+
+### Phase 7
+- [ ] Profile selector in pipeline form
+- [ ] Default profile used if not selected
+- [ ] Error shows profile options
+
+---
+
+## Future Enhancements (Out of Scope)
+
+1. **Job Application Tracking** - Track applied jobs, responses, interviews
+2. **Cover Letter Generation** - AI-generated cover letters per job
+3. **Interview Prep** - Company research, question preparation
+4. **Salary Research** - Market data integration
+5. **Scheduled Searches** - Cron-based job searches with notifications
+6. **Email Notifications** - New high-scoring job alerts
+
+---
+
+## Status Tracking
+
+| Phase | Status | Assignee | Notes |
+|-------|--------|----------|-------|
+| Phase 1 | ✅ Complete | - | Sidebar restructured with collapsible Jobs area |
+| Phase 2 | ✅ Complete | - | Route restructuring with overview, list, placeholders |
+| Phase 3 | ✅ Complete | - | Renamed to JobProfile, multi-profile support |
+| Phase 4 | ✅ Complete | - | Resume file upload and management |
+| Phase 5 | ✅ Complete | - | Pipeline tagging system (tags, area) |
+| Phase 6 | ✅ Complete | - | Area-specific agents with filtered pipelines |
+| Phase 7 | ✅ Complete | - | Profile selection in pipeline execution |
+
+---
+
+*Last Updated: 2025-12-23*
+

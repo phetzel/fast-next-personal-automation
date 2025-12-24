@@ -80,6 +80,56 @@ All endpoints are prefixed with `/api/v1`.
 | Endpoint | Description |
 |----------|-------------|
 | `/ws/agent` | AI chat WebSocket (authenticated) |
+| `/ws/agent?area=jobs` | Area-specific AI chat |
+
+### Jobs
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/jobs` | List user's job listings |
+| GET | `/jobs/{id}` | Get job details |
+| PATCH | `/jobs/{id}` | Update job (status, notes) |
+| DELETE | `/jobs/{id}` | Delete job |
+| GET | `/jobs/stats` | Get job statistics |
+
+### Job Profiles
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/job-profiles` | List user's profiles |
+| POST | `/job-profiles` | Create profile |
+| GET | `/job-profiles/{id}` | Get profile |
+| PATCH | `/job-profiles/{id}` | Update profile |
+| DELETE | `/job-profiles/{id}` | Delete profile |
+| POST | `/job-profiles/{id}/set-default` | Set as default |
+| GET | `/job-profiles/default` | Get default profile |
+
+### Resumes
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/resumes` | List user's resumes |
+| POST | `/resumes/upload` | Upload resume file |
+| GET | `/resumes/{id}` | Get resume details |
+| DELETE | `/resumes/{id}` | Delete resume |
+| POST | `/resumes/{id}/set-primary` | Set as primary |
+| POST | `/resumes/{id}/re-extract` | Re-extract text |
+
+### Pipelines
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/pipelines` | List available pipelines |
+| GET | `/pipelines?area=jobs` | List pipelines filtered by area |
+| POST | `/pipelines/{name}/execute` | Execute a pipeline |
+| GET | `/pipeline-runs` | List pipeline run history |
+
+### Area Agents
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/agent/areas` | List available area configs |
+| POST | `/agent/areas/{area}/chat` | Chat with area agent (non-streaming) |
 
 ## Services
 
@@ -121,6 +171,35 @@ await session_service.validate_refresh_token(token) -> Session | None
 await session_service.logout_by_refresh_token(token) -> None
 await session_service.get_user_sessions(user_id) -> list[Session]
 await session_service.revoke_session(session_id) -> None
+```
+
+### JobProfileService
+
+```python
+from app.services.job_profile import JobProfileService
+
+# Available methods
+await profile_service.create(user_id, data: JobProfileCreate) -> JobProfile
+await profile_service.get_by_id(profile_id) -> JobProfile | None
+await profile_service.list_for_user(user_id) -> list[JobProfile]
+await profile_service.get_or_create_default(user_id) -> JobProfile
+await profile_service.update(profile_id, data: JobProfileUpdate) -> JobProfile
+await profile_service.delete(profile_id) -> None
+await profile_service.set_default(profile_id, user_id) -> JobProfile
+```
+
+### ResumeService
+
+```python
+from app.services.resume import ResumeService
+
+# Available methods
+await resume_service.create_from_upload(user_id, file, name) -> Resume
+await resume_service.get_by_id(resume_id) -> Resume | None
+await resume_service.list_for_user(user_id) -> list[Resume]
+await resume_service.delete(resume_id) -> None
+await resume_service.set_primary(resume_id, user_id) -> Resume
+await resume_service.get_text_content(resume_id) -> str | None
 ```
 
 ## Configuration

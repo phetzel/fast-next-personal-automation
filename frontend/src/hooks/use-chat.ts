@@ -10,11 +10,12 @@ import { useConversationStore } from "@/stores";
 
 interface UseChatOptions {
   conversationId?: string | null;
+  area?: string | null;
   onConversationCreated?: (conversationId: string) => void;
 }
 
 export function useChat(options: UseChatOptions = {}) {
-  const { conversationId, onConversationCreated } = options;
+  const { conversationId, area, onConversationCreated } = options;
   const { setCurrentConversationId } = useConversationStore();
   const { messages, addMessage, updateMessage, addToolCall, updateToolCall, clearMessages } =
     useChatStore();
@@ -164,10 +165,22 @@ export function useChat(options: UseChatOptions = {}) {
     ]
   );
 
-  // Build WebSocket URL with optional token for authentication
-  const wsUrl = wsToken
-    ? `${WS_URL}/api/v1/ws/agent?token=${wsToken}`
-    : `${WS_URL}/api/v1/ws/agent`;
+  // Build WebSocket URL with optional token for authentication and area
+  const buildWsUrl = () => {
+    const params = new URLSearchParams();
+    if (wsToken) {
+      params.append("token", wsToken);
+    }
+    if (area) {
+      params.append("area", area);
+    }
+    const queryString = params.toString();
+    return queryString
+      ? `${WS_URL}/api/v1/ws/agent?${queryString}`
+      : `${WS_URL}/api/v1/ws/agent`;
+  };
+
+  const wsUrl = buildWsUrl();
 
   const { isConnected, connect: wsConnect, disconnect, sendMessage } = useWebSocket({
     url: wsUrl,

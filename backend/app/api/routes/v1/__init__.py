@@ -15,7 +15,8 @@ from app.api.routes.v1 import agent
 from app.api.routes.v1 import config
 from app.api.routes.v1 import pipelines
 from app.api.routes.v1 import jobs
-from app.api.routes.v1 import user_profile
+from app.api.routes.v1 import job_profile
+from app.api.routes.v1 import resumes
 
 v1_router = APIRouter()
 
@@ -58,5 +59,8 @@ v1_router.include_router(config.router, prefix="/config", tags=["config"])
 # Jobs routes (job search results)
 v1_router.include_router(jobs.router, prefix="/jobs", tags=["jobs"])
 
-# User profile routes (resume and preferences)
-v1_router.include_router(user_profile.router, prefix="/profile", tags=["profile"])
+# Job profile routes (resume and preferences)
+v1_router.include_router(job_profile.router, prefix="/job-profiles", tags=["job-profiles"])
+
+# Resume routes (resume file management)
+v1_router.include_router(resumes.router, prefix="/resumes", tags=["resumes"])

@@ -42,6 +42,13 @@ frontend/src/
 | `/dashboard` | `dashboard/page.tsx` | User dashboard |
 | `/profile` | `profile/page.tsx` | Profile settings |
 | `/auth/callback` | `auth/callback/page.tsx` | OAuth callback |
+| `/pipelines` | `pipelines/page.tsx` | Pipeline execution |
+| `/jobs` | `jobs/page.tsx` | Jobs area overview |
+| `/jobs/list` | `jobs/list/page.tsx` | Job listings |
+| `/jobs/profiles` | `jobs/profiles/page.tsx` | Job search profiles |
+| `/jobs/resumes` | `jobs/resumes/page.tsx` | Resume management |
+| `/jobs/search` | `jobs/search/page.tsx` | Job search pipelines |
+| `/jobs/chat` | `jobs/chat/page.tsx` | Jobs-specific AI chat |
 
 ## State Management
 
@@ -169,6 +176,64 @@ const { fetchConversations, isLoading } = useConversations();
 useEffect(() => {
   fetchConversations();
 }, []);
+```
+
+### useJobProfiles
+
+Manages job search profiles:
+
+```typescript
+import { useJobProfiles } from "@/hooks";
+
+const {
+  profiles,
+  currentProfile,
+  defaultProfile,
+  isLoading,
+  hasProfiles,
+  hasCompleteProfile,
+  fetchProfiles,
+  getProfile,
+  createProfile,
+  updateProfile,
+  deleteProfile,
+  setDefault,
+} = useJobProfiles();
+```
+
+### useResumes
+
+Manages resume uploads:
+
+```typescript
+import { useResumes } from "@/hooks";
+
+const {
+  resumes,
+  isLoading,
+  uploadResume,
+  deleteResume,
+  setPrimary,
+  fetchResumes,
+} = useResumes();
+```
+
+### usePipelines
+
+Fetches and filters pipelines:
+
+```typescript
+import { usePipelines } from "@/hooks";
+
+const {
+  pipelines,
+  isLoading,
+  fetchPipelines,
+  filterByArea,
+  filterByTags,
+  availableAreas,
+  availableTags,
+} = usePipelines({ area: "jobs" });
 ```
 
 ## Components
@@ -347,4 +412,5 @@ Test files are in `e2e/`:
 - `auth.spec.ts` - Authentication flows
 - `chat.spec.ts` - Chat functionality
 - `home.spec.ts` - Home page
+- `jobs.spec.ts` - Jobs area functionality
 

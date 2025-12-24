@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { Input, Label, Button } from "@/components/ui";
 import type { JSONSchema, JSONSchemaProperty } from "@/types";
 import { cn } from "@/lib/utils";
+import { ProfileSelectField } from "./profile-select-field";
 
 interface DynamicFormProps {
   schema: JSONSchema;
@@ -84,6 +85,19 @@ interface FormFieldProps {
 function FormField({ name, property, value, onChange, required }: FormFieldProps) {
   const id = `field-${name}`;
   const description = property.description;
+
+  // Handle custom x-profile-select format for profile selection
+  if (property.format === "x-profile-select") {
+    return (
+      <ProfileSelectField
+        id={id}
+        value={value}
+        onChange={(v) => onChange(v)}
+        required={required}
+        description={description}
+      />
+    );
+  }
 
   // Handle enum (select dropdown)
   if (property.enum && property.enum.length > 0) {

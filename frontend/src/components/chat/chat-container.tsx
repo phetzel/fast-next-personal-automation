@@ -10,9 +10,11 @@ import { useConversationStore, useChatStore, useAuthStore } from "@/stores";
 import { useConversations } from "@/hooks";
 interface ChatContainerProps {
   useLocalStorage?: boolean;
+  area?: string;
+  showAreaBanner?: boolean;
 }
 
-export function ChatContainer({ useLocalStorage = false }: ChatContainerProps) {
+export function ChatContainer({ useLocalStorage = false, area, showAreaBanner = false }: ChatContainerProps) {
   const { isAuthenticated } = useAuthStore();
 
   const shouldUseLocal = useLocalStorage || !isAuthenticated;
@@ -21,10 +23,15 @@ export function ChatContainer({ useLocalStorage = false }: ChatContainerProps) {
     return <LocalChatContainer />;
   }
 
-  return <AuthenticatedChatContainer />;
+  return <AuthenticatedChatContainer area={area} showAreaBanner={showAreaBanner} />;
 }
 
-function AuthenticatedChatContainer() {
+interface AuthenticatedChatContainerProps {
+  area?: string;
+  showAreaBanner?: boolean;
+}
+
+function AuthenticatedChatContainer({ area, showAreaBanner }: AuthenticatedChatContainerProps) {
   const { currentConversationId, currentMessages } = useConversationStore();
   const { setMessages: setChatMessages } = useChatStore();
   const { fetchConversations } = useConversations();
@@ -59,6 +66,7 @@ function AuthenticatedChatContainer() {
   const { messages, isConnected, isProcessing, connect, disconnect, sendMessage, clearMessages } =
     useChat({
       conversationId: currentConversationId,
+      area,
       onConversationCreated: handleConversationCreated,
     });
 
@@ -81,6 +89,8 @@ function AuthenticatedChatContainer() {
       sendMessage={sendMessage}
       clearMessages={clearMessages}
       messagesEndRef={messagesEndRef}
+      area={area}
+      showAreaBanner={showAreaBanner}
     />
   );
 }
@@ -119,7 +129,18 @@ interface ChatUIProps {
   sendMessage: (content: string) => void;
   clearMessages: () => void;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
+  area?: string;
+  showAreaBanner?: boolean;
 }
+
+// Area-specific configurations
+const AREA_INFO: Record<string, { title: string; description: string; icon: typeof Bot }> = {
+  jobs: {
+    title: "Jobs Assistant",
+    description: "I help you search for jobs, manage profiles, and track applications.",
+    icon: Bot,
+  },
+};
 
 function ChatUI({
   messages,
@@ -128,9 +149,28 @@ function ChatUI({
   sendMessage,
   clearMessages,
   messagesEndRef,
+  area,
+  showAreaBanner,
 }: ChatUIProps) {
+  const areaInfo = area ? AREA_INFO[area] : null;
+  const displayTitle = areaInfo?.title || "AI Assistant";
+  const displayDescription = areaInfo?.description || "Start a conversation to get help";
+
   return (
     <div className="mx-auto flex h-full w-full max-w-4xl flex-col">
+      {/* Area banner */}
+      {showAreaBanner && area && areaInfo && (
+        <div className="mx-2 mt-2 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950 sm:mx-4 sm:mt-4">
+          <div className="flex items-center gap-2">
+            <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+              {area.toUpperCase()}
+            </span>
+            <span className="text-sm text-blue-700 dark:text-blue-300">
+              Specialized assistant with access to {area}-related tools only
+            </span>
+          </div>
+        </div>
+      )}
       <div className="scrollbar-thin flex-1 overflow-y-auto px-2 py-4 sm:px-4 sm:py-6">
         {messages.length === 0 ? (
           <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-4">
@@ -138,8 +178,8 @@ function ChatUI({
               <Bot className="h-7 w-7 sm:h-8 sm:w-8" />
             </div>
             <div className="px-4 text-center">
-              <p className="text-foreground text-base font-medium sm:text-lg">AI Assistant</p>
-              <p className="text-sm">Start a conversation to get help</p>
+              <p className="text-foreground text-base font-medium sm:text-lg">{displayTitle}</p>
+              <p className="text-sm">{displayDescription}</p>
             </div>
           </div>
         ) : (

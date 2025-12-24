@@ -32,7 +32,14 @@ export const ROUTES = {
   DASHBOARD: "/dashboard",
   CHAT: "/chat",
   PIPELINES: "/pipelines",
+  // Jobs area routes
   JOBS: "/jobs",
+  JOBS_LIST: "/jobs/list",
+  JOBS_PROFILES: "/jobs/profiles",
+  JOBS_RESUMES: "/jobs/resumes",
+  JOBS_SEARCH: "/jobs/search",
+  JOBS_CHAT: "/jobs/chat",
+  // Other routes
   PROFILE: "/profile",
   SETTINGS: "/settings",
 } as const;

@@ -125,9 +125,21 @@ User
  ├── Conversations (1:N)
  │    └── Messages (1:N)
  │         └── ToolCalls (1:N)
- └── Webhooks (1:N)
-      └── WebhookDeliveries (1:N)
+ ├── Webhooks (1:N)
+ │    └── WebhookDeliveries (1:N)
+ ├── JobProfiles (1:N)
+ │    └── Resume (N:1, optional)
+ ├── Resumes (1:N)
+ └── Jobs (1:N)
 ```
+
+### Jobs Area Models
+
+| Model | Purpose |
+|-------|---------|
+| `JobProfile` | Job search configuration (target roles, locations, preferences) |
+| `Resume` | Uploaded resume files with extracted text |
+| `Job` | Scraped job listings with AI analysis scores |
 
 ## Frontend Architecture
 
@@ -168,6 +180,9 @@ App (layout.tsx)
 | `useLocalChat` | Local-only chat (anonymous users) |
 | `useWebSocket` | Generic WebSocket connection |
 | `useConversations` | Fetch/manage conversation history |
+| `useJobProfiles` | Job profile CRUD operations |
+| `useResumes` | Resume upload and management |
+| `usePipelines` | Pipeline list with area filtering |
 
 ## AI Agent Architecture
 
@@ -182,13 +197,44 @@ class Deps:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 class AssistantAgent:
-    def __init__(self, model_name, temperature, system_prompt):
+    def __init__(self, model_name, temperature, system_prompt, area_config=None):
         self.agent = Agent[Deps, str](...)
+        self.area_config = area_config  # Optional area-specific config
     
     async def iter(self, user_input, history, deps):
         async with self.agent.iter(...) as run:
             async for event in run:
                 yield event  # Stream to WebSocket
+```
+
+### Area-Specific Agents
+
+Agents can be scoped to specific areas (like "jobs") with filtered pipeline access:
+
+```python
+# app/agents/area_config.py
+@dataclass
+class AreaAgentConfig:
+    area: str  # e.g., "jobs"
+    system_prompt: str  # Custom prompt for this area
+    allowed_pipeline_tags: list[str] | None = None
+    allowed_pipelines: list[str] | None = None
+
+# Get a jobs-specific agent
+from app.agents.assistant import get_agent_for_area
+jobs_agent = get_agent_for_area("jobs")
+```
+
+### Pipeline Tagging
+
+Pipelines can be tagged with areas for filtering:
+
+```python
+@register_pipeline
+class JobSearchPipeline(ActionPipeline[...]):
+    name = "job_search"
+    tags = ["jobs", "scraping", "ai"]
+    area = "jobs"  # Primary area association
 ```
 
 ### WebSocket Events

@@ -37,11 +37,20 @@ from app.schemas.job import (
     JobFilters,
 )
 
-from app.schemas.user_profile import (
-    UserProfileCreate,
-    UserProfileUpdate,
-    UserProfileResponse,
-    UserProfileSummary,
+from app.schemas.job_profile import (
+    JobProfileCreate,
+    JobProfileUpdate,
+    JobProfileResponse,
+    JobProfileSummary,
+    ProfileRequiredError,
+)
+
+from app.schemas.resume import (
+    ResumeCreate,
+    ResumeUpdate,
+    ResumeResponse,
+    ResumeSummary,
+    ResumeTextResponse,
 )
 
 __all__ = [
@@ -77,9 +86,16 @@ __all__ = [
     "JobListResponse",
     "JobStatsResponse",
     "JobFilters",
-    # UserProfile
-    "UserProfileCreate",
-    "UserProfileUpdate",
-    "UserProfileResponse",
-    "UserProfileSummary",
+    # JobProfile
+    "JobProfileCreate",
+    "JobProfileUpdate",
+    "JobProfileResponse",
+    "JobProfileSummary",
+    "ProfileRequiredError",
+    # Resume
+    "ResumeCreate",
+    "ResumeUpdate",
+    "ResumeResponse",
+    "ResumeSummary",
+    "ResumeTextResponse",
 ]

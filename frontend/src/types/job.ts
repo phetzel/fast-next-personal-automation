@@ -92,16 +92,61 @@ export interface JobUpdate {
 }
 
 // ===========================================================================
-// User Profile Types
+// Resume Types
 // ===========================================================================
 
 /**
- * User profile with resume and job preferences.
+ * A user's uploaded resume file.
  */
-export interface UserProfile {
+export interface Resume {
   id: string;
   user_id: string;
-  resume_text: string | null;
+  name: string;
+  original_filename: string;
+  file_size: number;
+  mime_type: string;
+  is_primary: boolean;
+  has_text: boolean;
+  created_at: string;
+  updated_at: string | null;
+}
+
+/**
+ * Summary of resume for lists and selectors.
+ */
+export interface ResumeSummary {
+  id: string;
+  name: string;
+  original_filename: string;
+  is_primary: boolean;
+  has_text: boolean;
+}
+
+/**
+ * Resume info embedded in profile response.
+ */
+export interface ResumeInfo {
+  id: string;
+  name: string;
+  original_filename: string;
+  has_text: boolean;
+}
+
+// ===========================================================================
+// Job Profile Types
+// ===========================================================================
+
+/**
+ * Job profile with resume link and preferences.
+ * A user can have multiple profiles with different configurations.
+ */
+export interface JobProfile {
+  id: string;
+  user_id: string;
+  name: string;
+  is_default: boolean;
+  resume_id: string | null;
+  resume: ResumeInfo | null;
   target_roles: string[] | null;
   target_locations: string[] | null;
   min_score_threshold: number;
@@ -111,20 +156,25 @@ export interface UserProfile {
 }
 
 /**
- * Summary of profile status.
+ * Summary of profile for lists.
  */
-export interface UserProfileSummary {
-  has_profile: boolean;
+export interface JobProfileSummary {
+  id: string;
+  name: string;
+  is_default: boolean;
   has_resume: boolean;
+  resume_name: string | null;
   target_roles_count: number;
   min_score_threshold: number;
 }
 
 /**
- * Request to create/update profile.
+ * Request to create a profile.
  */
-export interface UserProfileCreate {
-  resume_text?: string | null;
+export interface JobProfileCreate {
+  name: string;
+  is_default?: boolean;
+  resume_id?: string | null;
   target_roles?: string[] | null;
   target_locations?: string[] | null;
   min_score_threshold?: number;
@@ -134,8 +184,10 @@ export interface UserProfileCreate {
 /**
  * Partial update to profile.
  */
-export interface UserProfileUpdate {
-  resume_text?: string | null;
+export interface JobProfileUpdate {
+  name?: string;
+  is_default?: boolean;
+  resume_id?: string | null;
   target_roles?: string[] | null;
   target_locations?: string[] | null;
   min_score_threshold?: number;
@@ -150,6 +202,7 @@ export interface UserProfileUpdate {
  * Input for the job search pipeline.
  */
 export interface JobSearchInput {
+  profile_id?: string;
   terms?: string[];
   locations?: string[];
   is_remote?: boolean;
@@ -170,5 +223,20 @@ export interface JobSearchOutput {
   high_scoring: number;
   duplicates_skipped: number;
   top_jobs: JobSummary[];
+}
+
+// ===========================================================================
+// Pipeline Error Types
+// ===========================================================================
+
+/**
+ * Structured error returned when a job profile is required but not available.
+ * The frontend uses this to show a profile selector instead of a generic error.
+ */
+export interface ProfileRequiredError {
+  error_type: "profile_required";
+  message: string;
+  available_profiles: JobProfileSummary[];
+  create_profile_url: string;
 }
 

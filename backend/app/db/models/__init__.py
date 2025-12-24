@@ -8,7 +8,8 @@ from app.db.models.conversation import Conversation, Message, ToolCall
 from app.db.models.webhook import Webhook, WebhookDelivery
 from app.db.models.pipeline_run import PipelineRun, PipelineRunStatus, PipelineTriggerType
 from app.db.models.job import Job, JobStatus
-from app.db.models.user_profile import UserProfile
+from app.db.models.job_profile import JobProfile
+from app.db.models.resume import Resume
 
 __all__ = [
     "User",
@@ -24,5 +25,6 @@ __all__ = [
     "PipelineTriggerType",
     "Job",
     "JobStatus",
-    "UserProfile",
+    "JobProfile",
+    "Resume",
 ]

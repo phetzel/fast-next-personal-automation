@@ -17,7 +17,9 @@ from app.repositories import pipeline_run as pipeline_run_repo
 
 from app.repositories import job as job_repo
 
-from app.repositories import user_profile as user_profile_repo
+from app.repositories import job_profile as job_profile_repo
+
+from app.repositories import resume as resume_repo
 
 __all__ = [
     "BaseRepository",
@@ -28,5 +30,6 @@ __all__ = [
     "webhook_repo",
     "pipeline_run_repo",
     "job_repo",
-    "user_profile_repo",
+    "job_profile_repo",
+    "resume_repo",
 ]

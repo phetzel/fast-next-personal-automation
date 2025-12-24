@@ -100,6 +100,8 @@ def list_pipelines() -> list[dict[str, Any]]:
         - description: Human-readable description
         - input_schema: JSON schema for input validation
         - output_schema: JSON schema for output type
+        - tags: List of tags for filtering
+        - area: Primary area association (or None)
     """
     pipelines = []
     for name, cls in _PIPELINE_REGISTRY.items():
@@ -108,7 +110,62 @@ def list_pipelines() -> list[dict[str, Any]]:
             "description": cls.description,
             "input_schema": cls.get_input_schema(),
             "output_schema": cls.get_output_schema(),
+            "tags": getattr(cls, "tags", []),
+            "area": getattr(cls, "area", None),
         })
+    return pipelines
+
+
+def list_pipelines_by_tag(tag: str) -> list[dict[str, Any]]:
+    """List pipelines that have a specific tag.
+
+    Args:
+        tag: The tag to filter by.
+
+    Returns:
+        List of pipeline info dicts matching the tag.
+    """
+    all_pipelines = list_pipelines()
+    return [p for p in all_pipelines if tag in p["tags"]]
+
+
+def list_pipelines_by_area(area: str) -> list[dict[str, Any]]:
+    """List pipelines associated with a specific area.
+
+    Args:
+        area: The area to filter by.
+
+    Returns:
+        List of pipeline info dicts matching the area.
+    """
+    all_pipelines = list_pipelines()
+    return [p for p in all_pipelines if p["area"] == area]
+
+
+def list_pipelines_filtered(
+    area: str | None = None,
+    tags: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    """List pipelines with optional filtering by area and/or tags.
+
+    Args:
+        area: Filter by primary area (exact match).
+        tags: Filter by tags (must have ALL specified tags).
+
+    Returns:
+        List of pipeline info dicts matching all criteria.
+    """
+    pipelines = list_pipelines()
+
+    if area is not None:
+        pipelines = [p for p in pipelines if p["area"] == area]
+
+    if tags:
+        pipelines = [
+            p for p in pipelines
+            if all(tag in p["tags"] for tag in tags)
+        ]
+
     return pipelines
 
 
@@ -139,6 +196,8 @@ def get_pipeline_info(name: str) -> dict[str, Any] | None:
         "description": cls.description,
         "input_schema": cls.get_input_schema(),
         "output_schema": cls.get_output_schema(),
+        "tags": getattr(cls, "tags", []),
+        "area": getattr(cls, "area", None),
     }
 
 

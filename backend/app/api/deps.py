@@ -36,7 +36,8 @@ from app.services.item import ItemService
 from app.services.conversation import ConversationService
 from app.services.pipeline_run import PipelineRunService
 from app.services.job import JobService
-from app.services.user_profile import UserProfileService
+from app.services.job_profile import JobProfileService
+from app.services.resume import ResumeService
 
 
 def get_user_service(db: DBSession) -> UserService:
@@ -93,12 +94,20 @@ def get_job_service(db: DBSession) -> JobService:
 JobSvc = Annotated[JobService, Depends(get_job_service)]
 
 
-def get_user_profile_service(db: DBSession) -> UserProfileService:
-    """Create UserProfileService instance with database session."""
-    return UserProfileService(db)
+def get_job_profile_service(db: DBSession) -> JobProfileService:
+    """Create JobProfileService instance with database session."""
+    return JobProfileService(db)
 
 
-UserProfileSvc = Annotated[UserProfileService, Depends(get_user_profile_service)]
+JobProfileSvc = Annotated[JobProfileService, Depends(get_job_profile_service)]
+
+
+def get_resume_service(db: DBSession) -> ResumeService:
+    """Create ResumeService instance with database session."""
+    return ResumeService(db)
+
+
+ResumeSvc = Annotated[ResumeService, Depends(get_resume_service)]
 
 # === Authentication Dependencies ===
 

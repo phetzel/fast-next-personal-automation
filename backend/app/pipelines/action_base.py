@@ -86,6 +86,10 @@ class ActionPipeline(ABC, Generic[InputT, OutputT]):
     - Define input/output types via Generic parameters
     - Implement the `execute` method
 
+    Subclasses may optionally set:
+    - `tags`: List of strings for fine-grained filtering (e.g., ["jobs", "ai"])
+    - `area`: Primary area association for grouping (e.g., "jobs")
+
     Example:
         class MyInput(BaseModel):
             message: str
@@ -96,6 +100,8 @@ class ActionPipeline(ABC, Generic[InputT, OutputT]):
         class MyPipeline(ActionPipeline[MyInput, MyOutput]):
             name = "my_pipeline"
             description = "Does something useful"
+            tags = ["automation", "utility"]
+            area = "general"
 
             async def execute(
                 self, input: MyInput, context: PipelineContext
@@ -109,6 +115,10 @@ class ActionPipeline(ABC, Generic[InputT, OutputT]):
     # Subclasses must define these
     name: str
     description: str
+
+    # Optional tagging for filtering and organization
+    tags: list[str] = []
+    area: str | None = None
 
     @abstractmethod
     async def execute(

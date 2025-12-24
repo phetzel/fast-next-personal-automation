@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, Badge } from
 import { DynamicForm } from "./dynamic-form";
 import { ExecutionResult } from "./execution-result";
 import type { PipelineInfo, ExecutionState } from "@/types";
-import { ChevronDown, ChevronUp, Workflow } from "lucide-react";
+import { ChevronDown, ChevronUp, Workflow, Tag as TagIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PipelineCardProps {
@@ -13,6 +13,8 @@ interface PipelineCardProps {
   executionState: ExecutionState;
   onExecute: (input: Record<string, unknown>) => void;
   onReset: () => void;
+  /** Called when user selects a profile after a profile_required error and wants to retry */
+  onRetryWithProfile?: (profileId: string) => void;
 }
 
 /**
@@ -23,6 +25,7 @@ export function PipelineCard({
   executionState,
   onExecute,
   onReset,
+  onRetryWithProfile,
 }: PipelineCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isRunning = executionState.status === "running";
@@ -52,8 +55,30 @@ export function PipelineCard({
               <Workflow className="text-primary h-5 w-5" />
             </div>
             <div className="space-y-1">
-              <CardTitle className="text-base font-semibold">{pipeline.name}</CardTitle>
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base font-semibold">{pipeline.name}</CardTitle>
+                {pipeline.area && (
+                  <Badge variant="outline" className="text-xs font-normal">
+                    {pipeline.area}
+                  </Badge>
+                )}
+              </div>
               <CardDescription className="text-sm">{pipeline.description}</CardDescription>
+              {/* Tags */}
+              {pipeline.tags.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1 pt-1">
+                  <TagIcon className="h-3 w-3 text-muted-foreground" />
+                  {pipeline.tags.map((tag) => (
+                    <Badge
+                      key={tag}
+                      variant="secondary"
+                      className="text-xs font-normal py-0 px-1.5 h-5"
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -109,7 +134,11 @@ export function PipelineCard({
           {/* Execution result */}
           {(hasResult || isRunning) && (
             <div className="mt-4">
-              <ExecutionResult state={executionState} onReset={onReset} />
+              <ExecutionResult 
+                state={executionState} 
+                onReset={onReset}
+                onRetryWithProfile={onRetryWithProfile}
+              />
             </div>
           )}
         </CardContent>

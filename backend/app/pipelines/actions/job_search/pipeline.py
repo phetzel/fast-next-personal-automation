@@ -5,6 +5,7 @@ Main pipeline that orchestrates job scraping, analysis, and storage.
 
 import logging
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -13,8 +14,9 @@ from app.pipelines.action_base import ActionPipeline, ActionResult, PipelineCont
 from app.pipelines.actions.job_search.analyzer import analyze_jobs_batch
 from app.pipelines.actions.job_search.scraper import SearchConfig, get_scraper
 from app.pipelines.registry import register_pipeline
-from app.repositories import user_profile_repo
+from app.repositories import job_profile_repo
 from app.schemas.job import JobSummary
+from app.schemas.job_profile import JobProfileSummary, ProfileRequiredError
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +24,11 @@ logger = logging.getLogger(__name__)
 class JobSearchInput(BaseModel):
     """Input for the job search pipeline."""
 
+    profile_id: UUID | None = Field(
+        default=None,
+        description="Job profile to use. If not provided, uses default profile.",
+        json_schema_extra={"format": "x-profile-select"},
+    )
     terms: list[str] = Field(
         default=["Python Developer"],
         description="Job titles/roles to search for",
@@ -98,6 +105,8 @@ class JobSearchPipeline(ActionPipeline[JobSearchInput, JobSearchOutput]):
 
     name = "job_search"
     description = "Search for jobs and analyze fit against your resume"
+    tags = ["jobs", "scraping", "ai"]
+    area = "jobs"
 
     async def execute(
         self,
@@ -116,18 +125,98 @@ class JobSearchPipeline(ActionPipeline[JobSearchInput, JobSearchOutput]):
                 error="User authentication required for job search",
             )
 
-        # Get user profile with resume
+        # Get the profile - either by ID or fall back to default
         async with get_db_context() as db:
-            profile = await user_profile_repo.get_by_user_id(db, context.user_id)
+            if input.profile_id is not None:
+                # Use the specified profile
+                profile = await job_profile_repo.get_by_id(db, input.profile_id)
+                if profile is None or profile.user_id != context.user_id:
+                    # Profile not found or doesn't belong to user
+                    all_profiles = await job_profile_repo.get_by_user_id(db, context.user_id)
+                    available_profiles = [
+                        JobProfileSummary(
+                            id=p.id,
+                            name=p.name,
+                            is_default=p.is_default,
+                            has_resume=p.resume is not None and p.resume.text_content is not None,
+                            resume_name=p.resume.name if p.resume else None,
+                            target_roles_count=len(p.target_roles) if p.target_roles else 0,
+                            min_score_threshold=p.min_score_threshold,
+                        )
+                        for p in all_profiles
+                    ]
+                    error_data = ProfileRequiredError(
+                        message="The selected profile was not found or you don't have access to it.",
+                        available_profiles=available_profiles,
+                    )
+                    return ActionResult(
+                        success=False,
+                        error=error_data.model_dump_json(),
+                        metadata={"error_type": "profile_required"},
+                    )
+            else:
+                # Fall back to default profile
+                profile = await job_profile_repo.get_default_for_user(db, context.user_id)
 
-        if profile is None or not profile.resume_text:
+        # Handle no profile case with structured error
+        if profile is None:
+            async with get_db_context() as db:
+                all_profiles = await job_profile_repo.get_by_user_id(db, context.user_id)
+                available_profiles = [
+                    JobProfileSummary(
+                        id=p.id,
+                        name=p.name,
+                        is_default=p.is_default,
+                        has_resume=p.resume is not None and p.resume.text_content is not None,
+                        resume_name=p.resume.name if p.resume else None,
+                        target_roles_count=len(p.target_roles) if p.target_roles else 0,
+                        min_score_threshold=p.min_score_threshold,
+                    )
+                    for p in all_profiles
+                ]
+            if available_profiles:
+                error_data = ProfileRequiredError(
+                    message="No default profile set. Please select a profile to use for job search.",
+                    available_profiles=available_profiles,
+                )
+            else:
+                error_data = ProfileRequiredError(
+                    message="No job profiles found. Please create a profile before searching for jobs.",
+                    available_profiles=[],
+                )
             return ActionResult(
                 success=False,
-                error="Please set up your profile with a resume before searching for jobs. "
-                "Go to Profile settings and paste your resume text.",
+                error=error_data.model_dump_json(),
+                metadata={"error_type": "profile_required"},
             )
 
-        resume_text = profile.resume_text
+        # Get resume text from linked resume
+        if not profile.resume or not profile.resume.text_content:
+            async with get_db_context() as db:
+                all_profiles = await job_profile_repo.get_by_user_id(db, context.user_id)
+                available_profiles = [
+                    JobProfileSummary(
+                        id=p.id,
+                        name=p.name,
+                        is_default=p.is_default,
+                        has_resume=p.resume is not None and p.resume.text_content is not None,
+                        resume_name=p.resume.name if p.resume else None,
+                        target_roles_count=len(p.target_roles) if p.target_roles else 0,
+                        min_score_threshold=p.min_score_threshold,
+                    )
+                    for p in all_profiles
+                ]
+            error_data = ProfileRequiredError(
+                message=f"Profile '{profile.name}' has no resume linked. Please add a resume to the profile or select a different profile.",
+                available_profiles=available_profiles,
+            )
+            return ActionResult(
+                success=False,
+                error=error_data.model_dump_json(),
+                metadata={"error_type": "profile_required"},
+            )
+
+        resume_text = profile.resume.text_content
         target_roles = profile.target_roles
         min_score = input.min_score
 

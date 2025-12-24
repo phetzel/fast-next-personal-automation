@@ -3,6 +3,7 @@ export { ExecutionResult } from "./execution-result";
 export { PipelineCard } from "./pipeline-card";
 export { PipelineList } from "./pipeline-list";
 export { PipelineRunHistory } from "./pipeline-run-history";
+export { ProfileSelectField } from "./profile-select-field";
 export { RunStatusBadge } from "./run-status-badge";
 export { TriggerBadge } from "./trigger-badge";
 export { RunStatsCard } from "./run-stats-card";

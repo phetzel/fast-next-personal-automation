@@ -23,7 +23,7 @@ interface PipelineStore {
   setError: (error: string | null) => void;
 
   // Execution actions
-  startExecution: (pipelineName: string) => void;
+  startExecution: (pipelineName: string, input?: Record<string, unknown>) => void;
   completeExecution: (pipelineName: string, result: PipelineExecuteResponse) => void;
   failExecution: (pipelineName: string, error: string) => void;
   resetExecution: (pipelineName: string) => void;
@@ -35,6 +35,7 @@ const defaultExecutionState: ExecutionState = {
   result: null,
   startedAt: null,
   completedAt: null,
+  lastInput: null,
 };
 
 export const usePipelineStore = create<PipelineStore>((set, get) => ({
@@ -50,7 +51,7 @@ export const usePipelineStore = create<PipelineStore>((set, get) => ({
   setError: (error) => set({ error }),
 
   // Execution actions
-  startExecution: (pipelineName) =>
+  startExecution: (pipelineName, input) =>
     set((state) => ({
       executions: {
         ...state.executions,
@@ -59,6 +60,7 @@ export const usePipelineStore = create<PipelineStore>((set, get) => ({
           result: null,
           startedAt: new Date(),
           completedAt: null,
+          lastInput: input ?? state.executions[pipelineName]?.lastInput ?? null,
         },
       },
     })),
@@ -72,6 +74,7 @@ export const usePipelineStore = create<PipelineStore>((set, get) => ({
           result,
           startedAt: state.executions[pipelineName]?.startedAt || null,
           completedAt: new Date(),
+          lastInput: state.executions[pipelineName]?.lastInput ?? null,
         },
       },
     })),
@@ -90,6 +93,7 @@ export const usePipelineStore = create<PipelineStore>((set, get) => ({
           },
           startedAt: state.executions[pipelineName]?.startedAt || null,
           completedAt: new Date(),
+          lastInput: state.executions[pipelineName]?.lastInput ?? null,
         },
       },
     })),

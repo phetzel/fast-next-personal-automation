@@ -6,7 +6,8 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel
 from pydantic_ai import (
     Agent,
     FinalResultEvent,
@@ -25,8 +26,9 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 
-from app.agents.assistant import Deps, get_agent
-from app.api.deps import get_conversation_service, get_optional_user_ws
+from app.agents.areas import list_available_areas
+from app.agents.assistant import Deps, get_agent, get_agent_for_area
+from app.api.deps import CurrentUser, get_conversation_service, get_optional_user_ws
 from app.db.models.user import User
 from app.db.session import get_db_context
 from app.schemas.conversation import (
@@ -39,6 +41,138 @@ from app.schemas.conversation import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+# =============================================================================
+# REST API Endpoints for Area Agents
+# =============================================================================
+
+
+class AreaInfo(BaseModel):
+    """Area information response."""
+
+    area: str
+    description: str
+
+
+class AreaListResponse(BaseModel):
+    """Response for listing available areas."""
+
+    areas: list[AreaInfo]
+
+
+class AreaChatRequest(BaseModel):
+    """Request body for area chat endpoint."""
+
+    message: str
+    history: list[dict[str, str]] = []
+    conversation_id: str | None = None
+
+
+class AreaChatResponse(BaseModel):
+    """Response from area chat endpoint."""
+
+    response: str
+    conversation_id: str | None = None
+
+
+@router.get("/areas", response_model=AreaListResponse)
+async def list_areas(
+    current_user: CurrentUser,
+) -> AreaListResponse:
+    """List available area configurations.
+
+    Returns a list of available areas with their descriptions.
+    Each area has a specialized agent with domain-specific prompts
+    and filtered pipeline access.
+    """
+    areas = list_available_areas()
+    return AreaListResponse(areas=[AreaInfo(**a) for a in areas])
+
+
+@router.post("/areas/{area}/chat", response_model=AreaChatResponse)
+async def chat_with_area_agent(
+    area: str,
+    request: AreaChatRequest,
+    current_user: CurrentUser,
+) -> AreaChatResponse:
+    """Chat with an area-specific agent (non-streaming).
+
+    This endpoint provides a simple request/response interface for area agents.
+    For streaming responses, use the WebSocket endpoint with the area parameter.
+
+    Args:
+        area: The area identifier (e.g., "jobs").
+        request: Chat request with message and optional history.
+
+    Returns:
+        Agent response with optional conversation ID.
+
+    Raises:
+        404: If the area does not exist.
+    """
+    from fastapi import HTTPException
+
+    # Get area-specific agent
+    assistant = get_agent_for_area(area)
+    if assistant is None:
+        raise HTTPException(status_code=404, detail=f"Area '{area}' not found")
+
+    # Create dependencies with user info
+    deps = Deps(
+        user_id=str(current_user.id),
+        user_name=current_user.full_name,
+    )
+
+    # Handle conversation persistence
+    conversation_id = request.conversation_id
+
+    async with get_db_context() as db:
+        deps.db = db
+        conv_service = get_conversation_service(db)
+
+        # Create new conversation if needed
+        if not conversation_id:
+            conv_data = ConversationCreate(
+                user_id=current_user.id,
+                title=request.message[:50] if len(request.message) > 50 else request.message,
+                area=area,
+            )
+            conversation = await conv_service.create_conversation(conv_data)
+            conversation_id = str(conversation.id)
+
+        # Save user message
+        await conv_service.add_message(
+            UUID(conversation_id),
+            MessageCreate(role="user", content=request.message),
+        )
+
+        # Run the agent
+        output, tool_events, _ = await assistant.run(
+            request.message,
+            history=request.history,
+            deps=deps,
+        )
+
+        # Save assistant response
+        await conv_service.add_message(
+            UUID(conversation_id),
+            MessageCreate(
+                role="assistant",
+                content=output,
+                model_name=assistant.model_name,
+            ),
+        )
+
+    return AreaChatResponse(
+        response=output,
+        conversation_id=conversation_id,
+    )
+
+
+# =============================================================================
+# WebSocket Connection Manager
+# =============================================================================
 
 
 class AgentConnectionManager:
@@ -96,6 +230,7 @@ def build_message_history(history: list[dict[str, str]]) -> list[ModelRequest | 
 async def agent_websocket(
     websocket: WebSocket,
     user: User | None = Depends(get_optional_user_ws),
+    area: str | None = Query(default=None, description="Optional area for specialized agent"),
 ) -> None:
     """WebSocket endpoint for AI agent with full event streaming.
 
@@ -123,6 +258,9 @@ async def agent_websocket(
     Persistence: Set 'conversation_id' to continue an existing conversation.
     If not provided and user is authenticated, a new conversation is created.
     The conversation_id is returned in the 'conversation_started' event.
+
+    Area: Optional. Pass 'area' query parameter to use an area-specific agent.
+    Example: /ws/agent?area=jobs
     """
 
     await manager.connect(websocket)
@@ -131,6 +269,18 @@ async def agent_websocket(
     conversation_history: list[dict[str, str]] = []
     deps = Deps()
     current_conversation_id: str | None = None
+
+    # Get the appropriate agent based on area parameter
+    if area:
+        assistant = get_agent_for_area(area)
+        if assistant is None:
+            await manager.send_event(
+                websocket, "error", {"message": f"Area '{area}' not found"}
+            )
+            manager.disconnect(websocket)
+            return
+    else:
+        assistant = get_agent()
 
     try:
         while True:
@@ -174,6 +324,7 @@ async def agent_websocket(
                             conv_data = ConversationCreate(
                                 user_id=user.id,
                                 title=user_message[:50] if len(user_message) > 50 else user_message,
+                                area=area,
                             )
                             conversation = await conv_service.create_conversation(conv_data)
                             current_conversation_id = str(conversation.id)
@@ -190,7 +341,7 @@ async def agent_websocket(
                         await manager.send_event(
                             websocket,
                             "conversation_created",
-                            {"conversation_id": current_conversation_id},
+                            {"conversation_id": current_conversation_id, "area": area},
                         )
                 except Exception as e:
                     logger.warning(f"Failed to persist conversation: {e}")
@@ -202,7 +353,6 @@ async def agent_websocket(
             pending_tool_calls: dict[str, dict[str, Any]] = {}
 
             try:
-                assistant = get_agent()
                 model_history = build_message_history(conversation_history)
 
                 # Use iter() on the underlying PydanticAI agent to stream all events
@@ -376,6 +526,7 @@ async def agent_websocket(
                     "complete",
                     {
                         "conversation_id": current_conversation_id,
+                        "area": area,
                     },
                 )
 
