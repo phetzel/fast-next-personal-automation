@@ -664,6 +664,63 @@ NEW → PREPPED → REVIEWED → (generate PDF) → APPLIED
 
 ---
 
+## Phase 9: Profile-Based Story and Project Linking
+
+**Goal:** Link stories and projects to profiles for dynamic material selection per profile.
+
+### Changes Made
+
+1. **Backend - JobProfile Model Updates:**
+   - Added `story_id` FK (nullable, references Story)
+   - Added `project_ids` JSON field (array of project UUID strings)
+   - Added `story` relationship for eager loading
+
+2. **Backend - Project Model Updates:**
+   - Removed `is_active` field (projects are now linked via profiles instead)
+
+3. **Backend - Schema Updates:**
+   - Added `story_id` and `project_ids` to JobProfileCreate/Update
+   - Added `StoryInfo` and `ProjectInfo` embedded schemas for responses
+   - Added `has_story`, `story_name`, `project_count` to JobProfileSummary
+   - Removed `is_active` from Project schemas
+
+4. **Backend - Service Updates:**
+   - Added validation for story and project ownership in JobProfileService
+   - Added `get_linked_projects()` method to fetch projects for a profile
+   - Removed `toggle_active` and `get_active_for_user` from ProjectService
+
+5. **Backend - API Updates:**
+   - Profile endpoints now return story and project info
+   - Removed `/projects/{id}/toggle-active` endpoint
+
+6. **Frontend - Type Updates:**
+   - Added story and project fields to JobProfile types
+   - Removed `is_active` from Project types
+
+7. **Frontend - ProfileForm Updates:**
+   - Added story selector (dropdown)
+   - Added project multi-select (checkboxes)
+   - ProfileCard now shows linked story and projects
+
+8. **Frontend - ProjectsTab Updates:**
+   - Removed is_active toggle
+   - Added info about linking projects to profiles
+
+### Benefits
+- Different profiles can have different story/project combinations
+- More flexible material selection for different job types
+- Cleaner project management (no more individual active toggles)
+
+### Completion Criteria
+- [x] story_id FK added to job_profiles
+- [x] project_ids JSON array added to job_profiles
+- [x] is_active removed from projects
+- [x] Profile form includes story and project selectors
+- [x] Profile card shows linked materials
+- [x] API returns story and project info in profile responses
+
+---
+
 ## Future Enhancements (Out of Scope)
 
 1. **Job Application Tracking** - Track applied jobs, responses, interviews
@@ -690,6 +747,7 @@ NEW → PREPPED → REVIEWED → (generate PDF) → APPLIED
 | Phase 6 | ✅ Complete | - | Area-specific agents with filtered pipelines + CRUD toolsets |
 | Phase 7 | ✅ Complete | - | Profile selection in pipeline execution |
 | Phase 8 | ✅ Complete | - | Job prep pipeline with cover letter and prep notes |
+| Phase 9 | ✅ Complete | - | Profile-based story and project linking |
 
 ---
 
