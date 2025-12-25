@@ -1,22 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useJobs } from "@/hooks";
+import { usePipelines } from "@/hooks/use-pipelines";
 import {
   JobTable,
   JobFilters,
   JobDetailModal,
   JobStatsCard,
+  SearchJobsModal,
+  PrepJobModal,
 } from "@/components/jobs";
 import { Button } from "@/components/ui";
 import type { Job } from "@/types";
-import { RefreshCw, Workflow } from "lucide-react";
-import Link from "next/link";
-import { ROUTES } from "@/lib/constants";
+import { RefreshCw, Search } from "lucide-react";
 
 export default function JobsListPage() {
-  const router = useRouter();
   const {
     jobs,
     total,
@@ -35,7 +34,13 @@ export default function JobsListPage() {
     goToPage,
   } = useJobs();
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { getExecutionState } = usePipelines();
+  const prepExecState = getExecutionState("job_prep");
+
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [isPrepModalOpen, setIsPrepModalOpen] = useState(false);
+  const [prepJob, setPrepJob] = useState<Job | null>(null);
 
   // Fetch jobs on mount and when filters change
   useEffect(() => {
@@ -49,11 +54,11 @@ export default function JobsListPage() {
 
   const handleJobClick = (job: Job) => {
     setSelectedJob(job);
-    setIsModalOpen(true);
+    setIsDetailModalOpen(true);
   };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false);
     setSelectedJob(null);
   };
 
@@ -79,9 +84,28 @@ export default function JobsListPage() {
   };
 
   const handlePrep = (job: Job) => {
-    // Navigate to pipelines page with job_id query param for job_prep pipeline
-    router.push(`${ROUTES.JOBS_PIPELINES}?pipeline=job_prep&job_id=${job.id}`);
+    setPrepJob(job);
+    setIsPrepModalOpen(true);
   };
+
+  const handlePrepComplete = () => {
+    // Refresh the job list to show updated status
+    fetchJobs();
+    fetchStats();
+    // If we have the prep job selected, refresh it
+    if (prepJob) {
+      setSelectedJob(null);
+    }
+  };
+
+  const handleSearchComplete = () => {
+    // Refresh jobs and stats after a successful search
+    fetchJobs();
+    fetchStats();
+  };
+
+  // Track which job is currently being prepped (from the modal)
+  const preppingJobId = prepExecState.status === "running" ? prepJob?.id : null;
 
   return (
     <div className="space-y-6">
@@ -98,11 +122,9 @@ export default function JobsListPage() {
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
           </Button>
-          <Button asChild>
-            <Link href={ROUTES.JOBS_PIPELINES}>
-              <Workflow className="mr-2 h-4 w-4" />
-              Run Pipelines
-            </Link>
+          <Button onClick={() => setIsSearchModalOpen(true)}>
+            <Search className="mr-2 h-4 w-4" />
+            Search Jobs
           </Button>
         </div>
       </div>
@@ -124,6 +146,7 @@ export default function JobsListPage() {
         page={filters.page || 1}
         pageSize={filters.page_size || 20}
         isLoading={isLoading}
+        preppingJobId={preppingJobId}
         onJobClick={handleJobClick}
         onDelete={handleDelete}
         onPrep={handlePrep}
@@ -134,12 +157,30 @@ export default function JobsListPage() {
       {/* Detail Modal */}
       <JobDetailModal
         job={selectedJob}
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
+        isOpen={isDetailModalOpen}
+        onClose={handleCloseDetailModal}
         onUpdate={updateJobStatus}
         onDelete={handleDelete}
+        onPrep={handlePrep}
+      />
+
+      {/* Search Modal */}
+      <SearchJobsModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+        onComplete={handleSearchComplete}
+      />
+
+      {/* Prep Modal */}
+      <PrepJobModal
+        job={prepJob}
+        isOpen={isPrepModalOpen}
+        onClose={() => {
+          setIsPrepModalOpen(false);
+          setPrepJob(null);
+        }}
+        onComplete={handlePrepComplete}
       />
     </div>
   );
 }
-

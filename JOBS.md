@@ -721,6 +721,65 @@ NEW → PREPPED → REVIEWED → (generate PDF) → APPLIED
 
 ---
 
+## Phase 10: Inline Pipeline Execution from Listings
+
+**Goal:** Run pipelines directly from the job listings page without navigating away.
+
+### Changes Made
+
+1. **SearchJobsModal Component:**
+   - New modal for running job_search pipeline inline
+   - Shows profile selector and scraper type
+   - Displays real-time progress and results
+   - Shows top matching jobs with scores after completion
+   - Refreshes job list automatically when done
+
+2. **PrepJobModal Component:**
+   - New modal for running job_prep pipeline inline
+   - Shows job being prepped with profile and tone selectors
+   - Displays progress during AI generation
+   - Shows preview of cover letter and prep notes
+   - Refreshes job list to reflect "prepped" status
+
+3. **Enhanced JobDetailModal:**
+   - Cover letter editing with inline save
+   - Collapsible prep notes section
+   - PDF download button when PDF exists
+   - "Reviewed" transition generates PDF automatically
+   - Shows "Prepare Materials" CTA for new jobs without prep
+
+4. **JobTable Updates:**
+   - Prep button now opens modal instead of navigating
+   - Shows "Prepping..." indicator on row during pipeline execution
+   - Visual feedback while prep is in progress
+
+5. **New API Routes:**
+   - `POST /api/jobs/[id]/cover-letter/generate-pdf` - Proxies to backend for PDF generation
+   - `GET /api/jobs/[id]/cover-letter/download` - Proxies binary PDF download
+
+6. **Job Type Updates:**
+   - Added `cover_letter_file_path` and `cover_letter_generated_at` fields
+
+### User Flow
+
+1. **Search Jobs**: Click "Search Jobs" button in header → modal opens → configure → run → see results → list refreshes
+2. **Prep Job**: Click "Prep" on any "new" job row → modal opens → configure → generate → see preview → close → job status = "prepped"
+3. **Edit Cover Letter**: Click prepped job → edit cover letter → save changes
+4. **Mark as Reviewed**: Click "Reviewed" status → cover letter saved → PDF generated → status = "reviewed"
+5. **Download PDF**: Click "Download PDF" button → browser downloads cover letter PDF
+
+### Completion Criteria
+- [x] SearchJobsModal opens from listings header
+- [x] PrepJobModal opens from "Prep" button on job rows
+- [x] Prep progress shows inline on table row
+- [x] Cover letter editable in job detail modal
+- [x] Save cover letter changes works
+- [x] Prepped → Reviewed generates PDF
+- [x] PDF download works
+- [x] Frontend API routes for PDF generation/download
+
+---
+
 ## Future Enhancements (Out of Scope)
 
 1. **Job Application Tracking** - Track applied jobs, responses, interviews
@@ -748,8 +807,9 @@ NEW → PREPPED → REVIEWED → (generate PDF) → APPLIED
 | Phase 7 | ✅ Complete | - | Profile selection in pipeline execution |
 | Phase 8 | ✅ Complete | - | Job prep pipeline with cover letter and prep notes |
 | Phase 9 | ✅ Complete | - | Profile-based story and project linking |
+| Phase 10 | ✅ Complete | - | Inline pipeline execution from listings page |
 
 ---
 
-*Last Updated: 2025-12-24*
+*Last Updated: 2025-12-25*
 

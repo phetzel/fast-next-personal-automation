@@ -28,6 +28,8 @@ export interface Job {
   notes: string | null;
   // Prep materials
   cover_letter: string | null;
+  cover_letter_file_path: string | null;
+  cover_letter_generated_at: string | null;
   prep_notes: string | null;
   prepped_at: string | null;
   created_at: string;

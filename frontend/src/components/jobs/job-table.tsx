@@ -44,6 +44,7 @@ interface JobTableProps {
   page: number;
   pageSize: number;
   isLoading?: boolean;
+  preppingJobId?: string | null;
   onJobClick?: (job: Job) => void;
   onDelete?: (jobId: string) => void;
   onPrep?: (job: Job) => void;
@@ -58,6 +59,7 @@ export function JobTable({
   page,
   pageSize,
   isLoading,
+  preppingJobId,
   onJobClick,
   onDelete,
   onPrep,
@@ -206,11 +208,18 @@ export function JobTable({
         header: "",
         cell: ({ row }) => {
           const job = row.original;
+          const isPrepping = preppingJobId === job.id;
           const showPrepButton = job.status === "new" && onPrep;
 
           return (
             <div className="flex items-center gap-1">
-              {showPrepButton && (
+              {isPrepping && (
+                <span className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-500/10 px-2 text-xs font-medium text-blue-600">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Prepping...
+                </span>
+              )}
+              {showPrepButton && !isPrepping && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -249,7 +258,7 @@ export function JobTable({
         enableSorting: false,
       },
     ],
-    [onJobClick, onDelete, onPrep]
+    [onJobClick, onDelete, onPrep, preppingJobId]
   );
 
   // Filter out hidden columns
