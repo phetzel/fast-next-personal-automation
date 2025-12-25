@@ -63,3 +63,4 @@ class ResumeTextResponse(BaseSchema):
     id: UUID
     name: str
     text_content: str | None
+

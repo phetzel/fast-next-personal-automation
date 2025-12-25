@@ -155,3 +155,4 @@ Please create a tailored cover letter and comprehensive prep notes based on the 
             cover_letter=f"[Generation failed: {str(e)[:100]}]\n\nDear Hiring Manager,\n\nI am writing to express my interest in the {job_title} position at {company}.\n\n[Please complete manually]",
             prep_notes=f"# Prep Notes for {job_title} at {company}\n\n*Generation failed: {str(e)[:100]}*\n\n## Resume Highlights\n- [Add manually]\n\n## Talking Points\n- [Add manually]",
         )
+

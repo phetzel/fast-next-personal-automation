@@ -15,7 +15,7 @@ from app.db.session import get_db_context
 from app.pipelines.action_base import ActionPipeline, ActionResult, PipelineContext
 from app.pipelines.actions.job_prep.generator import generate_prep_materials
 from app.pipelines.registry import register_pipeline
-from app.repositories import job_profile_repo, job_repo, project_repo, story_repo
+from app.repositories import job_profile_repo, job_repo, project_repo
 from app.schemas.job_profile import JobProfileSummary, ProfileRequiredError
 
 logger = logging.getLogger(__name__)
@@ -58,8 +58,8 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
 
     This pipeline:
     1. Fetches the job details by ID
-    2. Gets the user's resume from their profile
-    3. Optionally includes their primary story and active projects
+    2. Gets the user's resume from their selected profile
+    3. Includes the profile's linked story and projects (if any)
     4. Generates a tailored cover letter and prep notes using AI
     5. Saves the materials to the job record
     6. Updates the job status to PREPPED
@@ -67,6 +67,7 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
     Prerequisites:
     - Job must exist and belong to the user
     - User must have a profile with a resume linked
+    - Story and projects are optional (linked to profile)
 
     Can be invoked via:
     - API: POST /api/v1/pipelines/job_prep/execute
@@ -194,24 +195,25 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
 
         resume_text = profile.resume.text_content
 
-        # Step 3: Get optional story and projects
+        # Step 3: Get story and projects from the profile
         story_content: str | None = None
         projects_content: list[str] = []
 
-        async with get_db_context() as db:
-            # Get primary story
-            story = await story_repo.get_primary_for_user(db, context.user_id)
-            if story:
-                story_content = story.content
-                logger.info(f"Including primary story: {story.name}")
+        # Get story linked to profile (already loaded via relationship)
+        if profile.story:
+            story_content = profile.story.content
+            logger.info(f"Including profile story: {profile.story.name}")
 
-            # Get active projects
-            projects = await project_repo.get_active_for_user(db, context.user_id)
-            for project in projects:
-                if project.text_content:
-                    projects_content.append(project.text_content)
-            if projects_content:
-                logger.info(f"Including {len(projects_content)} active projects")
+        # Get projects linked to profile via project_ids
+        if profile.project_ids:
+            async with get_db_context() as db:
+                project_uuids = [UUID(pid) for pid in profile.project_ids]
+                projects = await project_repo.get_by_ids(db, project_uuids)
+                for project in projects:
+                    if project.text_content:
+                        projects_content.append(project.text_content)
+                if projects_content:
+                    logger.info(f"Including {len(projects_content)} projects from profile")
 
         # Step 4: Generate materials
         logger.info(f"Generating prep materials for: {job.title} at {job.company}")

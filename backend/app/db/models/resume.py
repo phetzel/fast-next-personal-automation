@@ -55,3 +55,4 @@ class Resume(Base, TimestampMixin):
 
     def __repr__(self) -> str:
         return f"<Resume(id={self.id}, name={self.name}, user_id={self.user_id})>"
+

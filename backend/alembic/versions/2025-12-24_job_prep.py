@@ -30,3 +30,4 @@ def downgrade() -> None:
     op.drop_column('jobs', 'prep_notes')
     op.drop_column('jobs', 'cover_letter')
 
+
