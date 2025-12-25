@@ -611,14 +611,70 @@ S3_REGION = "us-east-1"
 
 ---
 
+## Phase 8: Job Prep Pipeline
+
+**Goal:** Generate tailored cover letters and prep notes for job applications.
+
+### Backend Changes
+
+1. **Add PREPPED status to JobStatus enum**
+2. **Add new fields to Job model:**
+   - `cover_letter` - AI-generated cover letter (text)
+   - `cover_letter_file_path` - S3 path to generated PDF
+   - `cover_letter_generated_at` - When PDF was generated
+   - `prep_notes` - Combined resume highlights and talking points
+   - `prepped_at` - When prep materials were generated
+3. **Create job_prep pipeline** in `app/pipelines/actions/job_prep/`
+   - Uses resume, primary story, and active projects
+   - Generates tailored cover letter and prep notes
+   - Updates job status to PREPPED
+4. **Create cover letter PDF service** in `app/core/cover_letter_pdf.py`
+   - Generates professional PDFs using ReportLab
+   - Stores in S3 for later download/upload to job sites
+5. **Add PDF endpoints:**
+   - `POST /api/v1/jobs/{job_id}/cover-letter/generate-pdf` - Generate PDF after review
+   - `GET /api/v1/jobs/{job_id}/cover-letter/download` - Download the PDF
+
+### Frontend Changes
+
+1. **Add JobSelectField component** for pipeline forms
+2. **Add "Prep" button** to job table for jobs with status "new"
+3. **Update StatusBadge** with prepped status styling
+4. **Support URL params** to pre-fill pipeline forms
+
+### Workflow
+```
+NEW → PREPPED → REVIEWED → (generate PDF) → APPLIED
+         ↓           ↓
+    AI generates  User edits    User calls
+    cover letter  cover letter  generate-pdf endpoint
+    (text)        (text)        → PDF stored in S3
+```
+
+### Completion Criteria
+- [x] PREPPED status added to JobStatus enum
+- [x] Job model has cover_letter, prep_notes, prepped_at fields
+- [x] Job model has cover_letter_file_path, cover_letter_generated_at fields
+- [x] job_prep pipeline generates materials from resume/story/projects
+- [x] Cover letter PDF generation service created
+- [x] PDF generation and download endpoints added
+- [x] JobSelectField shows job dropdown in pipeline forms
+- [x] Prep button on job table navigates to pipeline with job pre-selected
+- [x] StatusBadge shows "Prepped" status
+
+---
+
 ## Future Enhancements (Out of Scope)
 
 1. **Job Application Tracking** - Track applied jobs, responses, interviews
-2. **Cover Letter Generation** - AI-generated cover letters per job
-3. **Interview Prep** - Company research, question preparation
-4. **Salary Research** - Market data integration
-5. **Scheduled Searches** - Cron-based job searches with notifications
-6. **Email Notifications** - New high-scoring job alerts
+2. ~~**Cover Letter Generation** - AI-generated cover letters per job~~ ✅ Implemented in Phase 8
+3. ~~**Cover Letter PDF Export** - Professional PDF for job applications~~ ✅ Implemented in Phase 8
+4. ~~**Interview Prep** - Company research, question preparation~~ ✅ Partially implemented (prep notes)
+5. **Salary Research** - Market data integration
+6. **Scheduled Searches** - Cron-based job searches with notifications
+7. **Email Notifications** - New high-scoring job alerts
+8. **Job Apply Pipeline** - Track application submission and method
+9. **Auto-upload to Job Sites** - Automatically upload cover letter PDFs to Indeed/LinkedIn
 
 ---
 
@@ -633,8 +689,9 @@ S3_REGION = "us-east-1"
 | Phase 5 | ✅ Complete | - | Pipeline tagging system (tags, area) |
 | Phase 6 | ✅ Complete | - | Area-specific agents with filtered pipelines + CRUD toolsets |
 | Phase 7 | ✅ Complete | - | Profile selection in pipeline execution |
+| Phase 8 | ✅ Complete | - | Job prep pipeline with cover letter and prep notes |
 
 ---
 
-*Last Updated: 2025-12-23*
+*Last Updated: 2025-12-24*
 

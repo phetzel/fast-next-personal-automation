@@ -9,6 +9,7 @@ import {
   Send,
   ThumbsDown,
   PhoneCall,
+  FileText,
 } from "lucide-react";
 
 interface StatusBadgeProps {
@@ -24,6 +25,11 @@ const statusConfig: Record<
     label: "New",
     className: "bg-blue-500/10 text-blue-600 border-blue-500/20",
     Icon: Sparkles,
+  },
+  prepped: {
+    label: "Prepped",
+    className: "bg-cyan-500/10 text-cyan-600 border-cyan-500/20",
+    Icon: FileText,
   },
   reviewed: {
     label: "Reviewed",

@@ -42,11 +42,15 @@ class JobCreate(JobBase):
 class JobUpdate(BaseSchema):
     """Schema for updating a job.
 
-    Users can update status and notes. Other fields are set by the pipeline.
+    Users can update status, notes, and prep materials.
     """
 
     status: JobStatus | None = Field(default=None, description="Job status in workflow")
     notes: str | None = Field(default=None, description="User notes about the job")
+    cover_letter: str | None = Field(default=None, description="Generated cover letter")
+    prep_notes: str | None = Field(
+        default=None, description="Prep notes (highlights + talking points)"
+    )
 
 
 class JobResponse(JobBase, TimestampSchema):
@@ -59,6 +63,12 @@ class JobResponse(JobBase, TimestampSchema):
     status: JobStatus = JobStatus.NEW
     search_terms: str | None = None
     notes: str | None = None
+    # Prep materials
+    cover_letter: str | None = None
+    cover_letter_file_path: str | None = None
+    cover_letter_generated_at: datetime | None = None
+    prep_notes: str | None = None
+    prepped_at: datetime | None = None
 
 
 class JobSummary(BaseSchema):
@@ -88,6 +98,7 @@ class JobStatsResponse(BaseSchema):
 
     total: int = 0
     new: int = 0
+    prepped: int = 0
     reviewed: int = 0
     applied: int = 0
     rejected: int = 0

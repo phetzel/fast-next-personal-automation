@@ -15,6 +15,10 @@ interface PipelineCardProps {
   onReset: () => void;
   /** Called when user selects a profile after a profile_required error and wants to retry */
   onRetryWithProfile?: (profileId: string) => void;
+  /** Initial values to pre-fill the form */
+  initialValues?: Record<string, unknown>;
+  /** Start expanded (e.g., when navigating with query params) */
+  defaultExpanded?: boolean;
 }
 
 /**
@@ -26,8 +30,10 @@ export function PipelineCard({
   onExecute,
   onReset,
   onRetryWithProfile,
+  initialValues,
+  defaultExpanded = false,
 }: PipelineCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const isRunning = executionState.status === "running";
   const hasResult = executionState.status === "success" || executionState.status === "error";
 
@@ -129,6 +135,7 @@ export function PipelineCard({
             onSubmit={onExecute}
             isSubmitting={isRunning}
             submitLabel={isRunning ? "Running..." : "Run Pipeline"}
+            initialValues={initialValues}
           />
 
           {/* Execution result */}

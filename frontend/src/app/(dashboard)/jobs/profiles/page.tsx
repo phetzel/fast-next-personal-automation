@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useJobProfiles, useResumes, useStories, useProjects } from "@/hooks";
 import {
   Button,
@@ -34,8 +34,6 @@ import {
   UserCircle,
   BookOpen,
   FolderOpen,
-  ToggleLeft,
-  ToggleRight,
 } from "lucide-react";
 
 // Accepted file types for resume upload
@@ -103,6 +101,8 @@ function TabNav({ activeTab, onTabChange }: { activeTab: TabId; onTabChange: (ta
 interface ProfileFormData {
   name: string;
   resume_id: string | null;
+  story_id: string | null;
+  project_ids: string[] | null;
   target_roles: string[] | null;
   target_locations: string[] | null;
   min_score_threshold: number;
@@ -121,6 +121,8 @@ function ProfileForm({
 }) {
   const [name, setName] = useState(profile?.name || "");
   const [resumeId, setResumeId] = useState<string | null>(profile?.resume_id || null);
+  const [storyId, setStoryId] = useState<string | null>(profile?.story_id || null);
+  const [projectIds, setProjectIds] = useState<string[]>(profile?.project_ids || []);
   const [targetRoles, setTargetRoles] = useState<string[]>(profile?.target_roles || []);
   const [targetLocations, setTargetLocations] = useState<string[]>(
     profile?.target_locations || []
@@ -128,6 +130,15 @@ function ProfileForm({
   const [minScore, setMinScore] = useState(profile?.min_score_threshold || 7.0);
   const [newRole, setNewRole] = useState("");
   const [newLocation, setNewLocation] = useState("");
+
+  // Fetch stories and projects for selectors
+  const { stories, fetchStories } = useStories();
+  const { projects, fetchProjects } = useProjects();
+
+  useEffect(() => {
+    fetchStories();
+    fetchProjects();
+  }, [fetchStories, fetchProjects]);
 
   const isEditing = !!profile;
 
@@ -137,6 +148,8 @@ function ProfileForm({
     const data: ProfileFormData = {
       name,
       resume_id: resumeId,
+      story_id: storyId,
+      project_ids: projectIds.length > 0 ? projectIds : null,
       target_roles: targetRoles.length > 0 ? targetRoles : null,
       target_locations: targetLocations.length > 0 ? targetLocations : null,
       min_score_threshold: minScore,
@@ -167,6 +180,14 @@ function ProfileForm({
     setTargetLocations(targetLocations.filter((l) => l !== location));
   };
 
+  const toggleProject = (projectId: string) => {
+    if (projectIds.includes(projectId)) {
+      setProjectIds(projectIds.filter((id) => id !== projectId));
+    } else {
+      setProjectIds([...projectIds, projectId]);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -174,7 +195,7 @@ function ProfileForm({
         <CardDescription>
           {isEditing
             ? "Update your job search profile settings"
-            : "Create a new job search profile with your resume and preferences"}
+            : "Create a new job search profile with your resume, story, projects, and preferences"}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -204,6 +225,64 @@ function ProfileForm({
             />
             <p className="text-muted-foreground mt-1 text-xs">
               Link a resume to this profile for AI job matching.
+            </p>
+          </div>
+
+          {/* Story Selector */}
+          <div>
+            <label className="mb-2 block text-sm font-medium">Story</label>
+            <select
+              value={storyId || ""}
+              onChange={(e) => setStoryId(e.target.value || null)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <option value="">No story selected</option>
+              {stories.map((story) => (
+                <option key={story.id} value={story.id}>
+                  {story.name} {story.is_primary && "(Primary)"}
+                </option>
+              ))}
+            </select>
+            <p className="text-muted-foreground mt-1 text-xs">
+              Link a story to personalize your job applications.
+            </p>
+          </div>
+
+          {/* Projects Selector */}
+          <div>
+            <label className="mb-2 block text-sm font-medium">Projects</label>
+            {projects.length > 0 ? (
+              <div className="space-y-2 rounded-md border p-3">
+                {projects.map((project) => (
+                  <label
+                    key={project.id}
+                    className="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-muted/50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={projectIds.includes(project.id)}
+                      onChange={() => toggleProject(project.id)}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <div className="flex-1">
+                      <span className="font-medium">{project.name}</span>
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {project.original_filename}
+                      </span>
+                    </div>
+                    {project.has_text && (
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    )}
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-sm">
+                No projects yet. Upload projects in the Projects tab.
+              </p>
+            )}
+            <p className="text-muted-foreground mt-1 text-xs">
+              Select projects to include in job applications for this profile.
             </p>
           </div>
 
@@ -365,6 +444,37 @@ function ProfileCard({
                   </span>
                 ) : (
                   <span className="text-muted-foreground">No resume linked</span>
+                )}
+              </div>
+
+              {/* Story status */}
+              <div className="flex items-center gap-2 text-sm">
+                <BookOpen className="text-muted-foreground h-4 w-4" />
+                {profile.story ? (
+                  <span className="text-purple-600">{profile.story.name}</span>
+                ) : (
+                  <span className="text-muted-foreground">No story linked</span>
+                )}
+              </div>
+
+              {/* Projects status */}
+              <div className="flex items-center gap-2 text-sm">
+                <FolderOpen className="text-muted-foreground h-4 w-4" />
+                {profile.projects && profile.projects.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {profile.projects.slice(0, 2).map((project) => (
+                      <Badge key={project.id} variant="outline" className="text-xs text-blue-600 border-blue-300">
+                        {project.name}
+                      </Badge>
+                    ))}
+                    {profile.projects.length > 2 && (
+                      <Badge variant="outline" className="text-xs">
+                        +{profile.projects.length - 2} more
+                      </Badge>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground">No projects linked</span>
                 )}
               </div>
 
@@ -626,7 +736,7 @@ function ResumeUploadZone({
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [name, setName] = useState("");
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -1230,7 +1340,7 @@ function ProjectUploadZone({
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [name, setName] = useState("");
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -1356,27 +1466,20 @@ function ProjectUploadZone({
 function ProjectListItem({
   project,
   onDelete,
-  onToggleActive,
   isLoading,
 }: {
   project: ProjectSummary;
   onDelete: () => void;
-  onToggleActive: () => void;
   isLoading?: boolean;
 }) {
   return (
-    <Card className={project.is_active ? "border-green-500/30 ring-1 ring-green-500/20" : "opacity-60"}>
+    <Card>
       <CardContent className="flex items-center gap-4 py-4">
-        <FolderOpen className={`h-5 w-5 ${project.is_active ? "text-green-500" : "text-gray-400"}`} />
+        <FolderOpen className="h-5 w-5 text-blue-500" />
         
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="truncate font-medium">{project.name}</p>
-            {project.is_active && (
-              <Badge variant="outline" className="shrink-0 border-green-500 text-green-600">
-                Active
-              </Badge>
-            )}
           </div>
           <p className="truncate text-sm text-muted-foreground">
             {project.original_filename}
@@ -1397,19 +1500,6 @@ function ProjectListItem({
         </div>
 
         <div className="flex shrink-0 gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggleActive}
-            disabled={isLoading}
-            title={project.is_active ? "Deactivate project" : "Activate project"}
-          >
-            {project.is_active ? (
-              <ToggleRight className="h-5 w-5 text-green-500" />
-            ) : (
-              <ToggleLeft className="h-5 w-5 text-gray-400" />
-            )}
-          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -1434,7 +1524,6 @@ function ProjectsTab() {
     fetchProjects,
     uploadProject,
     deleteProject,
-    toggleActive,
   } = useProjects();
 
   const [isUploading, setIsUploading] = useState(false);
@@ -1445,7 +1534,7 @@ function ProjectsTab() {
 
   const handleUpload = async (file: File, name: string) => {
     setIsUploading(true);
-    await uploadProject(file, name, true);
+    await uploadProject(file, name);
     setIsUploading(false);
   };
 
@@ -1453,12 +1542,6 @@ function ProjectsTab() {
     if (!confirm("Are you sure you want to delete this project?")) return;
     await deleteProject(id);
   };
-
-  const handleToggleActive = async (project: ProjectSummary) => {
-    await toggleActive(project.id, !project.is_active);
-  };
-
-  const activeCount = projects.filter((p) => p.is_active).length;
 
   return (
     <div className="space-y-6">
@@ -1495,16 +1578,18 @@ function ProjectsTab() {
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold">Your Projects</h2>
             <span className="text-sm text-muted-foreground">
-              {activeCount} of {projects.length} active
+              {projects.length} project{projects.length !== 1 ? "s" : ""}
             </span>
           </div>
+          <p className="mb-3 text-sm text-muted-foreground">
+            Link projects to profiles in the Profiles tab to use them in job applications.
+          </p>
           <div className="space-y-2">
             {projects.map((project) => (
               <ProjectListItem
                 key={project.id}
                 project={project}
                 onDelete={() => handleDelete(project.id)}
-                onToggleActive={() => handleToggleActive(project)}
                 isLoading={isLoading}
               />
             ))}
@@ -1530,8 +1615,6 @@ function ProjectsTab() {
 // ============================================================================
 // Main Page Component
 // ============================================================================
-
-import React from "react";
 
 export default function ProfilesPage() {
   const [activeTab, setActiveTab] = useState<TabId>("profiles");

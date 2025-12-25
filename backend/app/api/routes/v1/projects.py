@@ -1,6 +1,7 @@
 """Project API routes.
 
 Provides REST endpoints for managing project description uploads.
+Projects are linked to profiles rather than having their own active status.
 """
 
 import logging
@@ -32,12 +33,11 @@ async def upload_project(
     project_service: ProjectSvc,
     file: UploadFile = File(..., description="Project description file (Markdown or TXT)"),
     name: str = Form(..., min_length=1, max_length=100, description="Name for the project"),
-    is_active: bool = Form(True, description="Whether the project is active"),
 ) -> ProjectResponse:
     """Upload a new project description file.
 
     Accepts Markdown (.md) or plain text (.txt) files.
-    Multiple projects can be active at the same time.
+    Projects are linked to profiles for use in job applications.
 
     Maximum file size: 5MB
     """
@@ -84,7 +84,6 @@ async def upload_project(
         file_data=file_data,
         filename=filename,
         mime_type=mime_type,
-        is_active=is_active,
     )
 
     return ProjectResponse(
@@ -94,7 +93,6 @@ async def upload_project(
         original_filename=project.original_filename,
         file_size=project.file_size,
         mime_type=project.mime_type,
-        is_active=project.is_active,
         has_text=bool(project.text_content),
         created_at=project.created_at,
         updated_at=project.updated_at,
@@ -108,7 +106,7 @@ async def list_projects(
 ) -> list[ProjectSummary]:
     """List all projects for the current user.
 
-    Returns projects ordered by active status (active first) then creation date.
+    Returns projects ordered by creation date (newest first).
     """
     projects = await project_service.list_for_user(current_user.id)
     return [
@@ -116,7 +114,6 @@ async def list_projects(
             id=p.id,
             name=p.name,
             original_filename=p.original_filename,
-            is_active=p.is_active,
             has_text=bool(p.text_content),
         )
         for p in projects
@@ -141,7 +138,6 @@ async def get_project(
         original_filename=project.original_filename,
         file_size=project.file_size,
         mime_type=project.mime_type,
-        is_active=project.is_active,
         has_text=bool(project.text_content),
         created_at=project.created_at,
         updated_at=project.updated_at,
@@ -173,7 +169,7 @@ async def update_project(
     current_user: CurrentUser,
     project_service: ProjectSvc,
 ) -> ProjectResponse:
-    """Update a project's name or active status."""
+    """Update a project's name."""
     project = await project_service.update(project_id, current_user.id, update_data)
     return ProjectResponse(
         id=project.id,
@@ -182,7 +178,6 @@ async def update_project(
         original_filename=project.original_filename,
         file_size=project.file_size,
         mime_type=project.mime_type,
-        is_active=project.is_active,
         has_text=bool(project.text_content),
         created_at=project.created_at,
         updated_at=project.updated_at,
@@ -207,33 +202,6 @@ async def delete_project(
         original_filename=project.original_filename,
         file_size=project.file_size,
         mime_type=project.mime_type,
-        is_active=project.is_active,
-        has_text=bool(project.text_content),
-        created_at=project.created_at,
-        updated_at=project.updated_at,
-    )
-
-
-@router.post("/{project_id}/toggle-active", response_model=ProjectResponse)
-async def toggle_project_active(
-    project_id: UUID,
-    is_active: bool,
-    current_user: CurrentUser,
-    project_service: ProjectSvc,
-) -> ProjectResponse:
-    """Toggle the active status of a project.
-
-    Multiple projects can be active at the same time.
-    """
-    project = await project_service.toggle_active(current_user.id, project_id, is_active)
-    return ProjectResponse(
-        id=project.id,
-        user_id=project.user_id,
-        name=project.name,
-        original_filename=project.original_filename,
-        file_size=project.file_size,
-        mime_type=project.mime_type,
-        is_active=project.is_active,
         has_text=bool(project.text_content),
         created_at=project.created_at,
         updated_at=project.updated_at,
@@ -258,7 +226,6 @@ async def re_extract_text(
         original_filename=project.original_filename,
         file_size=project.file_size,
         mime_type=project.mime_type,
-        is_active=project.is_active,
         has_text=bool(project.text_content),
         created_at=project.created_at,
         updated_at=project.updated_at,

@@ -3,14 +3,24 @@
 Contains business logic for job operations. Uses job repository for database access.
 """
 
+import logging
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundError
+from app.core.cover_letter_pdf import (
+    generate_cover_letter_filename,
+    generate_cover_letter_pdf,
+)
+from app.core.exceptions import NotFoundError, ValidationError
+from app.core.storage import get_storage_instance
 from app.db.models.job import Job, JobStatus
+from app.db.models.user import User
 from app.repositories import job_repo
 from app.schemas.job import JobFilters, JobUpdate
+
+logger = logging.getLogger(__name__)
 
 
 class JobService:
@@ -113,3 +123,116 @@ class JobService:
         """Check if a job URL already exists for user."""
         existing = await job_repo.get_by_url_and_user(self.db, job_url, user_id)
         return existing is not None
+
+    async def generate_cover_letter_pdf(
+        self,
+        job_id: UUID,
+        user: User,
+    ) -> Job:
+        """Generate a PDF from the job's cover letter and store it in S3.
+
+        This should be called after the user has reviewed/edited the cover letter.
+        The PDF will be stored with a professional filename for easy uploading
+        to job application portals.
+
+        Args:
+            job_id: The job ID
+            user: The authenticated user (for name/email in the letter)
+
+        Returns:
+            The updated job with cover_letter_file_path set
+
+        Raises:
+            NotFoundError: If job doesn't exist or doesn't belong to user
+            ValidationError: If job has no cover letter text to convert
+        """
+        job = await self.get_by_id(job_id, user.id)
+
+        # Validate that we have a cover letter to convert
+        if not job.cover_letter:
+            raise ValidationError(
+                message="Job has no cover letter to convert to PDF",
+                details={"job_id": str(job_id)},
+            )
+
+        # Generate the PDF
+        applicant_name = user.full_name or user.email.split("@")[0]
+        pdf_bytes = generate_cover_letter_pdf(
+            cover_letter_text=job.cover_letter,
+            applicant_name=applicant_name,
+            applicant_email=user.email,
+            company_name=job.company,
+            job_title=job.title,
+        )
+
+        # Generate professional filename
+        filename = generate_cover_letter_filename(
+            company=job.company,
+            job_title=job.title,
+            applicant_name=applicant_name,
+        )
+
+        # Store in S3
+        storage = await get_storage_instance()
+        file_path = await storage.save(
+            file_data=pdf_bytes,
+            user_id=user.id,
+            filename=filename,
+            subdir="cover_letters",
+        )
+
+        # Update job record
+        now = datetime.now(UTC)
+        updated_job = await job_repo.update(
+            self.db,
+            db_job=job,
+            update_data={
+                "cover_letter_file_path": file_path,
+                "cover_letter_generated_at": now,
+            },
+        )
+
+        logger.info(f"Generated cover letter PDF for job {job_id}: {file_path}")
+
+        return updated_job
+
+    async def get_cover_letter_pdf(
+        self,
+        job_id: UUID,
+        user_id: UUID,
+    ) -> tuple[bytes, str]:
+        """Retrieve the cover letter PDF for a job.
+
+        Args:
+            job_id: The job ID
+            user_id: The user ID for ownership verification
+
+        Returns:
+            Tuple of (pdf_bytes, filename)
+
+        Raises:
+            NotFoundError: If job doesn't exist or doesn't belong to user
+            ValidationError: If no PDF has been generated yet
+        """
+        job = await self.get_by_id(job_id, user_id)
+
+        if not job.cover_letter_file_path:
+            raise ValidationError(
+                message="No cover letter PDF has been generated for this job",
+                details={"job_id": str(job_id)},
+            )
+
+        # Load from storage
+        storage = await get_storage_instance()
+        try:
+            pdf_bytes = await storage.load(job.cover_letter_file_path)
+        except FileNotFoundError as e:
+            raise ValidationError(
+                message="Cover letter PDF file not found in storage",
+                details={"file_path": job.cover_letter_file_path},
+            ) from e
+
+        # Extract filename from path
+        filename = job.cover_letter_file_path.split("/")[-1]
+
+        return pdf_bytes, filename

@@ -7,6 +7,7 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Query
+from fastapi.responses import Response
 
 from app.api.deps import CurrentUser, JobSvc
 from app.db.models.job import JobStatus
@@ -117,3 +118,43 @@ async def delete_job(
     """Delete a job from the user's list."""
     job = await job_service.delete(job_id, current_user.id)
     return JobResponse.model_validate(job)
+
+
+@router.post("/{job_id}/cover-letter/generate-pdf", response_model=JobResponse)
+async def generate_cover_letter_pdf(
+    job_id: UUID,
+    current_user: CurrentUser,
+    job_service: JobSvc,
+) -> JobResponse:
+    """Generate a PDF from the job's cover letter.
+
+    Creates a professionally formatted PDF cover letter and stores it in S3.
+    Call this after reviewing/editing the cover letter text.
+
+    The generated PDF can then be downloaded or used for job applications.
+    """
+    job = await job_service.generate_cover_letter_pdf(job_id, current_user)
+    return JobResponse.model_validate(job)
+
+
+@router.get("/{job_id}/cover-letter/download")
+async def download_cover_letter_pdf(
+    job_id: UUID,
+    current_user: CurrentUser,
+    job_service: JobSvc,
+) -> Response:
+    """Download the generated cover letter PDF.
+
+    Returns the PDF file with appropriate headers for browser download.
+    Must call generate-pdf first to create the PDF.
+    """
+    pdf_bytes, filename = await job_service.get_cover_letter_pdf(job_id, current_user.id)
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(pdf_bytes)),
+        },
+    )

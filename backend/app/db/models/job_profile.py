@@ -11,6 +11,7 @@ from app.db.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from app.db.models.resume import Resume
+    from app.db.models.story import Story
     from app.db.models.user import User
 
 
@@ -18,7 +19,8 @@ class JobProfile(Base, TimestampMixin):
     """JobProfile model for storing job-related user context.
 
     Contains target roles, locations, and preferences used by job-related
-    pipelines for matching and scoring. Resume is linked via the Resume entity.
+    pipelines for matching and scoring. Resume, story, and projects are
+    linked to enable dynamic search and application customization.
 
     A user can have multiple profiles with different configurations.
     One profile can be marked as default for quick access.
@@ -46,6 +48,19 @@ class JobProfile(Base, TimestampMixin):
         index=True,
     )
 
+    # Story reference (nullable - profile can exist without story)
+    story_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("stories.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # Project IDs (stored as JSON array of UUID strings)
+    project_ids: Mapped[list[str] | None] = mapped_column(
+        JSON, nullable=True, default=list
+    )  # ["uuid1", "uuid2", ...]
+
     # Target job criteria
     target_roles: Mapped[list[str] | None] = mapped_column(
         JSON, nullable=True, default=list
@@ -65,6 +80,7 @@ class JobProfile(Base, TimestampMixin):
     # Relationships
     user: Mapped["User"] = relationship("User", lazy="selectin")
     resume: Mapped["Resume | None"] = relationship("Resume", lazy="selectin")
+    story: Mapped["Story | None"] = relationship("Story", lazy="selectin")
 
     def __repr__(self) -> str:
         return f"<JobProfile(id={self.id}, name={self.name}, user_id={self.user_id})>"

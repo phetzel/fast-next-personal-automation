@@ -33,6 +33,7 @@ import {
   Building2,
   MapPin,
   Trash2,
+  FileText,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,7 @@ interface JobTableProps {
   isLoading?: boolean;
   onJobClick?: (job: Job) => void;
   onDelete?: (jobId: string) => void;
+  onPrep?: (job: Job) => void;
   onPageChange?: (page: number) => void;
   onSort?: (sortBy: string, sortOrder: "asc" | "desc") => void;
   className?: string;
@@ -58,6 +60,7 @@ export function JobTable({
   isLoading,
   onJobClick,
   onDelete,
+  onPrep,
   onPageChange,
   onSort,
   className,
@@ -201,34 +204,52 @@ export function JobTable({
       {
         id: "actions",
         header: "",
-        cell: ({ row }) => (
-          <div className="flex items-center gap-1">
-            <a
-              href={row.original.job_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              onClick={(e) => e.stopPropagation()}
-              title="Open job posting"
-            >
-              <ExternalLink className="h-4 w-4" />
-            </a>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete?.(row.original.id);
-              }}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-              title="Delete job"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-        ),
+        cell: ({ row }) => {
+          const job = row.original;
+          const showPrepButton = job.status === "new" && onPrep;
+
+          return (
+            <div className="flex items-center gap-1">
+              {showPrepButton && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPrep(job);
+                  }}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary/10 px-2 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+                  title="Prepare cover letter & notes"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  Prep
+                </button>
+              )}
+              <a
+                href={job.job_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                onClick={(e) => e.stopPropagation()}
+                title="Open job posting"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </a>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete?.(job.id);
+                }}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                title="Delete job"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          );
+        },
         enableSorting: false,
       },
     ],
-    [onJobClick, onDelete]
+    [onJobClick, onDelete, onPrep]
   );
 
   // Filter out hidden columns

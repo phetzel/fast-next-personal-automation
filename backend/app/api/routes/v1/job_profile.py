@@ -16,7 +16,9 @@ from app.schemas.job_profile import (
     JobProfileResponse,
     JobProfileSummary,
     JobProfileUpdate,
+    ProjectInfo,
     ResumeInfo,
+    StoryInfo,
 )
 
 logger = logging.getLogger(__name__)
@@ -24,8 +26,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _profile_to_response(profile: JobProfile) -> JobProfileResponse:
-    """Convert a JobProfile model to a response schema with resume info."""
+def _profile_to_response(profile: JobProfile, projects: list | None = None) -> JobProfileResponse:
+    """Convert a JobProfile model to a response schema with resume, story, and projects info."""
     resume_info = None
     if profile.resume:
         resume_info = ResumeInfo(
@@ -35,6 +37,31 @@ def _profile_to_response(profile: JobProfile) -> JobProfileResponse:
             has_text=bool(profile.resume.text_content),
         )
 
+    story_info = None
+    if profile.story:
+        story_info = StoryInfo(
+            id=profile.story.id,
+            name=profile.story.name,
+        )
+
+    project_infos = None
+    if projects:
+        project_infos = [
+            ProjectInfo(
+                id=p.id,
+                name=p.name,
+                has_text=bool(p.text_content),
+            )
+            for p in projects
+        ]
+
+    # Convert project_ids from string list to UUID list if needed
+    project_ids_list = None
+    if profile.project_ids:
+        project_ids_list = [
+            UUID(pid) if isinstance(pid, str) else pid for pid in profile.project_ids
+        ]
+
     return JobProfileResponse(
         id=profile.id,
         user_id=profile.user_id,
@@ -42,6 +69,10 @@ def _profile_to_response(profile: JobProfile) -> JobProfileResponse:
         is_default=profile.is_default,
         resume_id=profile.resume_id,
         resume=resume_info,
+        story_id=profile.story_id,
+        story=story_info,
+        project_ids=project_ids_list,
+        projects=project_infos,
         target_roles=profile.target_roles,
         target_locations=profile.target_locations,
         min_score_threshold=profile.min_score_threshold,
@@ -68,6 +99,9 @@ async def list_profiles(
             is_default=p.is_default,
             has_resume=bool(p.resume and p.resume.text_content),
             resume_name=p.resume.name if p.resume else None,
+            has_story=bool(p.story),
+            story_name=p.story.name if p.story else None,
+            project_count=len(p.project_ids or []),
             target_roles_count=len(p.target_roles or []),
             min_score_threshold=p.min_score_threshold,
         )
@@ -87,7 +121,8 @@ async def get_default_profile(
     profile = await profile_service.get_default_for_user(current_user.id)
     if profile is None:
         return None
-    return _profile_to_response(profile)
+    projects = await profile_service.get_linked_projects(profile)
+    return _profile_to_response(profile, projects)
 
 
 @router.get("/{profile_id}", response_model=JobProfileResponse)
@@ -101,7 +136,8 @@ async def get_profile(
     Only returns profiles belonging to the current user.
     """
     profile = await profile_service.get_by_id(profile_id, current_user.id)
-    return _profile_to_response(profile)
+    projects = await profile_service.get_linked_projects(profile)
+    return _profile_to_response(profile, projects)
 
 
 @router.post("", response_model=JobProfileResponse, status_code=201)
@@ -116,7 +152,8 @@ async def create_profile(
     Profile names must be unique per user.
     """
     profile = await profile_service.create(current_user.id, profile_in)
-    return _profile_to_response(profile)
+    projects = await profile_service.get_linked_projects(profile)
+    return _profile_to_response(profile, projects)
 
 
 @router.patch("/{profile_id}", response_model=JobProfileResponse)
@@ -132,7 +169,8 @@ async def update_profile(
     Profile names must remain unique per user.
     """
     profile = await profile_service.update(profile_id, current_user.id, profile_in)
-    return _profile_to_response(profile)
+    projects = await profile_service.get_linked_projects(profile)
+    return _profile_to_response(profile, projects)
 
 
 @router.delete("/{profile_id}", response_model=JobProfileResponse)
@@ -161,4 +199,5 @@ async def set_default_profile(
     will unset any previous default.
     """
     profile = await profile_service.set_default(current_user.id, profile_id)
-    return _profile_to_response(profile)
+    projects = await profile_service.get_linked_projects(profile)
+    return _profile_to_response(profile, projects)

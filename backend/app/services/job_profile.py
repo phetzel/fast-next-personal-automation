@@ -10,7 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError, ValidationError
 from app.db.models.job_profile import JobProfile
-from app.repositories import job_profile_repo, resume_repo
+from app.db.models.project import Project
+from app.repositories import job_profile_repo, project_repo, resume_repo, story_repo
 from app.schemas.job_profile import (
     JobProfileCreate,
     JobProfileUpdate,
@@ -65,6 +66,19 @@ class JobProfileService:
             is_default=True,
         )
 
+    async def get_linked_projects(self, profile: JobProfile) -> list[Project]:
+        """Get all projects linked to a profile."""
+        if not profile.project_ids:
+            return []
+
+        projects = []
+        for pid in profile.project_ids:
+            project_uuid = UUID(pid) if isinstance(pid, str) else pid
+            project = await project_repo.get_by_id(self.db, project_uuid)
+            if project:
+                projects.append(project)
+        return projects
+
     async def create(
         self,
         user_id: UUID,
@@ -75,6 +89,8 @@ class JobProfileService:
         Raises:
             ValidationError: If a profile with the same name already exists.
             ValidationError: If resume_id is provided but doesn't belong to user.
+            ValidationError: If story_id is provided but doesn't belong to user.
+            ValidationError: If any project_id is provided but doesn't belong to user.
         """
         # Check for duplicate name
         existing = await job_profile_repo.get_by_user_and_name(self.db, user_id, profile_in.name)
@@ -93,6 +109,27 @@ class JobProfileService:
                     details={"resume_id": str(profile_in.resume_id)},
                 )
 
+        # Validate story ownership if provided
+        if profile_in.story_id:
+            story = await story_repo.get_by_id(self.db, profile_in.story_id)
+            if not story or story.user_id != user_id:
+                raise ValidationError(
+                    message="Story not found or doesn't belong to you",
+                    details={"story_id": str(profile_in.story_id)},
+                )
+
+        # Validate project ownership if provided
+        project_ids_str: list[str] = []
+        if profile_in.project_ids:
+            for pid in profile_in.project_ids:
+                project = await project_repo.get_by_id(self.db, pid)
+                if not project or project.user_id != user_id:
+                    raise ValidationError(
+                        message="Project not found or doesn't belong to you",
+                        details={"project_id": str(pid)},
+                    )
+                project_ids_str.append(str(pid))
+
         # If this is set as default, or it's the first profile, make it default
         is_default = profile_in.is_default
         if not is_default:
@@ -106,6 +143,8 @@ class JobProfileService:
             name=profile_in.name,
             is_default=is_default,
             resume_id=profile_in.resume_id,
+            story_id=profile_in.story_id,
+            project_ids=project_ids_str if project_ids_str else None,
             target_roles=profile_in.target_roles,
             target_locations=profile_in.target_locations,
             min_score_threshold=profile_in.min_score_threshold,
@@ -130,6 +169,8 @@ class JobProfileService:
             NotFoundError: If profile does not exist.
             ValidationError: If new name conflicts with existing profile.
             ValidationError: If resume_id is provided but doesn't belong to user.
+            ValidationError: If story_id is provided but doesn't belong to user.
+            ValidationError: If any project_id is provided but doesn't belong to user.
         """
         profile = await self.get_by_id(profile_id, user_id)
         update_data = profile_in.model_dump(exclude_unset=True)
@@ -153,6 +194,28 @@ class JobProfileService:
                     message="Resume not found or doesn't belong to you",
                     details={"resume_id": str(update_data["resume_id"])},
                 )
+
+        # Validate story ownership if provided
+        if update_data.get("story_id"):
+            story = await story_repo.get_by_id(self.db, update_data["story_id"])
+            if not story or story.user_id != user_id:
+                raise ValidationError(
+                    message="Story not found or doesn't belong to you",
+                    details={"story_id": str(update_data["story_id"])},
+                )
+
+        # Validate project ownership if provided
+        if update_data.get("project_ids"):
+            project_ids_str: list[str] = []
+            for pid in update_data["project_ids"]:
+                project = await project_repo.get_by_id(self.db, pid)
+                if not project or project.user_id != user_id:
+                    raise ValidationError(
+                        message="Project not found or doesn't belong to you",
+                        details={"project_id": str(pid)},
+                    )
+                project_ids_str.append(str(pid))
+            update_data["project_ids"] = project_ids_str
 
         updated = await job_profile_repo.update(
             self.db, db_profile=profile, update_data=update_data

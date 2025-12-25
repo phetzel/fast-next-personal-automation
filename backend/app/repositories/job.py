@@ -254,6 +254,7 @@ async def get_stats(db: AsyncSession, user_id: UUID) -> dict:
     return {
         "total": total,
         "new": status_counts.get(JobStatus.NEW.value, 0),
+        "prepped": status_counts.get(JobStatus.PREPPED.value, 0),
         "reviewed": status_counts.get(JobStatus.REVIEWED.value, 0),
         "applied": status_counts.get(JobStatus.APPLIED.value, 0),
         "rejected": status_counts.get(JobStatus.REJECTED.value, 0),

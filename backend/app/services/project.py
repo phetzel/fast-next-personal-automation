@@ -51,12 +51,8 @@ class ProjectService:
         return project
 
     async def list_for_user(self, user_id: UUID) -> list[Project]:
-        """Get all projects for a user, ordered by active status and creation date."""
+        """Get all projects for a user, ordered by creation date."""
         return await project_repo.get_by_user_id(self.db, user_id)
-
-    async def get_active_for_user(self, user_id: UUID) -> list[Project]:
-        """Get all active projects for a user."""
-        return await project_repo.get_active_for_user(self.db, user_id)
 
     async def create_from_upload(
         self,
@@ -65,7 +61,6 @@ class ProjectService:
         file_data: bytes,
         filename: str,
         mime_type: str,
-        is_active: bool = True,
     ) -> Project:
         """Create a new project from an uploaded file.
 
@@ -77,7 +72,6 @@ class ProjectService:
             file_data: Raw file bytes
             filename: Original filename
             mime_type: MIME type of the file
-            is_active: Whether the project should be active
 
         Returns:
             The created project
@@ -117,7 +111,6 @@ class ProjectService:
             file_size=len(file_data),
             mime_type=mime_type,
             text_content=text_content,
-            is_active=is_active,
         )
 
         return project
@@ -153,23 +146,6 @@ class ProjectService:
         data = update_data.model_dump(exclude_unset=True)
 
         return await project_repo.update(self.db, db_project=project, update_data=data)
-
-    async def toggle_active(self, user_id: UUID, project_id: UUID, is_active: bool) -> Project:
-        """Toggle the active status of a project.
-
-        Raises:
-            NotFoundError: If project does not exist or doesn't belong to user.
-        """
-        # Verify ownership
-        await self.get_by_id(project_id, user_id)
-
-        result = await project_repo.toggle_active(self.db, project_id, user_id, is_active)
-        if not result:
-            raise NotFoundError(
-                message="Project not found",
-                details={"project_id": str(project_id)},
-            )
-        return result
 
     async def delete(self, project_id: UUID, user_id: UUID) -> Project:
         """Delete a project.

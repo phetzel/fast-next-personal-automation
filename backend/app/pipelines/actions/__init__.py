@@ -28,6 +28,7 @@ def discover_pipelines(force_reload: bool = False) -> None:
     pipeline_modules = [
         "app.pipelines.actions.echo",
         "app.pipelines.actions.job_search.pipeline",
+        "app.pipelines.actions.job_prep.pipeline",
     ]
 
     for module_name in pipeline_modules:

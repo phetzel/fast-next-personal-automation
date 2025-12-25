@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useJobs } from "@/hooks";
 import {
   JobTable,
@@ -15,6 +16,7 @@ import Link from "next/link";
 import { ROUTES } from "@/lib/constants";
 
 export default function JobsListPage() {
+  const router = useRouter();
   const {
     jobs,
     total,
@@ -76,6 +78,11 @@ export default function JobsListPage() {
     return success;
   };
 
+  const handlePrep = (job: Job) => {
+    // Navigate to pipelines page with job_id query param for job_prep pipeline
+    router.push(`${ROUTES.JOBS_PIPELINES}?pipeline=job_prep&job_id=${job.id}`);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -119,6 +126,7 @@ export default function JobsListPage() {
         isLoading={isLoading}
         onJobClick={handleJobClick}
         onDelete={handleDelete}
+        onPrep={handlePrep}
         onPageChange={goToPage}
         onSort={handleSort}
       />

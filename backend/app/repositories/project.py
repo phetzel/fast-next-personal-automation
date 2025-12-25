@@ -6,7 +6,7 @@ should be handled by ProjectService in app/services/project.py.
 
 from uuid import UUID
 
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.project import Project
@@ -18,27 +18,18 @@ async def get_by_id(db: AsyncSession, project_id: UUID) -> Project | None:
 
 
 async def get_by_user_id(db: AsyncSession, user_id: UUID) -> list[Project]:
-    """Get all projects for a user, ordered by active status and creation date."""
+    """Get all projects for a user, ordered by creation date."""
     result = await db.execute(
-        select(Project)
-        .where(Project.user_id == user_id)
-        .order_by(Project.is_active.desc(), Project.created_at.desc())
+        select(Project).where(Project.user_id == user_id).order_by(Project.created_at.desc())
     )
     return list(result.scalars().all())
 
 
-async def get_active_for_user(db: AsyncSession, user_id: UUID) -> list[Project]:
-    """Get all active projects for a user."""
-    result = await db.execute(
-        select(Project)
-        .where(
-            and_(
-                Project.user_id == user_id,
-                Project.is_active == True,  # noqa: E712
-            )
-        )
-        .order_by(Project.created_at.desc())
-    )
+async def get_by_ids(db: AsyncSession, project_ids: list[UUID]) -> list[Project]:
+    """Get projects by IDs."""
+    if not project_ids:
+        return []
+    result = await db.execute(select(Project).where(Project.id.in_(project_ids)))
     return list(result.scalars().all())
 
 
@@ -52,7 +43,6 @@ async def create(
     file_size: int,
     mime_type: str,
     text_content: str | None = None,
-    is_active: bool = True,
 ) -> Project:
     """Create a new project."""
     project = Project(
@@ -63,7 +53,6 @@ async def create(
         file_size=file_size,
         mime_type=mime_type,
         text_content=text_content,
-        is_active=is_active,
     )
     db.add(project)
     await db.flush()
@@ -85,26 +74,6 @@ async def update(
     await db.flush()
     await db.refresh(db_project)
     return db_project
-
-
-async def toggle_active(
-    db: AsyncSession,
-    project_id: UUID,
-    user_id: UUID,
-    is_active: bool,
-) -> Project | None:
-    """Toggle the active status of a project.
-
-    Returns the updated project, or None if not found.
-    """
-    project = await get_by_id(db, project_id)
-    if project and project.user_id == user_id:
-        project.is_active = is_active
-        db.add(project)
-        await db.flush()
-        await db.refresh(project)
-        return project
-    return None
 
 
 async def delete(db: AsyncSession, project_id: UUID) -> Project | None:
