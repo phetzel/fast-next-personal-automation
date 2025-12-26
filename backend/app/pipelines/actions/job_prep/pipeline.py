@@ -45,6 +45,10 @@ class JobPrepInput(BaseModel):
         default=True,
         description="Generate answers for detected screening questions",
     )
+    auto_analyze: bool = Field(
+        default=True,
+        description="Automatically analyze job application page first if not already analyzed",
+    )
 
 
 class JobPrepOutput(BaseModel):
@@ -74,11 +78,14 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
 
     This pipeline:
     1. Fetches the job details by ID
-    2. Gets the user's resume from their selected profile
-    3. Includes the profile's linked story and projects (if any)
-    4. Generates a tailored cover letter and prep notes using AI
-    5. Saves the materials to the job record
-    6. Updates the job status to PREPPED
+    2. Auto-runs job_analyze if not already analyzed (detects cover letter requirement)
+    3. Gets the user's resume from their selected profile
+    4. Includes the profile's linked story and projects (if any)
+    5. Generates a tailored cover letter and prep notes using AI
+       (skips cover letter if analysis shows it's not required)
+    6. Generates answers for screening questions (if detected during analysis)
+    7. Saves the materials to the job record
+    8. Updates the job status to PREPPED
 
     Prerequisites:
     - Job must exist and belong to the user
@@ -120,6 +127,36 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                 success=False,
                 error=f"Job not found or you don't have access to it: {input.job_id}",
             )
+
+        # Step 1.5: Auto-analyze if not already analyzed
+        if input.auto_analyze and job.analyzed_at is None:
+            logger.info("Job not analyzed yet, running job_analyze first...")
+            from app.pipelines.actions.job_analyze.pipeline import (
+                JobAnalyzeInput,
+                JobAnalyzePipeline,
+            )
+
+            analyze_input = JobAnalyzeInput(
+                job_id=input.job_id,
+                use_ai=False,  # Use fast DOM analysis by default
+                navigate_to_apply=True,
+            )
+            analyze_pipeline = JobAnalyzePipeline()
+            analyze_result = await analyze_pipeline.execute(analyze_input, context)
+
+            if not analyze_result.success:
+                logger.warning(f"Auto-analyze failed: {analyze_result.error}")
+                # Continue anyway - prep can still work without analysis
+            else:
+                logger.info("Auto-analyze completed successfully")
+                # Refresh job to get updated analysis fields
+                async with get_db_context() as db:
+                    job = await job_repo.get_by_id_and_user(db, input.job_id, context.user_id)
+                    if job is None:
+                        return ActionResult(
+                            success=False,
+                            error="Job was deleted during analysis",
+                        )
 
         # Step 2: Get the profile
         async with get_db_context() as db:
