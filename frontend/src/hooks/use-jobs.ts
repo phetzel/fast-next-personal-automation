@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { useJobStore } from "@/stores/job-store";
 import { apiClient } from "@/lib/api-client";
 import type { Job, JobFilters, JobListResponse, JobStats, JobUpdate } from "@/types";
@@ -169,19 +169,5 @@ export function useJobs() {
     setSelectedJob,
     goToPage,
   };
-}
-
-/**
- * Hook to fetch jobs on mount with current filters.
- */
-export function useJobsOnMount() {
-  const { fetchJobs, fetchStats, filters } = useJobs();
-
-  useEffect(() => {
-    fetchJobs();
-    fetchStats();
-  }, [filters.page, filters.status, filters.sort_by, filters.sort_order]);
-
-  return useJobs();
 }
 
