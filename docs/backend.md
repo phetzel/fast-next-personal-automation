@@ -124,6 +124,15 @@ All endpoints are prefixed with `/api/v1`.
 | POST | `/pipelines/{name}/execute` | Execute a pipeline |
 | GET | `/pipeline-runs` | List pipeline run history |
 
+#### Job Pipelines
+
+| Pipeline | Description |
+|----------|-------------|
+| `job_search` | Search job boards and analyze fit against resume |
+| `job_analyze` | Analyze application page to detect requirements (cover letter, form fields) |
+| `job_prep` | Generate cover letter (if needed) and prep notes |
+| `job_apply` | Assist with or automate application submission |
+
 ### Area Agents
 
 | Method | Endpoint | Description |
@@ -228,6 +237,9 @@ settings.OPENAI_API_KEY
 | `AI_MODEL` | `gpt-4o-mini` | Default AI model |
 | `RATE_LIMIT_REQUESTS` | `100` | Requests per period |
 | `RATE_LIMIT_PERIOD` | `60` | Rate limit period (seconds) |
+| `BROWSER_HEADLESS` | `True` | Run Playwright browser in headless mode |
+| `BROWSER_TIMEOUT` | `30000` | Browser operation timeout in milliseconds |
+| `BROWSER_USE_AI_MODEL` | `gpt-4o` | Model for AI-powered browser analysis |
 
 ## Exception Handling
 

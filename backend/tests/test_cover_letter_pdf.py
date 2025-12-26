@@ -169,4 +169,3 @@ class TestCoverLetterFilename:
         )
         # Should use first two parts
         assert filename.startswith("John_Jacob_CoverLetter")
-

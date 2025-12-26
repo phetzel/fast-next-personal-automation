@@ -37,6 +37,14 @@ class JobPrepInput(BaseModel):
         default="professional",
         description="Tone for the cover letter",
     )
+    force_cover_letter: bool = Field(
+        default=False,
+        description="Generate cover letter even if analysis shows it's not required",
+    )
+    generate_screening_answers: bool = Field(
+        default=True,
+        description="Generate answers for detected screening questions",
+    )
 
 
 class JobPrepOutput(BaseModel):
@@ -45,11 +53,19 @@ class JobPrepOutput(BaseModel):
     job_id: UUID = Field(description="ID of the job that was prepped")
     job_title: str = Field(description="Title of the job")
     company: str = Field(description="Company name")
-    cover_letter: str = Field(description="Generated cover letter")
+    cover_letter: str | None = Field(
+        default=None, description="Generated cover letter (None if not required)"
+    )
     prep_notes: str = Field(description="Markdown prep notes with highlights and talking points")
     profile_used: str = Field(description="Name of the profile used")
     included_story: bool = Field(description="Whether a story was included")
     included_projects: int = Field(description="Number of projects included")
+    skipped_cover_letter: bool = Field(
+        default=False, description="Whether cover letter was skipped (not required)"
+    )
+    screening_answers: dict[str, str] = Field(
+        default_factory=dict, description="Generated answers for screening questions"
+    )
 
 
 @register_pipeline
@@ -215,7 +231,21 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                 if projects_content:
                     logger.info(f"Including {len(projects_content)} projects from profile")
 
-        # Step 4: Generate materials
+        # Step 4: Determine if cover letter is needed
+        # Check job analysis results (if job was analyzed)
+        should_generate_cover_letter = True
+        skipped_cover_letter = False
+
+        if job.requires_cover_letter is False and not input.force_cover_letter:
+            # Analysis indicates cover letter not required
+            should_generate_cover_letter = False
+            skipped_cover_letter = True
+            logger.info("Skipping cover letter generation (not required per analysis)")
+        elif job.requires_cover_letter is None:
+            # No analysis done, generate by default
+            logger.info("Cover letter requirement unknown, generating by default")
+
+        # Step 5: Generate materials
         logger.info(f"Generating prep materials for: {job.title} at {job.company}")
         try:
             prep_output = await generate_prep_materials(
@@ -226,6 +256,7 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                 story_content=story_content,
                 projects_content=projects_content if projects_content else None,
                 tone=input.tone,
+                skip_cover_letter=not should_generate_cover_letter,
             )
         except Exception as e:
             logger.exception("Failed to generate prep materials")
@@ -234,20 +265,39 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                 error=f"Failed to generate prep materials: {e}",
             )
 
-        # Step 5: Update the job record
+        # Step 6: Generate screening answers if requested
+        screening_answers: dict[str, str] = {}
+        if input.generate_screening_answers and job.screening_questions:
+            try:
+                from app.pipelines.actions.job_prep.answer_generator import (
+                    generate_screening_answers,
+                )
+
+                screening_answers = await generate_screening_answers(
+                    questions=job.screening_questions,
+                    resume_text=resume_text,
+                    job_title=job.title,
+                    company=job.company,
+                )
+                logger.info(f"Generated {len(screening_answers)} screening answers")
+            except Exception as e:
+                logger.warning(f"Failed to generate screening answers: {e}")
+                # Continue without screening answers
+
+        # Step 7: Update the job record
         async with get_db_context() as db:
             job = await job_repo.get_by_id_and_user(db, input.job_id, context.user_id)
             if job:
-                await job_repo.update(
-                    db,
-                    db_job=job,
-                    update_data={
-                        "cover_letter": prep_output.cover_letter,
-                        "prep_notes": prep_output.prep_notes,
-                        "prepped_at": datetime.now(UTC),
-                        "status": JobStatus.PREPPED.value,
-                    },
-                )
+                update_data = {
+                    "prep_notes": prep_output.prep_notes,
+                    "prepped_at": datetime.now(UTC),
+                    "status": JobStatus.PREPPED.value,
+                }
+                # Only update cover letter if we generated one
+                if prep_output.cover_letter:
+                    update_data["cover_letter"] = prep_output.cover_letter
+
+                await job_repo.update(db, db_job=job, update_data=update_data)
                 await db.commit()
                 logger.info(f"Updated job {job.id} with prep materials, status set to PREPPED")
 
@@ -262,11 +312,15 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                 profile_used=profile.name,
                 included_story=story_content is not None,
                 included_projects=len(projects_content),
+                skipped_cover_letter=skipped_cover_letter,
+                screening_answers=screening_answers,
             ),
             metadata={
                 "profile_name": profile.name,
                 "tone": input.tone,
                 "had_story": story_content is not None,
                 "project_count": len(projects_content),
+                "skipped_cover_letter": skipped_cover_letter,
+                "screening_answers_count": len(screening_answers),
             },
         )

@@ -5,8 +5,8 @@ from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Float, ForeignKey, String, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
@@ -88,6 +88,30 @@ class Job(Base, TimestampMixin):
         Text, nullable=True
     )  # Combined highlights and talking points
     prepped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Application analysis (from job_analyze pipeline)
+    application_type: Mapped[str | None] = mapped_column(
+        String(50), nullable=True
+    )  # easy_apply, ats, direct, email, unknown
+    application_url: Mapped[str | None] = mapped_column(
+        String(2048), nullable=True
+    )  # Direct application URL (may differ from job_url)
+    requires_cover_letter: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    requires_resume: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    detected_fields: Mapped[dict | None] = mapped_column(
+        JSON, nullable=True
+    )  # List of detected form fields
+    screening_questions: Mapped[list | None] = mapped_column(
+        JSON, nullable=True
+    )  # Detected screening questions
+    analyzed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Application tracking (from job_apply pipeline)
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    application_method: Mapped[str | None] = mapped_column(
+        String(50), nullable=True
+    )  # manual, assisted, automated
+    confirmation_code: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Relationship
     user: Mapped["User"] = relationship("User", lazy="selectin")

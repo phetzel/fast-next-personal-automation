@@ -18,7 +18,9 @@ logger = logging.getLogger(__name__)
 class PrepOutput(BaseModel):
     """Output from the job prep generator."""
 
-    cover_letter: str = Field(description="A tailored cover letter for the job application")
+    cover_letter: str | None = Field(
+        default=None, description="A tailored cover letter for the job application"
+    )
     prep_notes: str = Field(description="Markdown notes with resume highlights and talking points")
 
 
@@ -107,6 +109,7 @@ async def generate_prep_materials(
     story_content: str | None = None,
     projects_content: list[str] | None = None,
     tone: str = "professional",
+    skip_cover_letter: bool = False,
 ) -> PrepOutput:
     """Generate cover letter and prep notes for a job.
 
@@ -118,9 +121,10 @@ async def generate_prep_materials(
         story_content: Optional personal story/narrative
         projects_content: Optional list of project descriptions
         tone: Desired tone (professional, conversational, enthusiastic)
+        skip_cover_letter: If True, only generate prep notes (cover letter not required)
 
     Returns:
-        PrepOutput with cover_letter and prep_notes
+        PrepOutput with cover_letter (optional) and prep_notes
     """
     agent = get_prep_agent()
     deps = PrepDeps(
@@ -133,7 +137,21 @@ async def generate_prep_materials(
         tone=tone,
     )
 
-    prompt = f"""
+    if skip_cover_letter:
+        prompt = f"""
+Generate prep notes ONLY for this job (cover letter is not required):
+
+**Position:** {job_title}
+**Company:** {company}
+
+**Job Description:**
+{job_description or "No description available - focus on the job title and company."}
+
+Please create comprehensive prep notes based on the candidate's background.
+For the cover_letter field, return null or an empty string.
+"""
+    else:
+        prompt = f"""
 Generate application materials for this job:
 
 **Position:** {job_title}
@@ -147,12 +165,20 @@ Please create a tailored cover letter and comprehensive prep notes based on the 
 
     try:
         result = await agent.run(prompt, deps=deps)
-        return result.output
+        output = result.output
+        # Ensure cover_letter is None if we skipped it
+        if skip_cover_letter:
+            output.cover_letter = None
+        return output
     except Exception as e:
         logger.error(f"Error generating prep materials for '{job_title}' at {company}: {e}")
         # Return a basic template on error
+        if skip_cover_letter:
+            return PrepOutput(
+                cover_letter=None,
+                prep_notes=f"# Prep Notes for {job_title} at {company}\n\n*Generation failed: {str(e)[:100]}*\n\n## Resume Highlights\n- [Add manually]\n\n## Talking Points\n- [Add manually]",
+            )
         return PrepOutput(
             cover_letter=f"[Generation failed: {str(e)[:100]}]\n\nDear Hiring Manager,\n\nI am writing to express my interest in the {job_title} position at {company}.\n\n[Please complete manually]",
             prep_notes=f"# Prep Notes for {job_title} at {company}\n\n*Generation failed: {str(e)[:100]}*\n\n## Resume Highlights\n- [Add manually]\n\n## Talking Points\n- [Add manually]",
         )
-

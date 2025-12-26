@@ -107,6 +107,3 @@ def downgrade() -> None:
     op.execute("DROP INDEX IF EXISTS resumes_user_primary_idx")
     op.drop_index("resumes_user_id_idx", table_name="resumes")
     op.drop_table("resumes")
-
-
-

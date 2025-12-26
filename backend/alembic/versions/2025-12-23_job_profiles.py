@@ -88,9 +88,7 @@ def downgrade() -> None:
     # Drop new indexes and constraints
     op.execute("DROP INDEX IF EXISTS job_profiles_user_default_idx")
     op.drop_index("job_profiles_user_id_idx", table_name="job_profiles")
-    op.drop_constraint(
-        "job_profiles_user_id_name_key", "job_profiles", type_="unique"
-    )
+    op.drop_constraint("job_profiles_user_id_name_key", "job_profiles", type_="unique")
 
     # Update primary key and foreign key names back
     op.drop_constraint("job_profiles_pkey", "job_profiles", type_="primary")
@@ -117,9 +115,7 @@ def downgrade() -> None:
         WHERE a.id > b.id AND a.user_id = b.user_id
         """
     )
-    op.create_unique_constraint(
-        "user_profiles_user_id_key", "user_profiles", ["user_id"]
-    )
+    op.create_unique_constraint("user_profiles_user_id_key", "user_profiles", ["user_id"])
     op.create_index(
         "user_profiles_user_id_idx",
         "user_profiles",
@@ -130,4 +126,3 @@ def downgrade() -> None:
     # Drop new columns
     op.drop_column("user_profiles", "is_default")
     op.drop_column("user_profiles", "name")
-

@@ -37,4 +37,3 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_index("ix_conversations_area", table_name="conversations")
     op.drop_column("conversations", "area")
-

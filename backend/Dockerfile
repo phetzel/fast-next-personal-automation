@@ -32,6 +32,25 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 WORKDIR /app
 
+# Install system dependencies for Playwright
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libnss3 \
+    libnspr4 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libdbus-1-3 \
+    libxkbcommon0 \
+    libatspi2.0-0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy virtual environment from builder
 COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app /app
@@ -39,7 +58,13 @@ COPY --from=builder /app /app
 # Add venv to path
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Create non-root user
+# Set Playwright browsers path to a shared location
+ENV PLAYWRIGHT_BROWSERS_PATH=/app/.playwright-browsers
+
+# Install Playwright browsers to shared path
+RUN playwright install chromium
+
+# Create non-root user and give ownership
 RUN adduser --disabled-password --gecos "" appuser && \
     chown -R appuser:appuser /app
 USER appuser

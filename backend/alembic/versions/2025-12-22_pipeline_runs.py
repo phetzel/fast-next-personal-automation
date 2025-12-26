@@ -5,6 +5,7 @@ Revises: 2d5dd1fe1265
 Create Date: 2025-12-22 10:00:00.000000
 
 """
+
 from collections.abc import Sequence
 
 import sqlalchemy as sa
@@ -89,4 +90,3 @@ def downgrade() -> None:
     op.drop_index(op.f("pipeline_runs_status_idx"), table_name="pipeline_runs")
     op.drop_index(op.f("pipeline_runs_pipeline_name_idx"), table_name="pipeline_runs")
     op.drop_table("pipeline_runs")
-

@@ -1,13 +1,17 @@
 """Job schemas for API request/response handling."""
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import Field
 
 from app.db.models.job import JobStatus
 from app.schemas.base import BaseSchema, TimestampSchema
+
+# Application type literals
+ApplicationType = Literal["easy_apply", "ats", "direct", "email", "unknown"]
+ApplicationMethod = Literal["manual", "assisted", "automated"]
 
 
 class JobBase(BaseSchema):
@@ -69,6 +73,18 @@ class JobResponse(JobBase, TimestampSchema):
     cover_letter_generated_at: datetime | None = None
     prep_notes: str | None = None
     prepped_at: datetime | None = None
+    # Application analysis
+    application_type: ApplicationType | None = None
+    application_url: str | None = None
+    requires_cover_letter: bool | None = None
+    requires_resume: bool | None = None
+    detected_fields: dict[str, Any] | None = None
+    screening_questions: list[dict[str, Any]] | None = None
+    analyzed_at: datetime | None = None
+    # Application tracking
+    applied_at: datetime | None = None
+    application_method: ApplicationMethod | None = None
+    confirmation_code: str | None = None
 
 
 class JobSummary(BaseSchema):
