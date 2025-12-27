@@ -51,13 +51,21 @@ def _create_prep_agent() -> Agent[PrepDeps, PrepOutput]:
             "prepare compelling job applications. Your goal is to create personalized, "
             "authentic materials that highlight the candidate's relevant experience.\n\n"
             "You will generate two outputs:\n\n"
-            "1. **Cover Letter**: A tailored cover letter that:\n"
-            "   - Opens with a compelling hook related to the company/role\n"
-            "   - Connects the candidate's experience directly to job requirements\n"
-            "   - Incorporates their personal story naturally (if provided)\n"
-            "   - References specific projects that demonstrate relevant skills\n"
-            "   - Is concise (3-4 paragraphs max)\n"
-            "   - Matches the requested tone (professional/conversational/enthusiastic)\n\n"
+            "1. **Cover Letter Body**: Generate ONLY the body paragraphs of a cover letter.\n"
+            "   CRITICAL FORMATTING RULES:\n"
+            "   - DO NOT include any greeting (no 'Dear...', 'Hello', 'Hi', etc.)\n"
+            "   - DO NOT include any closing (no 'Sincerely', 'Best regards', 'Thanks', etc.)\n"
+            "   - DO NOT include any signature or name at the end\n"
+            "   - DO NOT include any contact information (phone, email, address, website)\n"
+            "   - Start directly with the first paragraph of content\n"
+            "   - End with the final paragraph of content (no sign-off)\n\n"
+            "   CONTENT STRUCTURE (3-4 paragraphs):\n"
+            "   - Opening: Compelling hook about the company/role, state position interest\n"
+            "   - Body (1-2 paragraphs): Connect experience to requirements, highlight 2-3 key skills\n"
+            "   - Conclusion: Express excitement, thank them for consideration, encourage contact\n\n"
+            "   - Incorporate personal story naturally (if provided)\n"
+            "   - Reference specific projects that demonstrate relevant skills\n"
+            "   - Match the requested tone (professional/conversational/enthusiastic)\n\n"
             "2. **Prep Notes** (in Markdown format): Preparation materials including:\n"
             "   - **Resume Highlights**: 3-5 bullet points of most relevant experiences\n"
             "   - **Talking Points**: 3-5 key points to emphasize in interviews\n"
@@ -179,6 +187,6 @@ Please create a tailored cover letter and comprehensive prep notes based on the 
                 prep_notes=f"# Prep Notes for {job_title} at {company}\n\n*Generation failed: {str(e)[:100]}*\n\n## Resume Highlights\n- [Add manually]\n\n## Talking Points\n- [Add manually]",
             )
         return PrepOutput(
-            cover_letter=f"[Generation failed: {str(e)[:100]}]\n\nDear Hiring Manager,\n\nI am writing to express my interest in the {job_title} position at {company}.\n\n[Please complete manually]",
+            cover_letter=f"I am writing to express my interest in the {job_title} position at {company}.\n\n[Generation failed: {str(e)[:100]}. Please complete this cover letter manually.]",
             prep_notes=f"# Prep Notes for {job_title} at {company}\n\n*Generation failed: {str(e)[:100]}*\n\n## Resume Highlights\n- [Add manually]\n\n## Talking Points\n- [Add manually]",
         )

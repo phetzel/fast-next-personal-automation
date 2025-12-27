@@ -29,6 +29,8 @@ import {
   ChevronUp,
   AlertCircle,
   Sparkles,
+  Eye,
+  RefreshCw,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -169,6 +171,39 @@ export function JobDetailModal({
     }
   };
 
+  const handlePreviewPdf = () => {
+    // Open preview in new tab
+    window.open(`/api/jobs/${job.id}/cover-letter/preview`, "_blank");
+  };
+
+  const handleRegeneratePdf = async () => {
+    // Save any pending cover letter changes first
+    if (coverLetterDirty) {
+      await onUpdate(job.id, { cover_letter: coverLetter });
+      setCoverLetterDirty(false);
+    }
+
+    setIsGeneratingPdf(true);
+    setPdfError(null);
+
+    try {
+      const updatedJob = await apiClient.post<Job>(
+        `/jobs/${job.id}/cover-letter/generate-pdf`
+      );
+
+      // Refresh the job in state with the new PDF path
+      if (updatedJob) {
+        await onUpdate(job.id, {}); // Trigger a refresh
+      }
+    } catch (error) {
+      setPdfError(
+        error instanceof Error ? error.message : "Failed to regenerate PDF"
+      );
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this job?")) return;
     setIsDeleting(true);
@@ -296,20 +331,31 @@ export function JobDetailModal({
                   </span>
                 </div>
                 {hasPdf && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleDownloadPdf}
-                    disabled={isDownloading}
-                    className="border-cyan-500/30 hover:bg-cyan-500/10"
-                  >
-                    {isDownloading ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Download className="mr-2 h-4 w-4" />
-                    )}
-                    Download PDF
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handlePreviewPdf}
+                      className="border-cyan-500/30 hover:bg-cyan-500/10"
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      Preview
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleDownloadPdf}
+                      disabled={isDownloading}
+                      className="border-cyan-500/30 hover:bg-cyan-500/10"
+                    >
+                      {isDownloading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="mr-2 h-4 w-4" />
+                      )}
+                      Download
+                    </Button>
+                  </div>
                 )}
               </div>
 
@@ -345,11 +391,6 @@ export function JobDetailModal({
                     rows={8}
                     className="font-mono text-sm"
                   />
-                  {hasPdf && coverLetterDirty && (
-                    <p className="text-xs text-amber-600 dark:text-amber-400">
-                      Note: You&apos;ll need to regenerate the PDF after saving changes.
-                    </p>
-                  )}
                 </div>
               )}
 
@@ -377,12 +418,37 @@ export function JobDetailModal({
                 </div>
               )}
 
-              {/* Regenerate PDF button if already have one but made edits */}
-              {hasPdf && !coverLetterDirty && (
-                <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
-                  <CheckCircle className="h-4 w-4" />
-                  <span>PDF generated {job.cover_letter_generated_at ? format(new Date(job.cover_letter_generated_at), "MMM d, h:mm a") : ""}</span>
+              {/* PDF status and regenerate button */}
+              {hasPdf && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                    <CheckCircle className="h-4 w-4" />
+                    <span>PDF generated {job.cover_letter_generated_at ? format(new Date(job.cover_letter_generated_at), "MMM d, h:mm a") : ""}</span>
+                  </div>
+                  {coverLetterDirty && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleRegeneratePdf}
+                      disabled={isGeneratingPdf}
+                      className="h-7 text-xs border-amber-500/30 hover:bg-amber-500/10"
+                    >
+                      {isGeneratingPdf ? (
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="mr-1 h-3 w-3" />
+                      )}
+                      Regenerate PDF
+                    </Button>
+                  )}
                 </div>
+              )}
+              
+              {/* Show regenerate prompt if cover letter edited */}
+              {hasPdf && coverLetterDirty && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  Cover letter has been modified. Save changes and regenerate the PDF to update.
+                </p>
               )}
             </div>
           )}

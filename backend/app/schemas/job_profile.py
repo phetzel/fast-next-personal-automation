@@ -35,6 +35,32 @@ class JobProfileBase(BaseSchema):
         default=None,
         description="Additional preferences (remote_only, salary_min, etc.)",
     )
+    # Contact info for cover letters
+    contact_full_name: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Full name for cover letter header (e.g., 'Phillip Hetzel')",
+    )
+    contact_phone: str | None = Field(
+        default=None,
+        max_length=50,
+        description="Phone number for cover letter header (e.g., '510-684-9802')",
+    )
+    contact_email: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Email for cover letter header (e.g., 'phetzel89@gmail.com')",
+    )
+    contact_location: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Location for cover letter header (e.g., 'Portland, Oregon')",
+    )
+    contact_website: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Website for cover letter header (e.g., 'philliphetzel.com')",
+    )
 
 
 class JobProfileCreate(JobProfileBase):
@@ -73,6 +99,12 @@ class JobProfileUpdate(BaseSchema):
     min_score_threshold: float | None = Field(default=None, ge=0.0, le=10.0)
     preferences: dict[str, Any] | None = None
     is_default: bool | None = None
+    # Contact info for cover letters
+    contact_full_name: str | None = Field(default=None, max_length=255)
+    contact_phone: str | None = Field(default=None, max_length=50)
+    contact_email: str | None = Field(default=None, max_length=255)
+    contact_location: str | None = Field(default=None, max_length=255)
+    contact_website: str | None = Field(default=None, max_length=255)
 
 
 class ResumeInfo(BaseSchema):

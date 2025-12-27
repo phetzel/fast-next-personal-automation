@@ -2,9 +2,26 @@
 
 Generates professional PDF cover letters from text content using ReportLab.
 Stores generated PDFs in S3 for later retrieval and upload to job applications.
+
+Template format:
+    Phillip Hetzel
+    510-684-9802
+    phetzel89@gmail.com
+    Portland, Oregon
+    philliphetzel.com
+
+    December 26, 2025
+
+    Dear Hiring Manager,
+
+    [Body paragraphs...]
+
+    Sincerely,
+    Phillip Hetzel
 """
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime
 from io import BytesIO
 
@@ -12,102 +29,102 @@ from reportlab.lib.enums import TA_JUSTIFY, TA_LEFT
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+from reportlab.platypus import Paragraph, SimpleDocTemplate
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ContactInfo:
+    """Contact information for cover letter header."""
+
+    full_name: str
+    phone: str | None = None
+    email: str | None = None
+    location: str | None = None
+    website: str | None = None
 
 
 def _create_styles() -> dict:
     """Create custom paragraph styles for the cover letter."""
     styles = getSampleStyleSheet()
 
-    # Header style for applicant name
-    header_style = ParagraphStyle(
-        "HeaderName",
-        parent=styles["Heading1"],
-        fontSize=16,
+    # Header style for applicant name (bold, larger)
+    name_style = ParagraphStyle(
+        "Name",
+        parent=styles["Normal"],
+        fontSize=14,
         fontName="Helvetica-Bold",
-        textColor="#1e3a5f",
-        spaceAfter=6,
-        leading=20,
+        spaceAfter=2,
+        leading=18,
     )
 
-    # Contact info style
-    contact_style = ParagraphStyle(
-        "Contact",
+    # Contact info line style (stacked, left-aligned)
+    contact_line_style = ParagraphStyle(
+        "ContactLine",
         parent=styles["Normal"],
         fontSize=10,
         fontName="Helvetica",
-        textColor="#4b5563",
-        spaceAfter=20,
+        textColor="#333333",
+        spaceAfter=2,
+        leading=14,
     )
 
     # Date style
     date_style = ParagraphStyle(
         "Date",
         parent=styles["Normal"],
-        fontSize=10,
+        fontSize=11,
         fontName="Helvetica",
-        textColor="#4b5563",
+        spaceBefore=16,
         spaceAfter=16,
     )
 
-    # Recipient/company style
-    recipient_style = ParagraphStyle(
-        "Recipient",
-        parent=styles["Normal"],
-        fontSize=11,
-        fontName="Helvetica-Bold",
-        textColor="#1e3a5f",
-        spaceAfter=4,
-    )
-
-    # Subject line style
-    subject_style = ParagraphStyle(
-        "Subject",
+    # Greeting style (Dear Hiring Manager,)
+    greeting_style = ParagraphStyle(
+        "Greeting",
         parent=styles["Normal"],
         fontSize=11,
         fontName="Helvetica",
-        spaceAfter=20,
+        spaceAfter=12,
     )
 
-    # Body paragraph style
+    # Body paragraph style (justified)
     body_style = ParagraphStyle(
         "Body",
         parent=styles["Normal"],
         fontSize=11,
-        fontName="Times-Roman",
+        fontName="Helvetica",
         leading=16,
         alignment=TA_JUSTIFY,
         spaceAfter=12,
     )
 
-    # Closing style
+    # Closing style (Sincerely,)
     closing_style = ParagraphStyle(
         "Closing",
         parent=styles["Normal"],
         fontSize=11,
-        fontName="Times-Roman",
+        fontName="Helvetica",
         alignment=TA_LEFT,
-        spaceBefore=20,
+        spaceBefore=16,
         spaceAfter=4,
     )
 
-    # Signature style
+    # Signature style (name at bottom)
     signature_style = ParagraphStyle(
         "Signature",
         parent=styles["Normal"],
         fontSize=11,
         fontName="Helvetica-Bold",
-        spaceBefore=30,
+        spaceBefore=24,
     )
 
     return {
-        "header": header_style,
-        "contact": contact_style,
+        "name": name_style,
+        "contact_line": contact_line_style,
         "date": date_style,
-        "recipient": recipient_style,
-        "subject": subject_style,
+        "greeting": greeting_style,
         "body": body_style,
         "closing": closing_style,
         "signature": signature_style,
@@ -121,30 +138,58 @@ def _format_cover_letter_paragraphs(text: str) -> list[str]:
     - Plain text with double newlines as paragraph separators
     - Text that already has paragraph structure
     - Removes any greeting/closing that might be in the AI output
+
+    The AI should generate body-only content, but this provides fallback
+    filtering in case greetings/closings slip through.
     """
+    if not text:
+        return []
+
     lines = text.strip().split("\n")
 
     # Group consecutive non-empty lines into paragraphs
     paragraphs = []
     current_paragraph = []
 
+    # Patterns to filter out (greetings and closings)
+    skip_prefixes = (
+        "dear ",
+        "to whom",
+        "hi ",
+        "hello ",
+        "sincerely",
+        "best regards",
+        "best,",
+        "regards,",
+        "thank you,",
+        "thanks,",
+        "yours truly",
+        "yours sincerely",
+        "warm regards",
+        "warmly,",
+        "respectfully",
+        "with appreciation",
+        "kind regards",
+        "cordially",
+    )
+
     for line in lines:
         line = line.strip()
         if line:
-            # Skip common greetings/closings that we handle in template
             lower_line = line.lower()
-            if lower_line.startswith(
-                (
-                    "dear ",
-                    "to whom",
-                    "sincerely",
-                    "best regards",
-                    "regards,",
-                    "thank you,",
-                    "yours truly",
-                )
-            ):
+
+            # Skip greetings and closings
+            if lower_line.startswith(skip_prefixes):
                 continue
+
+            # Skip lines that are just a name (likely signature)
+            # Heuristic: short line with no punctuation except maybe period
+            if len(line) < 40 and not any(c in line for c in ",;:!?"):
+                words = line.split()
+                if len(words) <= 3 and all(w[0].isupper() for w in words if w):
+                    # Likely just a name, skip it
+                    continue
+
             current_paragraph.append(line)
         else:
             if current_paragraph:
@@ -160,19 +205,17 @@ def _format_cover_letter_paragraphs(text: str) -> list[str]:
 
 def generate_cover_letter_pdf(
     cover_letter_text: str,
-    applicant_name: str,
-    applicant_email: str,
-    company_name: str,
-    job_title: str,
+    contact_info: ContactInfo,
+    company_name: str | None = None,
+    job_title: str | None = None,
 ) -> bytes:
     """Generate a professional PDF from cover letter text.
 
     Args:
-        cover_letter_text: The plain text cover letter content
-        applicant_name: Full name of the applicant
-        applicant_email: Email address of the applicant
-        company_name: Name of the company being applied to
-        job_title: Title of the position
+        cover_letter_text: The body paragraphs of the cover letter
+        contact_info: ContactInfo with applicant details for header
+        company_name: Name of the company (unused in current template, for logging)
+        job_title: Title of the position (unused in current template, for logging)
 
     Returns:
         PDF file as bytes
@@ -195,36 +238,46 @@ def generate_cover_letter_pdf(
     # Build document content
     story = []
 
-    # Header - Applicant name
-    name = applicant_name or "Applicant"
-    story.append(Paragraph(name, styles["header"]))
+    # === HEADER BLOCK ===
+    # Name (bold, larger)
+    name = contact_info.full_name or "Applicant"
+    story.append(Paragraph(name, styles["name"]))
 
-    # Contact info
-    story.append(Paragraph(applicant_email or "", styles["contact"]))
+    # Contact info lines (stacked)
+    if contact_info.phone:
+        story.append(Paragraph(contact_info.phone, styles["contact_line"]))
 
-    # Add a line separator effect with spacer
-    story.append(Spacer(1, 10))
+    if contact_info.email:
+        story.append(Paragraph(contact_info.email, styles["contact_line"]))
 
-    # Date
+    if contact_info.location:
+        story.append(Paragraph(contact_info.location, styles["contact_line"]))
+
+    if contact_info.website:
+        story.append(Paragraph(contact_info.website, styles["contact_line"]))
+
+    # === DATE ===
     today = datetime.now()
     formatted_date = today.strftime("%B %d, %Y")
     story.append(Paragraph(formatted_date, styles["date"]))
 
-    # Recipient/Company
-    story.append(Paragraph(company_name, styles["recipient"]))
+    # === GREETING ===
+    story.append(Paragraph("Dear Hiring Manager,", styles["greeting"]))
 
-    # Subject line
-    story.append(Paragraph(f"RE: {job_title}", styles["subject"]))
-
-    # Body paragraphs
+    # === BODY PARAGRAPHS ===
     paragraphs = _format_cover_letter_paragraphs(cover_letter_text)
+
+    if not paragraphs:
+        # Fallback if no valid paragraphs found
+        paragraphs = ["[Cover letter content goes here]"]
+
     for para in paragraphs:
         story.append(Paragraph(para, styles["body"]))
 
-    # Closing
+    # === CLOSING ===
     story.append(Paragraph("Sincerely,", styles["closing"]))
 
-    # Signature
+    # === SIGNATURE ===
     story.append(Paragraph(name, styles["signature"]))
 
     # Build PDF
@@ -233,27 +286,44 @@ def generate_cover_letter_pdf(
     pdf_bytes = buffer.getvalue()
     buffer.close()
 
-    logger.info(
-        f"Generated cover letter PDF for {company_name} - {job_title} ({len(pdf_bytes)} bytes)"
-    )
+    # Log with company/job info if provided
+    log_context = ""
+    if company_name and job_title:
+        log_context = f" for {company_name} - {job_title}"
+    elif company_name:
+        log_context = f" for {company_name}"
+
+    logger.info(f"Generated cover letter PDF{log_context} ({len(pdf_bytes)} bytes)")
 
     return pdf_bytes
 
 
-def generate_cover_letter_filename(company: str, job_title: str, applicant_name: str) -> str:
+def generate_cover_letter_filename(
+    company: str | None,
+    job_title: str | None,
+    applicant_name: str | None,
+) -> str:
     """Generate a professional filename for the cover letter.
 
     Format: FirstName_LastName_CoverLetter_Company.pdf
     """
 
     def clean_for_filename(s: str) -> str:
+        if not s:
+            return ""
         # Remove special characters, keep alphanumeric and spaces
         cleaned = "".join(c if c.isalnum() or c == " " else "" for c in s)
         # Replace spaces with underscores and trim
         return "_".join(cleaned.split())[:30]
 
-    name_parts = applicant_name.split() if applicant_name else ["Applicant"]
-    name_slug = "_".join(name_parts[:2])  # First and last name
-    company_slug = clean_for_filename(company)
+    # Build name slug
+    if applicant_name:
+        name_parts = applicant_name.split()
+        name_slug = "_".join(name_parts[:2])  # First and last name
+    else:
+        name_slug = "Applicant"
+
+    # Build company slug
+    company_slug = clean_for_filename(company) if company else "Company"
 
     return f"{name_slug}_CoverLetter_{company_slug}.pdf"

@@ -126,14 +126,15 @@ async def generate_cover_letter_pdf(
     current_user: CurrentUser,
     job_service: JobSvc,
 ) -> JobResponse:
-    """Generate a PDF from the job's cover letter.
+    """Generate or regenerate a PDF from the job's cover letter.
 
     Creates a professionally formatted PDF cover letter and stores it in S3.
-    Call this after reviewing/editing the cover letter text.
+    Uses the user's default job profile for contact information.
 
-    The generated PDF can then be downloaded or used for job applications.
+    Call this after reviewing/editing the cover letter text.
+    The generated PDF can then be downloaded or previewed.
     """
-    job = await job_service.generate_cover_letter_pdf(job_id, current_user)
+    job = await job_service.regenerate_cover_letter_pdf(job_id, current_user)
     return JobResponse.model_validate(job)
 
 
@@ -155,6 +156,29 @@ async def download_cover_letter_pdf(
         media_type="application/pdf",
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(pdf_bytes)),
+        },
+    )
+
+
+@router.get("/{job_id}/cover-letter/preview")
+async def preview_cover_letter_pdf(
+    job_id: UUID,
+    current_user: CurrentUser,
+    job_service: JobSvc,
+) -> Response:
+    """Preview the generated cover letter PDF in browser.
+
+    Returns the PDF file with inline disposition for browser viewing.
+    Must have a generated PDF first.
+    """
+    pdf_bytes, filename = await job_service.get_cover_letter_pdf(job_id, current_user.id)
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="{filename}"',
             "Content-Length": str(len(pdf_bytes)),
         },
     )

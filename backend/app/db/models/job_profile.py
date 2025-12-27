@@ -77,6 +77,23 @@ class JobProfile(Base, TimestampMixin):
         JSON, nullable=True, default=dict
     )  # {"remote_only": true, "salary_min": 150000, ...}
 
+    # Contact info for cover letters
+    contact_full_name: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )  # "Phillip Hetzel"
+    contact_phone: Mapped[str | None] = mapped_column(
+        String(50), nullable=True
+    )  # "510-684-9802"
+    contact_email: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )  # "phetzel89@gmail.com"
+    contact_location: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )  # "Portland, Oregon"
+    contact_website: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )  # "philliphetzel.com"
+
     # Relationships
     user: Mapped["User"] = relationship("User", lazy="selectin")
     resume: Mapped["Resume | None"] = relationship("Resume", lazy="selectin")

@@ -10,12 +10,18 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.core.cover_letter_pdf import (
+    ContactInfo,
+    generate_cover_letter_filename,
+    generate_cover_letter_pdf,
+)
+from app.core.storage import get_storage_instance
 from app.db.models.job import JobStatus
 from app.db.session import get_db_context
 from app.pipelines.action_base import ActionPipeline, ActionResult, PipelineContext
 from app.pipelines.actions.job_prep.generator import generate_prep_materials
 from app.pipelines.registry import register_pipeline
-from app.repositories import job_profile_repo, job_repo, project_repo
+from app.repositories import job_profile_repo, job_repo, project_repo, user_repo
 from app.schemas.job_profile import JobProfileSummary, ProfileRequiredError
 
 logger = logging.getLogger(__name__)
@@ -337,6 +343,72 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                 await job_repo.update(db, db_job=job, update_data=update_data)
                 await db.commit()
                 logger.info(f"Updated job {job.id} with prep materials, status set to PREPPED")
+
+        # Step 8: Generate and store PDF if we have a cover letter
+        cover_letter_file_path: str | None = None
+        if prep_output.cover_letter:
+            try:
+                # Get user for contact info fallback
+                async with get_db_context() as db:
+                    user = await user_repo.get_by_id(db, context.user_id)
+
+                if user:
+                    # Build contact info from profile with fallbacks
+                    contact_info = ContactInfo(
+                        full_name=(
+                            profile.contact_full_name
+                            or user.full_name
+                            or user.email.split("@")[0].replace("_", " ").replace(".", " ").title()
+                        ),
+                        phone=profile.contact_phone,
+                        email=profile.contact_email or user.email,
+                        location=profile.contact_location,
+                        website=profile.contact_website,
+                    )
+
+                    # Generate PDF
+                    pdf_bytes = generate_cover_letter_pdf(
+                        cover_letter_text=prep_output.cover_letter,
+                        contact_info=contact_info,
+                        company_name=job.company,
+                        job_title=job.title,
+                    )
+
+                    # Generate filename
+                    filename = generate_cover_letter_filename(
+                        company=job.company,
+                        job_title=job.title,
+                        applicant_name=contact_info.full_name,
+                    )
+
+                    # Store in S3
+                    storage = await get_storage_instance()
+                    cover_letter_file_path = await storage.save(
+                        file_data=pdf_bytes,
+                        user_id=context.user_id,
+                        filename=filename,
+                        subdir="cover_letters",
+                    )
+
+                    # Update job with PDF path
+                    async with get_db_context() as db:
+                        job = await job_repo.get_by_id_and_user(db, input.job_id, context.user_id)
+                        if job:
+                            await job_repo.update(
+                                db,
+                                db_job=job,
+                                update_data={
+                                    "cover_letter_file_path": cover_letter_file_path,
+                                    "cover_letter_generated_at": datetime.now(UTC),
+                                },
+                            )
+                            await db.commit()
+
+                    logger.info(f"Generated cover letter PDF: {cover_letter_file_path}")
+
+            except Exception as e:
+                # PDF generation is not critical - log and continue
+                logger.warning(f"Failed to generate cover letter PDF: {e}")
 
         return ActionResult(
             success=True,

@@ -10,14 +10,16 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cover_letter_pdf import (
+    ContactInfo,
     generate_cover_letter_filename,
     generate_cover_letter_pdf,
 )
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.storage import get_storage_instance
 from app.db.models.job import Job, JobStatus
+from app.db.models.job_profile import JobProfile
 from app.db.models.user import User
-from app.repositories import job_repo
+from app.repositories import job_profile_repo, job_repo
 from app.schemas.job import JobFilters, JobUpdate
 
 logger = logging.getLogger(__name__)
@@ -128,6 +130,7 @@ class JobService:
         self,
         job_id: UUID,
         user: User,
+        profile: JobProfile | None = None,
     ) -> Job:
         """Generate a PDF from the job's cover letter and store it in S3.
 
@@ -138,6 +141,7 @@ class JobService:
         Args:
             job_id: The job ID
             user: The authenticated user (for name/email in the letter)
+            profile: Optional job profile to get contact info from
 
         Returns:
             The updated job with cover_letter_file_path set
@@ -155,12 +159,13 @@ class JobService:
                 details={"job_id": str(job_id)},
             )
 
+        # Build contact info with fallback chain: profile -> user -> defaults
+        contact_info = self._build_contact_info(user, profile)
+
         # Generate the PDF
-        applicant_name = user.full_name or user.email.split("@")[0]
         pdf_bytes = generate_cover_letter_pdf(
             cover_letter_text=job.cover_letter,
-            applicant_name=applicant_name,
-            applicant_email=user.email,
+            contact_info=contact_info,
             company_name=job.company,
             job_title=job.title,
         )
@@ -169,7 +174,7 @@ class JobService:
         filename = generate_cover_letter_filename(
             company=job.company,
             job_title=job.title,
-            applicant_name=applicant_name,
+            applicant_name=contact_info.full_name,
         )
 
         # Store in S3
@@ -195,6 +200,47 @@ class JobService:
         logger.info(f"Generated cover letter PDF for job {job_id}: {file_path}")
 
         return updated_job
+
+    def _build_contact_info(
+        self,
+        user: User,
+        profile: JobProfile | None = None,
+    ) -> ContactInfo:
+        """Build ContactInfo from profile and user with fallback chain.
+
+        Priority: profile contact fields -> user fields -> sensible defaults
+        """
+        # Name: profile -> user -> email prefix
+        full_name = None
+        if profile and profile.contact_full_name:
+            full_name = profile.contact_full_name
+        elif user.full_name:
+            full_name = user.full_name
+        else:
+            # Last resort: use email prefix but capitalize
+            email_prefix = user.email.split("@")[0]
+            # Try to convert underscores/dots to spaces and title case
+            full_name = email_prefix.replace("_", " ").replace(".", " ").title()
+
+        # Email: profile -> user
+        email = profile.contact_email if profile and profile.contact_email else user.email
+
+        # Phone: profile only
+        phone = profile.contact_phone if profile else None
+
+        # Location: profile only
+        location = profile.contact_location if profile else None
+
+        # Website: profile only
+        website = profile.contact_website if profile else None
+
+        return ContactInfo(
+            full_name=full_name,
+            phone=phone,
+            email=email,
+            location=location,
+            website=website,
+        )
 
     async def get_cover_letter_pdf(
         self,
@@ -236,3 +282,29 @@ class JobService:
         filename = job.cover_letter_file_path.split("/")[-1]
 
         return pdf_bytes, filename
+
+    async def regenerate_cover_letter_pdf(
+        self,
+        job_id: UUID,
+        user: User,
+    ) -> Job:
+        """Regenerate the cover letter PDF using the user's default profile.
+
+        This is useful after editing the cover letter text. It looks up
+        the user's default job profile to get contact info.
+
+        Args:
+            job_id: The job ID
+            user: The authenticated user
+
+        Returns:
+            The updated job with new cover_letter_file_path
+
+        Raises:
+            NotFoundError: If job doesn't exist or doesn't belong to user
+            ValidationError: If job has no cover letter text
+        """
+        # Get default profile for contact info
+        profile = await job_profile_repo.get_default_for_user(self.db, user.id)
+
+        return await self.generate_cover_letter_pdf(job_id, user, profile)

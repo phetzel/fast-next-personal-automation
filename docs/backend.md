@@ -88,9 +88,12 @@ All endpoints are prefixed with `/api/v1`.
 |--------|----------|-------------|
 | GET | `/jobs` | List user's job listings |
 | GET | `/jobs/{id}` | Get job details |
-| PATCH | `/jobs/{id}` | Update job (status, notes) |
+| PATCH | `/jobs/{id}` | Update job (status, notes, cover_letter) |
 | DELETE | `/jobs/{id}` | Delete job |
 | GET | `/jobs/stats` | Get job statistics |
+| POST | `/jobs/{id}/cover-letter/generate-pdf` | Generate/regenerate cover letter PDF |
+| GET | `/jobs/{id}/cover-letter/download` | Download cover letter PDF |
+| GET | `/jobs/{id}/cover-letter/preview` | Preview cover letter PDF in browser |
 
 ### Job Profiles
 
@@ -99,10 +102,17 @@ All endpoints are prefixed with `/api/v1`.
 | GET | `/job-profiles` | List user's profiles |
 | POST | `/job-profiles` | Create profile |
 | GET | `/job-profiles/{id}` | Get profile |
-| PATCH | `/job-profiles/{id}` | Update profile |
+| PATCH | `/job-profiles/{id}` | Update profile (including contact info for cover letters) |
 | DELETE | `/job-profiles/{id}` | Delete profile |
 | POST | `/job-profiles/{id}/set-default` | Set as default |
 | GET | `/job-profiles/default` | Get default profile |
+
+Job profiles include contact info fields for cover letter generation:
+- `contact_full_name` - Full name for cover letter header
+- `contact_phone` - Phone number
+- `contact_email` - Email (falls back to user email)
+- `contact_location` - Location (e.g., "Portland, Oregon")
+- `contact_website` - Personal website URL
 
 ### Resumes
 
