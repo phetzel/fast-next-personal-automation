@@ -50,3 +50,4 @@ def downgrade() -> None:
     op.drop_column("job_profiles", "contact_phone")
     op.drop_column("job_profiles", "contact_full_name")
 
+
