@@ -274,8 +274,9 @@ async def get_stats(db: AsyncSession, user_id: UUID) -> dict:
         "prepped": status_counts.get(JobStatus.PREPPED.value, 0),
         "reviewed": status_counts.get(JobStatus.REVIEWED.value, 0),
         "applied": status_counts.get(JobStatus.APPLIED.value, 0),
-        "rejected": status_counts.get(JobStatus.REJECTED.value, 0),
         "interviewing": status_counts.get(JobStatus.INTERVIEWING.value, 0),
+        "rejected": status_counts.get(JobStatus.REJECTED.value, 0),
+        "archived": status_counts.get(JobStatus.ARCHIVED.value, 0),
         "avg_score": round(avg_score, 2) if avg_score else None,
         "high_scoring": high_scoring,
     }

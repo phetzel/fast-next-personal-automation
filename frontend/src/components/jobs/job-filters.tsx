@@ -2,6 +2,7 @@
 
 import { Button, Input } from "@/components/ui";
 import type { JobFilters, JobStatus } from "@/types";
+import { JOB_STATUSES, JOB_STATUS_CONFIG } from "@/types";
 import { cn } from "@/lib/utils";
 import { Search, X, Filter } from "lucide-react";
 import { useState } from "react";
@@ -13,13 +14,13 @@ interface JobFiltersProps {
   className?: string;
 }
 
+// Generate status options from the shared constant
 const STATUS_OPTIONS: { value: JobStatus | "all"; label: string }[] = [
   { value: "all", label: "All Status" },
-  { value: "new", label: "New" },
-  { value: "reviewed", label: "Reviewed" },
-  { value: "applied", label: "Applied" },
-  { value: "interviewing", label: "Interviewing" },
-  { value: "rejected", label: "Rejected" },
+  ...JOB_STATUSES.map((status) => ({
+    value: status,
+    label: JOB_STATUS_CONFIG[status].label,
+  })),
 ];
 
 const SORT_OPTIONS: { value: string; label: string }[] = [

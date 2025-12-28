@@ -126,8 +126,9 @@ class JobStatsResponse(BaseSchema):
     prepped: int = 0
     reviewed: int = 0
     applied: int = 0
-    rejected: int = 0
     interviewing: int = 0
+    rejected: int = 0
+    archived: int = 0
     avg_score: float | None = None
     high_scoring: int = 0  # Jobs with score >= 7.0
 

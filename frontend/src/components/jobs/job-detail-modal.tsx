@@ -11,6 +11,7 @@ import {
   Textarea,
 } from "@/components/ui";
 import type { Job, JobStatus, JobUpdate } from "@/types";
+import { JOB_STATUSES, JOB_STATUS_CONFIG, canTransitionTo } from "@/types";
 import { ScoreBadge } from "./score-badge";
 import { StatusBadge } from "./status-badge";
 import { apiClient } from "@/lib/api-client";
@@ -44,14 +45,12 @@ interface JobDetailModalProps {
   onPrep?: (job: Job) => void;
 }
 
-const STATUS_OPTIONS: { value: JobStatus; label: string; description?: string }[] = [
-  { value: "new", label: "New", description: "Not yet reviewed" },
-  { value: "prepped", label: "Prepped", description: "Materials generated" },
-  { value: "reviewed", label: "Reviewed", description: "Ready to apply (generates PDF)" },
-  { value: "applied", label: "Applied", description: "Application sent" },
-  { value: "interviewing", label: "Interviewing", description: "In interview process" },
-  { value: "rejected", label: "Rejected", description: "Application declined" },
-];
+// Generate status options from the shared constant
+const STATUS_OPTIONS = JOB_STATUSES.map((status) => ({
+  value: status,
+  label: JOB_STATUS_CONFIG[status].label,
+  description: JOB_STATUS_CONFIG[status].description,
+}));
 
 export function JobDetailModal({
   job,
@@ -279,10 +278,10 @@ export function JobDetailModal({
             <div className="flex flex-wrap gap-2">
               {STATUS_OPTIONS.map((option) => {
                 const isCurrentStatus = job.status === option.value;
+                const canTransition = canTransitionTo(job.status, option.value);
                 const isReviewedTransition = 
                   option.value === "reviewed" && 
-                  job.status === "prepped" &&
-                  !isCurrentStatus;
+                  job.status === "prepped";
                 
                 return (
                   <Button
@@ -290,9 +289,11 @@ export function JobDetailModal({
                     variant={isCurrentStatus ? "default" : "outline"}
                     size="sm"
                     onClick={() => handleStatusChange(option.value)}
-                    disabled={isUpdating || isGeneratingPdf}
+                    disabled={isUpdating || isGeneratingPdf || (!isCurrentStatus && !canTransition)}
+                    title={option.description}
                     className={cn(
-                      isReviewedTransition && "border-purple-500/50 hover:bg-purple-500/10"
+                      !isCurrentStatus && !canTransition && "opacity-40 cursor-not-allowed",
+                      isReviewedTransition && canTransition && "border-purple-500/50 hover:bg-purple-500/10"
                     )}
                   >
                     {isGeneratingPdf && option.value === "reviewed" ? (

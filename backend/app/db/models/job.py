@@ -16,14 +16,20 @@ if TYPE_CHECKING:
 
 
 class JobStatus(str, Enum):
-    """Status of a job in the user's pipeline."""
+    """Status of a job in the user's pipeline.
+
+    Flow: NEW → PREPPED → REVIEWED → APPLIED → INTERVIEWING
+    - Can go to ARCHIVED from any status (user dismisses)
+    - Can go to REJECTED from APPLIED or INTERVIEWING (employer rejects)
+    """
 
     NEW = "new"
     PREPPED = "prepped"
     REVIEWED = "reviewed"
     APPLIED = "applied"
-    REJECTED = "rejected"
     INTERVIEWING = "interviewing"
+    REJECTED = "rejected"  # Employer rejected the application
+    ARCHIVED = "archived"  # User dismissed/not interested
 
 
 class Job(Base, TimestampMixin):

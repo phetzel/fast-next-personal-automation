@@ -3,9 +3,87 @@
  */
 
 /**
+ * All possible job statuses.
+ * Order matters - this is the linear flow order.
+ */
+export const JOB_STATUSES = [
+  "new",
+  "prepped",
+  "reviewed",
+  "applied",
+  "interviewing",
+  "rejected",
+  "archived",
+] as const;
+
+/**
  * Status of a job in the user's workflow.
  */
-export type JobStatus = "new" | "prepped" | "reviewed" | "applied" | "rejected" | "interviewing";
+export type JobStatus = (typeof JOB_STATUSES)[number];
+
+/**
+ * Metadata for each job status including display info and allowed transitions.
+ */
+export const JOB_STATUS_CONFIG: Record<
+  JobStatus,
+  {
+    label: string;
+    description: string;
+    /** Statuses that can transition TO this status */
+    allowedFrom: JobStatus[];
+  }
+> = {
+  new: {
+    label: "New",
+    description: "Just scraped, not reviewed yet",
+    allowedFrom: [], // Initial state, nothing transitions to new
+  },
+  prepped: {
+    label: "Prepped",
+    description: "Cover letter & notes generated",
+    allowedFrom: ["new"],
+  },
+  reviewed: {
+    label: "Reviewed",
+    description: "Ready to apply, PDF generated",
+    allowedFrom: ["prepped"],
+  },
+  applied: {
+    label: "Applied",
+    description: "Application submitted",
+    allowedFrom: ["reviewed"],
+  },
+  interviewing: {
+    label: "Interviewing",
+    description: "In interview process",
+    allowedFrom: ["applied"],
+  },
+  rejected: {
+    label: "Rejected",
+    description: "Application was declined",
+    allowedFrom: ["applied", "interviewing"],
+  },
+  archived: {
+    label: "Archived",
+    description: "Dismissed, not interested",
+    allowedFrom: ["new", "prepped", "reviewed", "applied", "interviewing", "rejected"],
+  },
+};
+
+/**
+ * Check if a status transition is allowed.
+ */
+export function canTransitionTo(from: JobStatus, to: JobStatus): boolean {
+  if (from === to) return false;
+  return JOB_STATUS_CONFIG[to].allowedFrom.includes(from);
+}
+
+/**
+ * Get all statuses that the given status can transition to.
+ */
+export function getAllowedTransitions(from: JobStatus): JobStatus[] {
+  return JOB_STATUSES.filter((status) => canTransitionTo(from, status));
+}
 
 /**
  * A job listing from the database.
@@ -73,8 +151,9 @@ export interface JobStats {
   prepped: number;
   reviewed: number;
   applied: number;
-  rejected: number;
   interviewing: number;
+  rejected: number;
+  archived: number;
   avg_score: number | null;
   high_scoring: number;
 }
