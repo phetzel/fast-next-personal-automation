@@ -13,7 +13,7 @@ export const JOB_STATUSES = [
   "applied",
   "interviewing",
   "rejected",
-  "archived",
+  "dismissed",
 ] as const;
 
 /**
@@ -63,9 +63,9 @@ export const JOB_STATUS_CONFIG: Record<
     description: "Application was declined",
     allowedFrom: ["applied", "interviewing"],
   },
-  archived: {
-    label: "Archived",
-    description: "Dismissed, not interested",
+  dismissed: {
+    label: "Dismissed",
+    description: "Not interested, removed from active list",
     allowedFrom: ["new", "prepped", "reviewed", "applied", "interviewing", "rejected"],
   },
 };
@@ -153,7 +153,7 @@ export interface JobStats {
   applied: number;
   interviewing: number;
   rejected: number;
-  archived: number;
+  dismissed: number;
   avg_score: number | null;
   high_scoring: number;
 }

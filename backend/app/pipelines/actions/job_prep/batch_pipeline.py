@@ -1,6 +1,6 @@
 """Batch Job Prep Pipeline.
 
-Prepares all jobs matching a filter (e.g., all NEW jobs) in a single operation.
+Prepares all NEW jobs in a single operation, using each job's associated profile.
 """
 
 import asyncio
@@ -17,29 +17,22 @@ from app.pipelines.actions.job_prep.pipeline import JobPrepInput, JobPrepPipelin
 from app.pipelines.registry import register_pipeline
 from app.repositories import job_profile_repo, job_repo
 from app.schemas.job import JobFilters
-from app.schemas.job_profile import JobProfileSummary, ProfileRequiredError
 
 logger = logging.getLogger(__name__)
 
 
 class BatchJobPrepInput(BaseModel):
-    """Input for the batch job prep pipeline."""
+    """Input for the batch job prep pipeline.
 
-    status: Literal["new", "prepped", "reviewed"] = Field(
-        default="new",
-        description="Only prep jobs with this status (default: 'new')",
-    )
-    profile_id: UUID | None = Field(
-        default=None,
-        description="Job profile to use. Uses default profile if not specified.",
-        json_schema_extra={"format": "x-profile-select"},
-    )
+    Simple configuration - gets ALL new jobs and uses each job's associated profile.
+    """
+
     tone: Literal["professional", "conversational", "enthusiastic"] = Field(
         default="professional",
         description="Tone for the cover letters",
     )
     max_jobs: int = Field(
-        default=10,
+        default=20,
         ge=1,
         le=50,
         description="Maximum number of jobs to prep in one batch (1-50)",
@@ -49,12 +42,7 @@ class BatchJobPrepInput(BaseModel):
         ge=1,
         le=5,
         description="Maximum concurrent jobs to process (1-5)",
-    )
-    min_score: float | None = Field(
-        default=None,
-        ge=0,
-        le=10,
-        description="Only prep jobs with relevance score >= this value",
+        json_schema_extra={"x-hidden": True},
     )
 
 
@@ -65,6 +53,7 @@ class PrepResult(BaseModel):
     job_title: str
     company: str
     success: bool
+    profile_used: str | None = None
     error: str | None = None
 
 
@@ -74,26 +63,24 @@ class BatchJobPrepOutput(BaseModel):
     total_processed: int = Field(description="Total jobs attempted")
     successful: int = Field(description="Jobs prepped successfully")
     failed: int = Field(description="Jobs that failed to prep")
-    skipped: int = Field(description="Jobs skipped (already prepped, etc.)")
+    skipped: int = Field(description="Jobs skipped (already prepped, no profile, etc.)")
     results: list[PrepResult] = Field(description="Individual job results")
-    profile_used: str = Field(description="Name of the profile used")
 
 
 @register_pipeline
 class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]):
-    """Batch job prep pipeline that preps multiple jobs at once.
+    """Batch job prep pipeline that preps all NEW jobs.
 
     This pipeline:
-    1. Fetches jobs matching the specified status
-    2. Filters by min_score if specified
-    3. Processes jobs concurrently (up to max_concurrent)
-    4. Each job goes through the full job_prep process
+    1. Fetches all jobs with status NEW
+    2. For each job, uses the profile_id saved with the job (from job_search)
+    3. Falls back to user's default profile if no profile_id on job
+    4. Processes jobs concurrently (up to max_concurrent)
     5. Returns a summary of results
 
     This is useful for:
-    - Batch prepping all new high-scoring jobs
-    - Catching up on job prep after a search
-    - Re-prepping jobs with a different profile/tone
+    - Batch prepping all new jobs after running job_search
+    - Catching up on job prep after multiple searches
 
     Can be invoked via:
     - API: POST /api/v1/pipelines/job_prep_batch/execute
@@ -101,7 +88,7 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
     """
 
     name = "job_prep_batch"
-    description = "Batch prepare cover letters and notes for multiple jobs"
+    description = "Batch prepare cover letters and notes for all new jobs"
     tags: ClassVar[list[str]] = ["jobs", "ai", "writing", "batch"]
     area: ClassVar[str | None] = "jobs"
 
@@ -111,10 +98,7 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
         context: PipelineContext,
     ) -> ActionResult[BatchJobPrepOutput]:
         """Execute the batch job prep pipeline."""
-        logger.info(
-            f"Starting batch job prep for status={input.status}, "
-            f"max_jobs={input.max_jobs}, max_concurrent={input.max_concurrent}"
-        )
+        logger.info(f"Starting batch job prep, max_jobs={input.max_jobs}")
 
         # Require user context
         if context.user_id is None:
@@ -123,74 +107,19 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
                 error="User authentication required for batch job prep",
             )
 
-        # Step 1: Validate profile exists
-        async with get_db_context() as db:
-            if input.profile_id is not None:
-                profile = await job_profile_repo.get_by_id(db, input.profile_id)
-                if profile is None or profile.user_id != context.user_id:
-                    all_profiles = await job_profile_repo.get_by_user_id(db, context.user_id)
-                    available_profiles = [
-                        JobProfileSummary(
-                            id=p.id,
-                            name=p.name,
-                            is_default=p.is_default,
-                            has_resume=p.resume is not None and p.resume.text_content is not None,
-                            resume_name=p.resume.name if p.resume else None,
-                            target_roles_count=len(p.target_roles) if p.target_roles else 0,
-                            min_score_threshold=p.min_score_threshold,
-                        )
-                        for p in all_profiles
-                    ]
-                    error_data = ProfileRequiredError(
-                        message="The selected profile was not found.",
-                        available_profiles=available_profiles,
-                    )
-                    return ActionResult(
-                        success=False,
-                        error=error_data.model_dump_json(),
-                        metadata={"error_type": "profile_required"},
-                    )
-            else:
-                profile = await job_profile_repo.get_default_for_user(db, context.user_id)
-
-            if profile is None:
-                all_profiles = await job_profile_repo.get_by_user_id(db, context.user_id)
-                available_profiles = [
-                    JobProfileSummary(
-                        id=p.id,
-                        name=p.name,
-                        is_default=p.is_default,
-                        has_resume=p.resume is not None and p.resume.text_content is not None,
-                        resume_name=p.resume.name if p.resume else None,
-                        target_roles_count=len(p.target_roles) if p.target_roles else 0,
-                        min_score_threshold=p.min_score_threshold,
-                    )
-                    for p in all_profiles
-                ]
-                error_data = ProfileRequiredError(
-                    message="No profile found. Please create a profile first.",
-                    available_profiles=available_profiles,
-                )
-                return ActionResult(
-                    success=False,
-                    error=error_data.model_dump_json(),
-                    metadata={"error_type": "profile_required"},
-                )
-
-            profile_name = profile.name
-            profile_id = profile.id
-
-        # Step 2: Fetch jobs matching criteria
+        # Step 1: Fetch all NEW jobs
         async with get_db_context() as db:
             filters = JobFilters(
-                status=JobStatus(input.status),
-                min_score=input.min_score,
+                status=JobStatus.NEW,
                 page=1,
                 page_size=input.max_jobs,
                 sort_by="relevance_score",
                 sort_order="desc",
             )
             jobs, total = await job_repo.get_by_user(db, context.user_id, filters)
+
+            # Also get the default profile as fallback
+            default_profile = await job_profile_repo.get_default_for_user(db, context.user_id)
 
         if not jobs:
             return ActionResult(
@@ -201,14 +130,13 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
                     failed=0,
                     skipped=0,
                     results=[],
-                    profile_used=profile_name,
                 ),
-                metadata={"message": f"No jobs found with status '{input.status}'"},
+                metadata={"message": "No NEW jobs found to prep"},
             )
 
-        logger.info(f"Found {len(jobs)} jobs to prep (total matching: {total})")
+        logger.info(f"Found {len(jobs)} NEW jobs to prep (total matching: {total})")
 
-        # Step 3: Process jobs concurrently with semaphore
+        # Step 2: Process jobs concurrently with semaphore
         semaphore = asyncio.Semaphore(input.max_concurrent)
         prep_pipeline = JobPrepPipeline()
 
@@ -226,10 +154,46 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
                         error="Skipped: already prepped",
                     )
 
+                # Determine which profile to use:
+                # 1. Use job's profile_id if set (from job_search)
+                # 2. Fall back to default profile
+                profile_id_to_use = job.profile_id
+                profile_name = None
+
+                if profile_id_to_use is None:
+                    if default_profile is None:
+                        return PrepResult(
+                            job_id=job.id,
+                            job_title=job.title,
+                            company=job.company,
+                            success=False,
+                            error="No profile: job has no profile_id and no default profile exists",
+                        )
+                    profile_id_to_use = default_profile.id
+                    profile_name = default_profile.name
+                else:
+                    # Get profile name for the result
+                    async with get_db_context() as db:
+                        job_profile = await job_profile_repo.get_by_id(db, profile_id_to_use)
+                        if job_profile:
+                            profile_name = job_profile.name
+                        else:
+                            # Profile was deleted, fall back to default
+                            if default_profile is None:
+                                return PrepResult(
+                                    job_id=job.id,
+                                    job_title=job.title,
+                                    company=job.company,
+                                    success=False,
+                                    error="Profile deleted and no default profile exists",
+                                )
+                            profile_id_to_use = default_profile.id
+                            profile_name = default_profile.name
+
                 try:
                     prep_input = JobPrepInput(
                         job_id=job.id,
-                        profile_id=profile_id,
+                        profile_id=profile_id_to_use,
                         tone=input.tone,
                         generate_screening_answers=False,
                         auto_analyze=False,
@@ -242,6 +206,7 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
                             job_title=job.title,
                             company=job.company,
                             success=True,
+                            profile_used=profile_name,
                         )
                     else:
                         return PrepResult(
@@ -249,6 +214,7 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
                             job_title=job.title,
                             company=job.company,
                             success=False,
+                            profile_used=profile_name,
                             error=result.error,
                         )
                 except Exception as e:
@@ -258,6 +224,7 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
                         job_title=job.title,
                         company=job.company,
                         success=False,
+                        profile_used=profile_name,
                         error=str(e),
                     )
 
@@ -284,12 +251,10 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
                 failed=failed,
                 skipped=skipped,
                 results=results,
-                profile_used=profile_name,
             ),
             metadata={
-                "profile_name": profile_name,
                 "tone": input.tone,
-                "status_filter": input.status,
-                "min_score_filter": input.min_score,
+                "jobs_found": len(jobs),
+                "total_new_jobs": total,
             },
         )

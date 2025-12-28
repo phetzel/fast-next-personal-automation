@@ -322,6 +322,7 @@ class JobSearchPipeline(ActionPipeline[JobSearchInput, JobSearchOutput]):
                         "relevance_score": analysis.relevance_score,
                         "reasoning": analysis.reasoning,
                         "search_terms": search_terms_str,
+                        "profile_id": profile.id,  # Save which profile was used
                     }
                 )
 

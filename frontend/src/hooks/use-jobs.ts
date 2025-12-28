@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import { useJobStore } from "@/stores/job-store";
 import { apiClient } from "@/lib/api-client";
-import type { Job, JobFilters, JobListResponse, JobStats, JobUpdate } from "@/types";
+import type { Job, JobFilters, JobListResponse, JobStats, JobStatus, JobUpdate } from "@/types";
 
 /**
  * Hook for managing jobs data and API interactions.
@@ -132,6 +132,20 @@ export function useJobs() {
   );
 
   /**
+   * Dismiss all jobs with a specific status.
+   */
+  const dismissByStatus = useCallback(
+    async (status: JobStatus): Promise<number> => {
+      const response = await apiClient.post<{ dismissed_count: number; status: string }>(
+        "/jobs/batch/dismiss",
+        { status }
+      );
+      return response.dismissed_count;
+    },
+    []
+  );
+
+  /**
    * Change page.
    */
   const goToPage = useCallback(
@@ -164,6 +178,7 @@ export function useJobs() {
     fetchJob,
     updateJobStatus,
     deleteJob,
+    dismissByStatus,
     setFilters,
     resetFilters,
     setSelectedJob,

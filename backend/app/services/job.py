@@ -308,3 +308,30 @@ class JobService:
         profile = await job_profile_repo.get_default_for_user(self.db, user.id)
 
         return await self.generate_cover_letter_pdf(job_id, user, profile)
+
+    async def dismiss_by_status(
+        self,
+        user_id: UUID,
+        status: JobStatus,
+    ) -> int:
+        """Dismiss all jobs with a given status.
+
+        Sets the status to DISMISSED for all matching jobs.
+
+        Args:
+            user_id: User ID
+            status: Status of jobs to dismiss (e.g., NEW, PREPPED, REVIEWED)
+
+        Returns:
+            Count of jobs dismissed
+
+        Raises:
+            ValidationError: If trying to dismiss already dismissed jobs
+        """
+        if status == JobStatus.DISMISSED:
+            raise ValidationError(
+                message="Cannot dismiss already dismissed jobs",
+                details={"status": status.value},
+            )
+
+        return await job_repo.dismiss_by_status(self.db, user_id, status)

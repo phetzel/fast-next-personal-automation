@@ -112,6 +112,7 @@ async def create(
     title: str,
     company: str,
     job_url: str,
+    profile_id: UUID | None = None,
     location: str | None = None,
     description: str | None = None,
     salary_range: str | None = None,
@@ -127,6 +128,7 @@ async def create(
     """Create a new job."""
     job = Job(
         user_id=user_id,
+        profile_id=profile_id,
         title=title,
         company=company,
         job_url=job_url,
@@ -276,7 +278,44 @@ async def get_stats(db: AsyncSession, user_id: UUID) -> dict:
         "applied": status_counts.get(JobStatus.APPLIED.value, 0),
         "interviewing": status_counts.get(JobStatus.INTERVIEWING.value, 0),
         "rejected": status_counts.get(JobStatus.REJECTED.value, 0),
-        "archived": status_counts.get(JobStatus.ARCHIVED.value, 0),
+        "dismissed": status_counts.get(JobStatus.DISMISSED.value, 0),
         "avg_score": round(avg_score, 2) if avg_score else None,
         "high_scoring": high_scoring,
     }
+
+
+async def dismiss_by_status(
+    db: AsyncSession,
+    user_id: UUID,
+    status: JobStatus,
+) -> int:
+    """Dismiss all jobs with a given status for a user.
+
+    Sets the status to DISMISSED for all matching jobs.
+
+    Args:
+        db: Database session
+        user_id: User ID
+        status: Status of jobs to dismiss (e.g., NEW, PREPPED, REVIEWED)
+
+    Returns:
+        Count of jobs dismissed
+    """
+    from sqlalchemy import update
+
+    # Don't allow dismissing already dismissed jobs
+    if status == JobStatus.DISMISSED:
+        return 0
+
+    result = await db.execute(
+        update(Job)
+        .where(
+            Job.user_id == user_id,
+            Job.status == status.value,
+            Job.deleted_at.is_(None),
+        )
+        .values(status=JobStatus.DISMISSED.value)
+    )
+    await db.flush()
+
+    return result.rowcount

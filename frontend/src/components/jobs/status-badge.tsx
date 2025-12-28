@@ -11,7 +11,7 @@ import {
   ThumbsDown,
   PhoneCall,
   FileText,
-  Archive,
+  XCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -48,9 +48,9 @@ const statusStyles: Record<
     className: "bg-red-500/10 text-red-500 border-red-500/20",
     Icon: ThumbsDown,
   },
-  archived: {
+  dismissed: {
     className: "bg-gray-500/10 text-gray-500 border-gray-500/20",
-    Icon: Archive,
+    Icon: XCircle,
   },
 };
 

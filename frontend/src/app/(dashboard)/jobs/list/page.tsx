@@ -9,11 +9,21 @@ import {
   JobDetailModal,
   JobStatsCard,
   SearchJobsModal,
+  SearchAllJobsModal,
   PrepJobModal,
+  BatchPrepModal,
+  DismissByStatusModal,
 } from "@/components/jobs";
-import { Button } from "@/components/ui";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui";
 import type { Job } from "@/types";
-import { RefreshCw, Search } from "lucide-react";
+import { RefreshCw, Search, ChevronDown, Layers, Globe, XCircle } from "lucide-react";
 
 export default function JobsListPage() {
   const {
@@ -39,7 +49,10 @@ export default function JobsListPage() {
 
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [isSearchAllModalOpen, setIsSearchAllModalOpen] = useState(false);
   const [isPrepModalOpen, setIsPrepModalOpen] = useState(false);
+  const [isBatchPrepModalOpen, setIsBatchPrepModalOpen] = useState(false);
+  const [isDismissModalOpen, setIsDismissModalOpen] = useState(false);
   const [prepJob, setPrepJob] = useState<Job | null>(null);
 
   // Fetch jobs on mount and when filters change
@@ -104,6 +117,24 @@ export default function JobsListPage() {
     fetchStats();
   };
 
+  const handleBatchPrepComplete = () => {
+    // Refresh jobs and stats after batch prep
+    fetchJobs();
+    fetchStats();
+  };
+
+  const handleSearchAllComplete = () => {
+    // Refresh jobs and stats after batch search
+    fetchJobs();
+    fetchStats();
+  };
+
+  const handleDismissComplete = () => {
+    // Refresh jobs and stats after batch dismiss
+    fetchJobs();
+    fetchStats();
+  };
+
   // Track which job is currently being prepped (from the modal)
   const preppingJobId = prepExecState.status === "running" ? prepJob?.id : null;
 
@@ -117,16 +148,42 @@ export default function JobsListPage() {
             View and manage jobs from your searches
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleRefresh}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
-          <Button onClick={() => setIsSearchModalOpen(true)}>
-            <Search className="mr-2 h-4 w-4" />
-            Search Jobs
-          </Button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button>
+              Actions
+              <ChevronDown className="ml-2 h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setIsSearchModalOpen(true)}>
+              <Search className="mr-2 h-4 w-4" />
+              Search Jobs
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setIsSearchAllModalOpen(true)}>
+              <Globe className="mr-2 h-4 w-4" />
+              Search All Profiles
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setIsBatchPrepModalOpen(true)}>
+              <Layers className="mr-2 h-4 w-4" />
+              Prep All Jobs
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => setIsDismissModalOpen(true)}
+              className="text-destructive focus:text-destructive"
+            >
+              <XCircle className="mr-2 h-4 w-4" />
+              Dismiss by Status
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleRefresh}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Stats */}
@@ -180,6 +237,28 @@ export default function JobsListPage() {
           setPrepJob(null);
         }}
         onComplete={handlePrepComplete}
+      />
+
+      {/* Batch Prep Modal */}
+      <BatchPrepModal
+        isOpen={isBatchPrepModalOpen}
+        onClose={() => setIsBatchPrepModalOpen(false)}
+        onComplete={handleBatchPrepComplete}
+      />
+
+      {/* Search All Profiles Modal */}
+      <SearchAllJobsModal
+        isOpen={isSearchAllModalOpen}
+        onClose={() => setIsSearchAllModalOpen(false)}
+        onComplete={handleSearchAllComplete}
+      />
+
+      {/* Dismiss by Status Modal */}
+      <DismissByStatusModal
+        isOpen={isDismissModalOpen}
+        onClose={() => setIsDismissModalOpen(false)}
+        onComplete={handleDismissComplete}
+        stats={stats}
       />
     </div>
   );

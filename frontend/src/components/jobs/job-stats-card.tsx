@@ -11,7 +11,7 @@ import {
   Send,
   ThumbsDown,
   PhoneCall,
-  Archive,
+  XCircle,
   Star,
   TrendingUp,
 } from "lucide-react";
@@ -105,9 +105,9 @@ export function JobStatsCard({ stats, isLoading, className }: JobStatsCardProps)
             color="bg-red-500/10 text-red-500"
           />
           <StatItem
-            label="Archived"
-            value={stats?.archived ?? 0}
-            Icon={Archive}
+            label="Dismissed"
+            value={stats?.dismissed ?? 0}
+            Icon={XCircle}
             color="bg-gray-500/10 text-gray-500"
           />
           <StatItem

@@ -1,7 +1,11 @@
 """Job CRUD tools for the Jobs area agent.
 
 This module provides FunctionToolset tools for managing job listings
-through the AI assistant, enabling list, get, update, and stats operations.
+through the AI assistant, enabling list, get, dismiss, and stats operations.
+
+Note: Status updates are handled by pipelines (job_prep, job_apply), not directly
+by the agent. The agent can dismiss jobs (set status to DISMISSED) but cannot
+arbitrarily change status.
 """
 
 from uuid import UUID
@@ -51,7 +55,7 @@ async def list_jobs(
     and source.
 
     Args:
-        status: Filter by job status. Options: new, reviewed, applied, rejected, interviewing
+        status: Filter by job status. Options: new, prepped, reviewed, applied, rejected, interviewing, dismissed
         search: Search text in job title, company name, or description
         min_score: Minimum relevance score (0-10) to include
         max_score: Maximum relevance score (0-10) to include
@@ -76,7 +80,7 @@ async def list_jobs(
         except ValueError:
             return {
                 "success": False,
-                "error": f"Invalid status '{status}'. Valid options: new, reviewed, applied, rejected, interviewing",
+                "error": f"Invalid status '{status}'. Valid options: new, prepped, reviewed, applied, rejected, interviewing, dismissed",
             }
 
     # Build filters
@@ -150,75 +154,6 @@ async def get_job(ctx: RunContext, job_id: str) -> dict:
 
 
 @jobs_toolset.tool
-async def update_job_status(
-    ctx: RunContext,
-    job_id: str,
-    status: str,
-    notes: str | None = None,
-) -> dict:
-    """Update a job's workflow status and optionally add notes.
-
-    Use this to move jobs through the application pipeline:
-    - new: Just scraped, not yet reviewed
-    - reviewed: User has looked at it
-    - applied: User has applied to this job
-    - rejected: User decided not to pursue
-    - interviewing: In the interview process
-
-    Args:
-        job_id: The UUID of the job to update
-        status: New status (new, reviewed, applied, rejected, interviewing)
-        notes: Optional notes to add or update on the job
-
-    Returns:
-        Updated job details or error
-    """
-    db, user_id, error = _get_db_and_user(ctx)
-    if error:
-        return {"success": False, "error": error}
-
-    try:
-        job_uuid = UUID(job_id)
-    except ValueError:
-        return {"success": False, "error": f"Invalid job ID format: {job_id}"}
-
-    # Validate status
-    try:
-        job_status = JobStatus(status.lower())
-    except ValueError:
-        return {
-            "success": False,
-            "error": f"Invalid status '{status}'. Valid options: new, reviewed, applied, rejected, interviewing",
-        }
-
-    # Get the job first
-    job = await job_repo.get_by_id_and_user(db, job_uuid, user_id)
-    if not job:
-        return {"success": False, "error": f"Job not found with ID: {job_id}"}
-
-    # Build update data
-    update_data = {"status": job_status.value}
-    if notes is not None:
-        update_data["notes"] = notes
-
-    updated_job = await job_repo.update(db, db_job=job, update_data=update_data)
-
-    return {
-        "success": True,
-        "message": f"Job status updated to '{job_status.value}'",
-        "job": JobSummary(
-            id=updated_job.id,
-            title=updated_job.title,
-            company=updated_job.company,
-            location=updated_job.location,
-            relevance_score=updated_job.relevance_score,
-            status=JobStatus(updated_job.status),
-            job_url=updated_job.job_url,
-        ).model_dump(mode="json"),
-    }
-
-
-@jobs_toolset.tool
 async def get_job_stats(ctx: RunContext) -> dict:
     """Get statistics about the user's job search.
 
@@ -240,10 +175,12 @@ async def get_job_stats(ctx: RunContext) -> dict:
             "total_jobs": stats["total"],
             "by_status": {
                 "new": stats["new"],
+                "prepped": stats["prepped"],
                 "reviewed": stats["reviewed"],
                 "applied": stats["applied"],
                 "rejected": stats["rejected"],
                 "interviewing": stats["interviewing"],
+                "dismissed": stats["dismissed"],
             },
             "average_score": stats["avg_score"],
             "high_scoring_jobs": stats["high_scoring"],
@@ -252,13 +189,19 @@ async def get_job_stats(ctx: RunContext) -> dict:
 
 
 @jobs_toolset.tool
-async def delete_job(ctx: RunContext, job_id: str) -> dict:
-    """Delete a job from the user's list.
+async def dismiss_job(ctx: RunContext, job_id: str, reason: str | None = None) -> dict:
+    """Dismiss a job the user is not interested in.
 
-    This permanently removes the job. Use with caution.
+    This sets the job status to DISMISSED, indicating the user doesn't want
+    to pursue this opportunity. The job remains in the database but will be
+    filtered out of active job lists.
+
+    Use this when the user says they're not interested in a job, want to
+    remove it from their list, or has decided not to apply.
 
     Args:
-        job_id: The UUID of the job to delete
+        job_id: The UUID of the job to dismiss
+        reason: Optional reason for dismissing (saved to notes)
 
     Returns:
         Success confirmation or error
@@ -272,11 +215,33 @@ async def delete_job(ctx: RunContext, job_id: str) -> dict:
     except ValueError:
         return {"success": False, "error": f"Invalid job ID format: {job_id}"}
 
-    deleted_job = await job_repo.delete(db, job_uuid, user_id)
-    if not deleted_job:
+    # Get the job first
+    job = await job_repo.get_by_id_and_user(db, job_uuid, user_id)
+    if not job:
         return {"success": False, "error": f"Job not found with ID: {job_id}"}
+
+    # Build update data - set status to DISMISSED and optionally add reason to notes
+    update_data = {"status": JobStatus.DISMISSED.value}
+    if reason:
+        # Append reason to existing notes if any
+        existing_notes = job.notes or ""
+        if existing_notes:
+            update_data["notes"] = f"{existing_notes}\n\nDismissed: {reason}"
+        else:
+            update_data["notes"] = f"Dismissed: {reason}"
+
+    updated_job = await job_repo.update(db, db_job=job, update_data=update_data)
 
     return {
         "success": True,
-        "message": f"Deleted job: {deleted_job.title} at {deleted_job.company}",
+        "message": f"Dismissed job: {updated_job.title} at {updated_job.company}",
+        "job": JobSummary(
+            id=updated_job.id,
+            title=updated_job.title,
+            company=updated_job.company,
+            location=updated_job.location,
+            relevance_score=updated_job.relevance_score,
+            status=JobStatus(updated_job.status),
+            job_url=updated_job.job_url,
+        ).model_dump(mode="json"),
     }

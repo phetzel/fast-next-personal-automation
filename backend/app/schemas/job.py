@@ -43,6 +43,9 @@ class JobBase(BaseSchema):
 class JobCreate(JobBase):
     """Schema for creating a job (internal use by pipeline)."""
 
+    profile_id: UUID | None = Field(
+        default=None, description="Profile used to search for this job"
+    )
     relevance_score: float | None = Field(
         default=None, ge=0.0, le=10.0, description="AI-computed relevance score (0-10)"
     )
@@ -71,6 +74,7 @@ class JobResponse(JobBase, TimestampSchema):
 
     id: UUID
     user_id: UUID
+    profile_id: UUID | None = None
     relevance_score: float | None = None
     reasoning: str | None = None
     status: JobStatus = JobStatus.NEW
@@ -128,7 +132,7 @@ class JobStatsResponse(BaseSchema):
     applied: int = 0
     interviewing: int = 0
     rejected: int = 0
-    archived: int = 0
+    dismissed: int = 0
     avg_score: float | None = None
     high_scoring: int = 0  # Jobs with score >= 7.0
 

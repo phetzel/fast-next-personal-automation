@@ -12,6 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
+    from app.db.models.job_profile import JobProfile
     from app.db.models.user import User
 
 
@@ -19,7 +20,7 @@ class JobStatus(str, Enum):
     """Status of a job in the user's pipeline.
 
     Flow: NEW → PREPPED → REVIEWED → APPLIED → INTERVIEWING
-    - Can go to ARCHIVED from any status (user dismisses)
+    - Can go to DISMISSED from any status (user not interested)
     - Can go to REJECTED from APPLIED or INTERVIEWING (employer rejects)
     """
 
@@ -29,7 +30,7 @@ class JobStatus(str, Enum):
     APPLIED = "applied"
     INTERVIEWING = "interviewing"
     REJECTED = "rejected"  # Employer rejected the application
-    ARCHIVED = "archived"  # User dismissed/not interested
+    DISMISSED = "dismissed"  # User dismissed/not interested
 
 
 class Job(Base, TimestampMixin):
@@ -50,6 +51,13 @@ class Job(Base, TimestampMixin):
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
+    )
+    # Profile used to search for this job (for prep to use same profile)
+    profile_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("job_profiles.id", ondelete="SET NULL"),
+        nullable=True,
         index=True,
     )
 
@@ -129,8 +137,9 @@ class Job(Base, TimestampMixin):
     )  # fulltime, parttime, internship, contract
     company_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
 
-    # Relationship
+    # Relationships
     user: Mapped["User"] = relationship("User", lazy="selectin")
+    profile: Mapped["JobProfile | None"] = relationship("JobProfile", lazy="selectin")
 
     @property
     def job_status(self) -> JobStatus:
