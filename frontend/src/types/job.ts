@@ -26,6 +26,10 @@ export interface Job {
   status: JobStatus;
   search_terms: string | null;
   notes: string | null;
+  // Additional scrape fields
+  is_remote: boolean | null;
+  job_type: string | null;
+  company_url: string | null;
   // Prep materials
   cover_letter: string | null;
   cover_letter_file_path: string | null;
@@ -181,6 +185,12 @@ export interface JobProfile {
   target_locations: string[] | null;
   min_score_threshold: number;
   preferences: Record<string, unknown> | null;
+  // Contact info for cover letters
+  contact_full_name: string | null;
+  contact_phone: string | null;
+  contact_email: string | null;
+  contact_location: string | null;
+  contact_website: string | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -214,6 +224,12 @@ export interface JobProfileCreate {
   target_locations?: string[] | null;
   min_score_threshold?: number;
   preferences?: Record<string, unknown> | null;
+  // Contact info for cover letters
+  contact_full_name?: string | null;
+  contact_phone?: string | null;
+  contact_email?: string | null;
+  contact_location?: string | null;
+  contact_website?: string | null;
 }
 
 /**
@@ -229,6 +245,12 @@ export interface JobProfileUpdate {
   target_locations?: string[] | null;
   min_score_threshold?: number;
   preferences?: Record<string, unknown> | null;
+  // Contact info for cover letters
+  contact_full_name?: string | null;
+  contact_phone?: string | null;
+  contact_email?: string | null;
+  contact_location?: string | null;
+  contact_website?: string | null;
 }
 
 // ===========================================================================

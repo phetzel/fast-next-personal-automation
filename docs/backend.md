@@ -139,9 +139,10 @@ Job profiles include contact info fields for cover letter generation:
 | Pipeline | Description |
 |----------|-------------|
 | `job_search` | Search job boards and analyze fit against resume |
-| `job_analyze` | Analyze application page to detect requirements (cover letter, form fields) |
-| `job_prep` | Generate cover letter (if needed) and prep notes |
+| `job_prep` | Auto-analyzes application page, then generates cover letter (if needed) and prep notes |
 | `job_apply` | Assist with or automate application submission |
+
+> **Note:** `job_analyze` exists as an internal module used by `job_prep` (via `auto_analyze=True`) and `job_apply`, but is not exposed as a standalone pipeline.
 
 ### Area Agents
 

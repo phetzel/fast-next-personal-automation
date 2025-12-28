@@ -113,6 +113,16 @@ class Job(Base, TimestampMixin):
     )  # manual, assisted, automated
     confirmation_code: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
+    # Soft delete - prevents re-scraping deleted jobs
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Additional scrape fields from python-jobspy
+    is_remote: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    job_type: Mapped[str | None] = mapped_column(
+        String(50), nullable=True
+    )  # fulltime, parttime, internship, contract
+    company_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+
     # Relationship
     user: Mapped["User"] = relationship("User", lazy="selectin")
 

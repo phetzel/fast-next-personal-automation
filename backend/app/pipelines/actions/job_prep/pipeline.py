@@ -43,17 +43,13 @@ class JobPrepInput(BaseModel):
         default="professional",
         description="Tone for the cover letter",
     )
-    force_cover_letter: bool = Field(
-        default=False,
-        description="Generate cover letter even if analysis shows it's not required",
-    )
     generate_screening_answers: bool = Field(
-        default=True,
-        description="Generate answers for detected screening questions",
+        default=False,
+        description="Generate answers for detected screening questions (requires prior analysis)",
     )
     auto_analyze: bool = Field(
-        default=True,
-        description="Automatically analyze job application page first if not already analyzed",
+        default=False,
+        description="Analyze job application page first (for detecting form fields, not needed for cover letter)",
     )
 
 
@@ -274,19 +270,11 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                 if projects_content:
                     logger.info(f"Including {len(projects_content)} projects from profile")
 
-        # Step 4: Determine if cover letter is needed
-        # Check job analysis results (if job was analyzed)
+        # Step 4: Always generate cover letter
+        # We always generate a cover letter - it's useful to have even if not strictly required
         should_generate_cover_letter = True
         skipped_cover_letter = False
-
-        if job.requires_cover_letter is False and not input.force_cover_letter:
-            # Analysis indicates cover letter not required
-            should_generate_cover_letter = False
-            skipped_cover_letter = True
-            logger.info("Skipping cover letter generation (not required per analysis)")
-        elif job.requires_cover_letter is None:
-            # No analysis done, generate by default
-            logger.info("Cover letter requirement unknown, generating by default")
+        logger.info("Generating cover letter (always enabled)")
 
         # Step 5: Generate materials
         logger.info(f"Generating prep materials for: {job.title} at {job.company}")

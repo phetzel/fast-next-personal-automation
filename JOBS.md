@@ -780,6 +780,37 @@ NEW → PREPPED → REVIEWED → (generate PDF) → APPLIED
 
 ---
 
+## Phase 11: Soft Delete and Enhanced Scraping
+
+**Goal:** Prevent re-scraping of deleted jobs and capture additional job metadata.
+
+### Changes Made
+
+1. **Soft Delete Implementation:**
+   - Added `deleted_at` timestamp field to Job model
+   - `delete()` now sets `deleted_at` instead of hard deleting
+   - Deleted jobs excluded from listings but still checked for duplicates
+   - Prevents re-scraping the same job after user deletes it
+
+2. **Additional Scrape Fields from python-jobspy:**
+   - `is_remote` (boolean) - Whether job is remote
+   - `job_type` (string) - fulltime, parttime, internship, contract
+   - `company_url` (string) - URL to company page
+
+3. **Frontend Enhancements:**
+   - Source column is now a clickable link (opens job posting)
+   - Removed redundant external link button from actions
+   - Location column shows "Remote" badge and job type badges
+
+### Completion Criteria
+- [x] Soft delete implemented for jobs
+- [x] Deleted jobs prevent re-scraping
+- [x] Additional scrape fields added
+- [x] Frontend shows remote/job_type badges
+- [x] Source is clickable link
+
+---
+
 ## Future Enhancements (Out of Scope)
 
 1. **Job Application Tracking** - Track applied jobs, responses, interviews
@@ -808,8 +839,9 @@ NEW → PREPPED → REVIEWED → (generate PDF) → APPLIED
 | Phase 8 | ✅ Complete | - | Job prep pipeline with cover letter and prep notes |
 | Phase 9 | ✅ Complete | - | Profile-based story and project linking |
 | Phase 10 | ✅ Complete | - | Inline pipeline execution from listings page |
+| Phase 11 | ✅ Complete | - | Soft delete and enhanced scraping fields |
 
 ---
 
-*Last Updated: 2025-12-25*
+*Last Updated: 2025-12-27*
 

@@ -81,9 +81,7 @@ class JobProfile(Base, TimestampMixin):
     contact_full_name: Mapped[str | None] = mapped_column(
         String(255), nullable=True
     )  # "Phillip Hetzel"
-    contact_phone: Mapped[str | None] = mapped_column(
-        String(50), nullable=True
-    )  # "510-684-9802"
+    contact_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)  # "510-684-9802"
     contact_email: Mapped[str | None] = mapped_column(
         String(255), nullable=True
     )  # "phetzel89@gmail.com"

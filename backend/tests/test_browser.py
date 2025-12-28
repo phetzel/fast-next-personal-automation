@@ -166,16 +166,6 @@ class TestJobPipelineRegistration:
         clear_registry()
         discover_pipelines(force_reload=True)
 
-    def test_job_analyze_pipeline_registered(self):
-        """Test that job_analyze pipeline is registered."""
-        from app.pipelines.registry import get_pipeline
-
-        pipeline = get_pipeline("job_analyze")
-        assert pipeline is not None
-        assert pipeline.name == "job_analyze"
-        assert pipeline.area == "jobs"
-        assert "browser" in pipeline.tags
-
     def test_job_apply_pipeline_registered(self):
         """Test that job_apply pipeline is registered."""
         from app.pipelines.registry import get_pipeline
@@ -195,16 +185,6 @@ class TestJobPipelineRegistration:
         assert pipeline.name == "job_prep"
         assert pipeline.area == "jobs"
 
-    def test_job_analyze_input_schema(self):
-        """Test job_analyze pipeline has correct input schema."""
-        from app.pipelines.registry import get_pipeline_info
-
-        info = get_pipeline_info("job_analyze")
-        assert info is not None
-        assert "properties" in info["input_schema"]
-        assert "job_id" in info["input_schema"]["properties"]
-        assert "use_ai" in info["input_schema"]["properties"]
-
     def test_job_apply_input_schema(self):
         """Test job_apply pipeline has correct input schema."""
         from app.pipelines.registry import get_pipeline_info
@@ -217,11 +197,11 @@ class TestJobPipelineRegistration:
         assert "dry_run" in info["input_schema"]["properties"]
 
     def test_job_prep_has_new_inputs(self):
-        """Test job_prep pipeline has new conditional inputs."""
+        """Test job_prep pipeline has expected inputs."""
         from app.pipelines.registry import get_pipeline_info
 
         info = get_pipeline_info("job_prep")
         assert info is not None
         props = info["input_schema"]["properties"]
-        assert "force_cover_letter" in props
         assert "generate_screening_answers" in props
+        assert "auto_analyze" in props

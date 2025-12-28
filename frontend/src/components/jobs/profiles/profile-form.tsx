@@ -13,7 +13,7 @@ import {
 } from "@/components/ui";
 import { ResumeSelector } from "@/components/jobs";
 import type { JobProfile } from "@/types";
-import { Loader2, Plus, X, Save, CheckCircle2 } from "lucide-react";
+import { Loader2, Plus, X, Save, CheckCircle2, User, Phone, Mail, MapPin, Globe, ChevronDown, ChevronUp } from "lucide-react";
 
 export interface ProfileFormData {
   name: string;
@@ -23,6 +23,12 @@ export interface ProfileFormData {
   target_roles: string[] | null;
   target_locations: string[] | null;
   min_score_threshold: number;
+  // Contact info for cover letters
+  contact_full_name: string | null;
+  contact_phone: string | null;
+  contact_email: string | null;
+  contact_location: string | null;
+  contact_website: string | null;
 }
 
 interface ProfileFormProps {
@@ -49,6 +55,16 @@ export function ProfileForm({
   const [minScore, setMinScore] = useState(profile?.min_score_threshold || 7.0);
   const [newRole, setNewRole] = useState("");
   const [newLocation, setNewLocation] = useState("");
+  
+  // Contact info for cover letters
+  const [contactFullName, setContactFullName] = useState(profile?.contact_full_name || "");
+  const [contactPhone, setContactPhone] = useState(profile?.contact_phone || "");
+  const [contactEmail, setContactEmail] = useState(profile?.contact_email || "");
+  const [contactLocation, setContactLocation] = useState(profile?.contact_location || "");
+  const [contactWebsite, setContactWebsite] = useState(profile?.contact_website || "");
+  const [showContactInfo, setShowContactInfo] = useState(
+    !!(profile?.contact_full_name || profile?.contact_phone || profile?.contact_email || profile?.contact_location || profile?.contact_website)
+  );
 
   // Fetch stories and projects for selectors
   const { stories, fetchStories } = useStories();
@@ -72,6 +88,12 @@ export function ProfileForm({
       target_roles: targetRoles.length > 0 ? targetRoles : null,
       target_locations: targetLocations.length > 0 ? targetLocations : null,
       min_score_threshold: minScore,
+      // Contact info - send null for empty strings
+      contact_full_name: contactFullName.trim() || null,
+      contact_phone: contactPhone.trim() || null,
+      contact_email: contactEmail.trim() || null,
+      contact_location: contactLocation.trim() || null,
+      contact_website: contactWebsite.trim() || null,
     };
 
     await onSave(data);
@@ -300,6 +322,112 @@ export function ProfileForm({
                 Jobs scoring below {minScore} won&apos;t be saved automatically
               </span>
             </div>
+          </div>
+
+          {/* Contact Info for Cover Letters */}
+          <div className="rounded-lg border border-dashed p-4">
+            <button
+              type="button"
+              onClick={() => setShowContactInfo(!showContactInfo)}
+              className="flex w-full items-center justify-between text-sm font-medium hover:text-primary"
+            >
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                <span>Cover Letter Contact Info</span>
+                {(contactFullName || contactPhone || contactEmail) && (
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                    Configured
+                  </span>
+                )}
+              </div>
+              {showContactInfo ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </button>
+            
+            {showContactInfo && (
+              <div className="mt-4 space-y-4">
+                <p className="text-xs text-muted-foreground">
+                  This information appears in the header of your generated cover letter PDFs.
+                </p>
+                
+                {/* Full Name */}
+                <div>
+                  <label className="mb-1.5 flex items-center gap-2 text-sm font-medium">
+                    <User className="h-3.5 w-3.5 text-muted-foreground" />
+                    Full Name
+                  </label>
+                  <Input
+                    value={contactFullName}
+                    onChange={(e) => setContactFullName(e.target.value)}
+                    placeholder="e.g., Phillip Hetzel"
+                    maxLength={255}
+                  />
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label className="mb-1.5 flex items-center gap-2 text-sm font-medium">
+                    <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                    Phone Number
+                  </label>
+                  <Input
+                    value={contactPhone}
+                    onChange={(e) => setContactPhone(e.target.value)}
+                    placeholder="e.g., 510-684-9802"
+                    maxLength={50}
+                  />
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className="mb-1.5 flex items-center gap-2 text-sm font-medium">
+                    <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                    Email Address
+                  </label>
+                  <Input
+                    type="email"
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    placeholder="e.g., phetzel89@gmail.com"
+                    maxLength={255}
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Falls back to your account email if not set
+                  </p>
+                </div>
+
+                {/* Location */}
+                <div>
+                  <label className="mb-1.5 flex items-center gap-2 text-sm font-medium">
+                    <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                    Location
+                  </label>
+                  <Input
+                    value={contactLocation}
+                    onChange={(e) => setContactLocation(e.target.value)}
+                    placeholder="e.g., Portland, Oregon"
+                    maxLength={255}
+                  />
+                </div>
+
+                {/* Website */}
+                <div>
+                  <label className="mb-1.5 flex items-center gap-2 text-sm font-medium">
+                    <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                    Website
+                  </label>
+                  <Input
+                    value={contactWebsite}
+                    onChange={(e) => setContactWebsite(e.target.value)}
+                    placeholder="e.g., philliphetzel.com"
+                    maxLength={255}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Actions */}

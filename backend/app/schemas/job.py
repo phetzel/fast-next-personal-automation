@@ -29,6 +29,15 @@ class JobBase(BaseSchema):
     source: str | None = Field(
         default=None, max_length=50, description="Source (linkedin, indeed, etc.)"
     )
+    is_remote: bool | None = Field(default=None, description="Whether the job is remote")
+    job_type: str | None = Field(
+        default=None,
+        max_length=50,
+        description="Job type (fulltime, parttime, internship, contract)",
+    )
+    company_url: str | None = Field(
+        default=None, max_length=2048, description="URL to company page"
+    )
 
 
 class JobCreate(JobBase):

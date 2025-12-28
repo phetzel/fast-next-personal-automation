@@ -13,7 +13,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "profile_contact_info"
-down_revision: str | None = "cover_letter_pdf"
+down_revision: str | None = "af5ii9jk9012"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -49,5 +49,6 @@ def downgrade() -> None:
     op.drop_column("job_profiles", "contact_email")
     op.drop_column("job_profiles", "contact_phone")
     op.drop_column("job_profiles", "contact_full_name")
+
 
 

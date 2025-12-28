@@ -35,6 +35,9 @@ class ScrapedJob(BaseModel):
     salary_range: str | None = None
     date_posted: datetime | None = None
     source: str | None = None  # linkedin, indeed, glassdoor, etc.
+    is_remote: bool | None = None
+    job_type: str | None = None  # fulltime, parttime, internship, contract
+    company_url: str | None = None
 
 
 class JobScraperBase(ABC):
@@ -160,6 +163,21 @@ class JobSpyScraper(JobScraperBase):
                                 else:
                                     salary_range = f"${int(min_amt):,}+"
 
+                            # Parse is_remote
+                            is_remote = None
+                            if row.get("is_remote") is not None:
+                                is_remote = bool(row.get("is_remote"))
+
+                            # Parse job_type
+                            job_type = None
+                            if row.get("job_type") and str(row.get("job_type")) != "nan":
+                                job_type = str(row.get("job_type"))
+
+                            # Parse company_url
+                            company_url = None
+                            if row.get("company_url") and str(row.get("company_url")) != "nan":
+                                company_url = str(row.get("company_url"))
+
                             job = ScrapedJob(
                                 title=str(row.get("title", "Unknown")),
                                 company=str(row.get("company", "Unknown")),
@@ -169,6 +187,9 @@ class JobSpyScraper(JobScraperBase):
                                 salary_range=salary_range,
                                 date_posted=date_posted,
                                 source=str(row.get("site", "unknown")),
+                                is_remote=is_remote,
+                                job_type=job_type,
+                                company_url=company_url,
                             )
                             all_jobs.append(job)
                         except Exception as e:

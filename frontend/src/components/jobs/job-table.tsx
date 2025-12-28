@@ -132,12 +132,27 @@ export function JobTable({
         accessorKey: "location",
         header: "Location",
         cell: ({ row }) => {
-          const location = row.original.location;
-          if (!location) return <span className="text-muted-foreground">—</span>;
+          const job = row.original;
           return (
-            <div className="flex items-center gap-1.5 text-sm">
-              <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span className="truncate max-w-[150px]">{location}</span>
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-1.5 text-sm">
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <span className="truncate max-w-[150px]">
+                  {job.location || "—"}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                {job.is_remote && (
+                  <span className="inline-flex items-center rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400">
+                    Remote
+                  </span>
+                )}
+                {job.job_type && (
+                  <span className="inline-flex items-center rounded-full bg-gray-500/10 px-1.5 py-0.5 text-[10px] font-medium capitalize text-muted-foreground">
+                    {job.job_type}
+                  </span>
+                )}
+              </div>
             </div>
           );
         },
@@ -193,12 +208,20 @@ export function JobTable({
         accessorKey: "source",
         header: "Source",
         cell: ({ row }) => {
-          const source = row.original.source;
-          if (!source) return <span className="text-muted-foreground">—</span>;
+          const job = row.original;
+          if (!job.source) return <span className="text-muted-foreground">—</span>;
           return (
-            <span className="text-xs capitalize text-muted-foreground">
-              {source}
-            </span>
+            <a
+              href={job.job_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs capitalize text-muted-foreground transition-colors hover:text-foreground"
+              onClick={(e) => e.stopPropagation()}
+              title="View original job posting"
+            >
+              {job.source}
+              <ExternalLink className="h-3 w-3" />
+            </a>
           );
         },
         enableSorting: false,
@@ -232,16 +255,6 @@ export function JobTable({
                   Prep
                 </button>
               )}
-              <a
-                href={job.job_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                onClick={(e) => e.stopPropagation()}
-                title="Open job posting"
-              >
-                <ExternalLink className="h-4 w-4" />
-              </a>
               <button
                 onClick={(e) => {
                   e.stopPropagation();

@@ -157,10 +157,10 @@ class TestAreaAgentConfig:
         pipelines = [
             {"name": "job_search", "tags": ["jobs", "ai"]},
             {"name": "echo", "tags": ["utility"]},
-            {"name": "job_analyze", "tags": ["jobs"]},
+            {"name": "job_prep", "tags": ["jobs"]},
         ]
         allowed = config.get_allowed_pipeline_names(pipelines)
-        assert allowed == {"job_search", "job_analyze"}
+        assert allowed == {"job_search", "job_prep"}
 
     def test_get_allowed_pipeline_names_explicit_list(self):
         """Test explicit pipeline list takes precedence over tags."""
