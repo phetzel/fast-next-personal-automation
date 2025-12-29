@@ -20,9 +20,12 @@ frontend/src/
 │   ├── page.tsx           # Home page
 │   └── providers.tsx      # React context providers
 ├── components/
+│   ├── areas/             # Area dashboard cards (Jobs, etc.)
 │   ├── auth/              # Auth components
 │   ├── chat/              # Chat components
+│   ├── jobs/              # Jobs area components
 │   ├── layout/            # Header, Sidebar
+│   ├── pipelines/         # Pipeline execution components
 │   ├── theme/             # Theme toggle
 │   └── ui/                # Shared UI components
 ├── hooks/                 # Custom React hooks

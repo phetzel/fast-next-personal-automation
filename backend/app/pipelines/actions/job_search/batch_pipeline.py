@@ -115,9 +115,7 @@ class BatchJobSearchPipeline(ActionPipeline[BatchJobSearchInput, BatchJobSearchO
             )
 
         # Filter to profiles that have resumes (required for search)
-        valid_profiles = [
-            p for p in profiles if p.resume and p.resume.text_content
-        ]
+        valid_profiles = [p for p in profiles if p.resume and p.resume.text_content]
 
         if not valid_profiles:
             return ActionResult(
@@ -197,4 +195,3 @@ class BatchJobSearchPipeline(ActionPipeline[BatchJobSearchInput, BatchJobSearchO
                 "profiles_searched": [p.name for p in valid_profiles],
             },
         )
-

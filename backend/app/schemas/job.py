@@ -43,9 +43,7 @@ class JobBase(BaseSchema):
 class JobCreate(JobBase):
     """Schema for creating a job (internal use by pipeline)."""
 
-    profile_id: UUID | None = Field(
-        default=None, description="Profile used to search for this job"
-    )
+    profile_id: UUID | None = Field(default=None, description="Profile used to search for this job")
     relevance_score: float | None = Field(
         default=None, ge=0.0, le=10.0, description="AI-computed relevance score (0-10)"
     )

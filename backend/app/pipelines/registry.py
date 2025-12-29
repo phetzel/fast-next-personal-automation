@@ -53,7 +53,10 @@ def register_pipeline(pipeline_cls: type[ActionPipeline]) -> type[ActionPipeline
         # Allow re-registration of same class during module reload
         # After reload, class identity changes but qualified name stays same
         existing = _PIPELINE_REGISTRY[name]
-        if existing.__module__ == pipeline_cls.__module__ and existing.__qualname__ == pipeline_cls.__qualname__:
+        if (
+            existing.__module__ == pipeline_cls.__module__
+            and existing.__qualname__ == pipeline_cls.__qualname__
+        ):
             # Update to the new class from the reloaded module
             _PIPELINE_REGISTRY[name] = pipeline_cls
             # Clear cached instance so it uses new class
