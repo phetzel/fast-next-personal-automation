@@ -80,6 +80,58 @@ async def get_job_stats(
     return JobStatsResponse(**stats)
 
 
+# =============================================================================
+# Batch operations (must be before /{job_id} routes to avoid path conflicts)
+# =============================================================================
+
+
+class DismissByStatusRequest(BaseModel):
+    """Request to dismiss all jobs with a specific status."""
+
+    status: JobStatus = Field(description="Status of jobs to dismiss")
+
+
+class DismissByStatusResponse(BaseModel):
+    """Response from batch dismiss operation."""
+
+    dismissed_count: int = Field(description="Number of jobs dismissed")
+    status: str = Field(description="Status that was dismissed")
+
+
+@router.post("/batch/dismiss", response_model=DismissByStatusResponse)
+async def dismiss_jobs_by_status(
+    request: DismissByStatusRequest,
+    current_user: CurrentUser,
+    job_service: JobSvc,
+) -> DismissByStatusResponse:
+    """Dismiss all jobs with a specific status.
+
+    Use this to quickly clear out jobs you're not interested in.
+    Only NEW, PREPPED, and REVIEWED statuses can be dismissed in batch.
+    """
+    from app.core.exceptions import ValidationError
+
+    # Validate that the status is dismissable
+    dismissable_statuses = [JobStatus.NEW, JobStatus.PREPPED, JobStatus.REVIEWED]
+    if request.status not in dismissable_statuses:
+        raise ValidationError(
+            message=f"Only {', '.join(s.value for s in dismissable_statuses)} statuses can be batch dismissed",
+            details={"status": request.status.value},
+        )
+
+    count = await job_service.dismiss_by_status(current_user.id, request.status)
+
+    return DismissByStatusResponse(
+        dismissed_count=count,
+        status=request.status.value,
+    )
+
+
+# =============================================================================
+# Single job operations
+# =============================================================================
+
+
 @router.get("/{job_id}", response_model=JobResponse)
 async def get_job(
     job_id: UUID,
@@ -182,46 +234,4 @@ async def preview_cover_letter_pdf(
             "Content-Disposition": f'inline; filename="{filename}"',
             "Content-Length": str(len(pdf_bytes)),
         },
-    )
-
-
-class DismissByStatusRequest(BaseModel):
-    """Request to dismiss all jobs with a specific status."""
-
-    status: JobStatus = Field(description="Status of jobs to dismiss")
-
-
-class DismissByStatusResponse(BaseModel):
-    """Response from batch dismiss operation."""
-
-    dismissed_count: int = Field(description="Number of jobs dismissed")
-    status: str = Field(description="Status that was dismissed")
-
-
-@router.post("/batch/dismiss", response_model=DismissByStatusResponse)
-async def dismiss_jobs_by_status(
-    request: DismissByStatusRequest,
-    current_user: CurrentUser,
-    job_service: JobSvc,
-) -> DismissByStatusResponse:
-    """Dismiss all jobs with a specific status.
-
-    Use this to quickly clear out jobs you're not interested in.
-    Only NEW, PREPPED, and REVIEWED statuses can be dismissed in batch.
-    """
-    # Validate that the status is dismissable
-    dismissable_statuses = [JobStatus.NEW, JobStatus.PREPPED, JobStatus.REVIEWED]
-    if request.status not in dismissable_statuses:
-        from app.core.exceptions import ValidationError
-
-        raise ValidationError(
-            message=f"Only {', '.join(s.value for s in dismissable_statuses)} statuses can be batch dismissed",
-            details={"status": request.status.value},
-        )
-
-    count = await job_service.dismiss_by_status(current_user.id, request.status)
-
-    return DismissByStatusResponse(
-        dismissed_count=count,
-        status=request.status.value,
     )
