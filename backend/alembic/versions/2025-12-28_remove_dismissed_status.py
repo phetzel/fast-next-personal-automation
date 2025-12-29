@@ -14,7 +14,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "remove_dismissed_status"
-down_revision = "job_profile_id_and_dismissed_status"
+down_revision = "dbbbacd89f4f"
 branch_labels = None
 depends_on = None
 
