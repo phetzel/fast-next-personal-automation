@@ -218,7 +218,6 @@ export function JobDetailModal({
     : null;
 
   const hasPreppedMaterials = !!job.cover_letter || !!job.prep_notes;
-  const canGeneratePdf = job.cover_letter && !job.cover_letter_file_path;
   const hasPdf = !!job.cover_letter_file_path;
 
   return (

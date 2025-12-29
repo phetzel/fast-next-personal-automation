@@ -29,7 +29,6 @@ export function JobsAreaCard() {
 
   // Calculate "action needed" count - jobs that need attention
   const actionNeeded = (stats?.new ?? 0) + (stats?.prepped ?? 0);
-  const inProgress = (stats?.applied ?? 0) + (stats?.interviewing ?? 0);
 
   return (
     <Link href={ROUTES.JOBS} className="group block">

@@ -326,11 +326,7 @@ test.describe("Inline Pipeline Execution", () => {
         await jobRow.click();
         
         // If job is prepped, should show cover letter section
-        // This is conditional based on job status
-        const coverLetterSection = page.getByText(/cover letter/i);
-        const applicationMaterials = page.getByText(/application materials/i);
-        
-        // Either shows cover letter or doesn't (depends on job status)
+        // This is conditional based on job status - just verify modal is open
         await expect(page.getByRole("dialog")).toBeVisible();
       }
     });
@@ -357,8 +353,7 @@ test.describe("Inline Pipeline Execution", () => {
         await jobRow.click();
         
         // If job is new without prep, should show prepare materials button
-        const prepareButton = page.getByRole("button", { name: /prepare materials/i });
-        // This may or may not be visible depending on job status
+        // This may or may not be visible depending on job status - just verify modal is open
         await expect(page.getByRole("dialog")).toBeVisible();
       }
     });

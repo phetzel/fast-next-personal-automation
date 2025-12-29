@@ -9,8 +9,6 @@ This migration:
 2. The dismissed status is no longer used - jobs are just soft-deleted instead
 """
 
-from datetime import datetime, timezone
-
 from alembic import op
 import sqlalchemy as sa
 
