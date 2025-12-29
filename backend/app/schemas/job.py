@@ -130,7 +130,6 @@ class JobStatsResponse(BaseSchema):
     applied: int = 0
     interviewing: int = 0
     rejected: int = 0
-    dismissed: int = 0
     avg_score: float | None = None
     high_scoring: int = 0  # Jobs with score >= 7.0
 
@@ -143,6 +142,11 @@ class JobFilters(BaseSchema):
     min_score: float | None = Field(default=None, ge=0.0, le=10.0)
     max_score: float | None = Field(default=None, ge=0.0, le=10.0)
     search: str | None = Field(default=None, description="Search in title, company, description")
+    posted_within_hours: int | None = Field(
+        default=None,
+        ge=1,
+        description="Filter to jobs posted within the last N hours (e.g., 24, 48, 72)",
+    )
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=20, ge=1, le=100)
     sort_by: Literal["created_at", "relevance_score", "date_posted", "company"] = "created_at"

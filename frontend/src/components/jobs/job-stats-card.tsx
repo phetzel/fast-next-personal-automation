@@ -11,7 +11,6 @@ import {
   Send,
   ThumbsDown,
   PhoneCall,
-  XCircle,
   Star,
   TrendingUp,
 } from "lucide-react";
@@ -48,8 +47,8 @@ export function JobStatsCard({ stats, isLoading, className }: JobStatsCardProps)
     return (
       <Card className={className}>
         <CardContent className="py-6">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-10">
-            {Array.from({ length: 10 }).map((_, i) => (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9">
+            {Array.from({ length: 9 }).map((_, i) => (
               <div key={i} className="h-16 animate-pulse rounded-lg bg-gray-200" />
             ))}
           </div>
@@ -61,7 +60,7 @@ export function JobStatsCard({ stats, isLoading, className }: JobStatsCardProps)
   return (
     <Card className={className}>
       <CardContent className="py-6">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-10">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9">
           <StatItem
             label="Total"
             value={stats?.total ?? 0}
@@ -103,12 +102,6 @@ export function JobStatsCard({ stats, isLoading, className }: JobStatsCardProps)
             value={stats?.rejected ?? 0}
             Icon={ThumbsDown}
             color="bg-red-500/10 text-red-500"
-          />
-          <StatItem
-            label="Dismissed"
-            value={stats?.dismissed ?? 0}
-            Icon={XCircle}
-            color="bg-gray-500/10 text-gray-500"
           />
           <StatItem
             label="High Score"

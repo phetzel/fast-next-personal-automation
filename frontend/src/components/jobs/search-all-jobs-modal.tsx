@@ -17,7 +17,10 @@ import {
   XCircle,
   RefreshCw,
   AlertCircle,
+  ChevronDown,
 } from "lucide-react";
+import { Label } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
 interface SearchAllJobsModalProps {
   isOpen: boolean;
@@ -34,6 +37,18 @@ interface ProfileSearchResult {
   error?: string | null;
 }
 
+interface BatchSearchFormData {
+  hours_old: number;
+}
+
+const RECENCY_OPTIONS = [
+  { value: 24, label: "Last 24 Hours" },
+  { value: 48, label: "Last 48 Hours" },
+  { value: 72, label: "Last 3 Days" },
+  { value: 168, label: "Last Week" },
+  { value: 336, label: "Last 2 Weeks" },
+];
+
 /**
  * Modal for running the batch job search pipeline.
  * Searches for jobs across all of the user's job profiles.
@@ -45,6 +60,9 @@ export function SearchAllJobsModal({
 }: SearchAllJobsModalProps) {
   const { executePipeline, getExecutionState, resetExecution } = usePipelines();
   const [hasStarted, setHasStarted] = useState(false);
+  const [formData, setFormData] = useState<BatchSearchFormData>({
+    hours_old: 72,
+  });
 
   const execState = getExecutionState("job_search_batch");
   const isRunning = execState.status === "running";
@@ -61,7 +79,7 @@ export function SearchAllJobsModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setHasStarted(true);
-    await executePipeline("job_search_batch", {});
+    await executePipeline("job_search_batch", formData as unknown as Record<string, unknown>);
   };
 
   const handleClose = () => {
@@ -101,13 +119,47 @@ export function SearchAllJobsModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Pre-run explanation */}
+          {/* Pre-run form */}
           {!hasStarted && (
-            <div className="rounded-lg border border-muted bg-muted/30 p-4 text-sm">
-              <p className="text-muted-foreground">
-                This will search for jobs using all your profiles that have resumes attached.
-                Each profile&apos;s target roles and locations will be used for its search.
-              </p>
+            <div className="space-y-4">
+              <div className="rounded-lg border border-muted bg-muted/30 p-4 text-sm">
+                <p className="text-muted-foreground">
+                  This will search for jobs using all your profiles that have resumes attached.
+                  Each profile&apos;s target roles and locations will be used for its search.
+                </p>
+              </div>
+
+              {/* Recency selector */}
+              <div className="space-y-2">
+                <Label htmlFor="batch-hours-old">Posted Within</Label>
+                <div className="relative">
+                  <select
+                    id="batch-hours-old"
+                    value={formData.hours_old}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        hours_old: parseInt(e.target.value, 10),
+                      }))
+                    }
+                    className={cn(
+                      "border-input bg-background ring-offset-background",
+                      "focus-visible:ring-ring flex h-10 w-full appearance-none rounded-md border pl-3 pr-10 py-2",
+                      "text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                    )}
+                  >
+                    {RECENCY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Only scrape jobs posted within this time frame
+                </p>
+              </div>
             </div>
           )}
 

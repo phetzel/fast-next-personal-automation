@@ -48,6 +48,8 @@ export function useJobs() {
       if (appliedFilters.max_score !== undefined)
         params.set("max_score", String(appliedFilters.max_score));
       if (appliedFilters.search) params.set("search", appliedFilters.search);
+      if (appliedFilters.posted_within_hours !== undefined)
+        params.set("posted_within_hours", String(appliedFilters.posted_within_hours));
       if (appliedFilters.page) params.set("page", String(appliedFilters.page));
       if (appliedFilters.page_size)
         params.set("page_size", String(appliedFilters.page_size));
@@ -132,15 +134,15 @@ export function useJobs() {
   );
 
   /**
-   * Dismiss all jobs with a specific status.
+   * Delete all jobs with a specific status (soft delete).
    */
-  const dismissByStatus = useCallback(
+  const deleteByStatus = useCallback(
     async (status: JobStatus): Promise<number> => {
-      const response = await apiClient.post<{ dismissed_count: number; status: string }>(
-        "/jobs/batch/dismiss",
+      const response = await apiClient.post<{ deleted_count: number; status: string }>(
+        "/jobs/batch/delete",
         { status }
       );
-      return response.dismissed_count;
+      return response.deleted_count;
     },
     []
   );
@@ -178,7 +180,7 @@ export function useJobs() {
     fetchJob,
     updateJobStatus,
     deleteJob,
-    dismissByStatus,
+    deleteByStatus,
     setFilters,
     resetFilters,
     setSelectedJob,

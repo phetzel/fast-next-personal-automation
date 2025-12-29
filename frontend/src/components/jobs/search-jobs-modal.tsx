@@ -32,7 +32,16 @@ interface SearchJobsModalProps {
 interface SearchFormData {
   profile_id?: string;
   scraper: "jobspy" | "mock";
+  hours_old: number;
 }
+
+const RECENCY_OPTIONS = [
+  { value: 24, label: "Last 24 Hours" },
+  { value: 48, label: "Last 48 Hours" },
+  { value: 72, label: "Last 3 Days" },
+  { value: 168, label: "Last Week" },
+  { value: 336, label: "Last 2 Weeks" },
+];
 
 /**
  * Modal for running the job search pipeline directly from the listings page.
@@ -46,6 +55,7 @@ export function SearchJobsModal({
   const { executePipeline, getExecutionState, resetExecution } = usePipelines();
   const [formData, setFormData] = useState<SearchFormData>({
     scraper: "jobspy",
+    hours_old: 72,
   });
 
   const execState = getExecutionState("job_search");
@@ -114,6 +124,40 @@ export function SearchJobsModal({
             }
             description="Uses target roles and locations from your profile"
           />
+
+          {/* Recency selector */}
+          <div className="space-y-2">
+            <Label htmlFor="hours-old">Posted Within</Label>
+            <div className="relative">
+              <select
+                id="hours-old"
+                value={formData.hours_old}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    hours_old: parseInt(e.target.value, 10),
+                  }))
+                }
+                disabled={isRunning}
+                className={cn(
+                  "border-input bg-background ring-offset-background",
+                  "focus-visible:ring-ring flex h-10 w-full appearance-none rounded-md border pl-3 pr-10 py-2",
+                  "text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+                  "disabled:cursor-not-allowed disabled:opacity-50"
+                )}
+              >
+                {RECENCY_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Only scrape jobs posted within this time frame
+            </p>
+          </div>
 
           {/* Scraper selector */}
           <div className="space-y-2">

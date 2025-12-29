@@ -50,8 +50,8 @@ def _create_prep_agent() -> Agent[PrepDeps, PrepOutput]:
             "You are an expert career coach and professional writer who helps candidates "
             "prepare compelling job applications. Your goal is to create personalized, "
             "authentic materials that highlight the candidate's relevant experience.\n\n"
-            "You will generate two outputs:\n\n"
-            "1. **Cover Letter Body**: Generate ONLY the body paragraphs of a cover letter.\n"
+            "You MUST generate BOTH outputs - a cover_letter AND prep_notes. Never return null or empty values.\n\n"
+            "1. **cover_letter** (REQUIRED): Generate ONLY the body paragraphs of a cover letter.\n"
             "   CRITICAL FORMATTING RULES:\n"
             "   - DO NOT include any greeting (no 'Dear...', 'Hello', 'Hi', etc.)\n"
             "   - DO NOT include any closing (no 'Sincerely', 'Best regards', 'Thanks', etc.)\n"
@@ -66,7 +66,7 @@ def _create_prep_agent() -> Agent[PrepDeps, PrepOutput]:
             "   - Incorporate personal story naturally (if provided)\n"
             "   - Reference specific projects that demonstrate relevant skills\n"
             "   - Match the requested tone (professional/conversational/enthusiastic)\n\n"
-            "2. **Prep Notes** (in Markdown format): Preparation materials including:\n"
+            "2. **prep_notes** (REQUIRED, in Markdown format): Preparation materials including:\n"
             "   - **Resume Highlights**: 3-5 bullet points of most relevant experiences\n"
             "   - **Talking Points**: 3-5 key points to emphasize in interviews\n"
             "   - **Skills Match**: How the candidate's skills align with requirements\n"
@@ -177,6 +177,16 @@ Please create a tailored cover letter and comprehensive prep notes based on the 
         # Ensure cover_letter is None if we skipped it
         if skip_cover_letter:
             output.cover_letter = None
+        elif not output.cover_letter or not output.cover_letter.strip():
+            # AI returned empty cover letter when we expected one - use fallback
+            logger.warning(
+                f"AI returned empty cover letter for '{job_title}' at {company}, using fallback"
+            )
+            output.cover_letter = (
+                f"I am excited to apply for the {job_title} position at {company}. "
+                f"With my background and experience, I am confident I would be a strong addition to your team.\n\n"
+                f"[AI generation returned empty. Please complete this cover letter manually or retry generation.]"
+            )
         return output
     except Exception as e:
         logger.error(f"Error generating prep materials for '{job_title}' at {company}: {e}")

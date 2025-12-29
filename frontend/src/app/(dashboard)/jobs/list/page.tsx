@@ -12,7 +12,7 @@ import {
   SearchAllJobsModal,
   PrepJobModal,
   BatchPrepModal,
-  DismissByStatusModal,
+  DeleteByStatusModal,
 } from "@/components/jobs";
 import {
   Button,
@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui";
 import type { Job } from "@/types";
-import { RefreshCw, Search, ChevronDown, Layers, Globe, XCircle } from "lucide-react";
+import { RefreshCw, Search, ChevronDown, Layers, Globe, Trash2 } from "lucide-react";
 
 export default function JobsListPage() {
   const {
@@ -52,13 +52,13 @@ export default function JobsListPage() {
   const [isSearchAllModalOpen, setIsSearchAllModalOpen] = useState(false);
   const [isPrepModalOpen, setIsPrepModalOpen] = useState(false);
   const [isBatchPrepModalOpen, setIsBatchPrepModalOpen] = useState(false);
-  const [isDismissModalOpen, setIsDismissModalOpen] = useState(false);
+  const [isDeleteByStatusModalOpen, setIsDeleteByStatusModalOpen] = useState(false);
   const [prepJob, setPrepJob] = useState<Job | null>(null);
 
   // Fetch jobs on mount and when filters change
   useEffect(() => {
     fetchJobs();
-  }, [filters.page, filters.status, filters.sort_by, filters.sort_order, filters.search]);
+  }, [filters.page, filters.status, filters.sort_by, filters.sort_order, filters.search, filters.posted_within_hours]);
 
   // Fetch stats on mount
   useEffect(() => {
@@ -129,8 +129,8 @@ export default function JobsListPage() {
     fetchStats();
   };
 
-  const handleDismissComplete = () => {
-    // Refresh jobs and stats after batch dismiss
+  const handleDeleteByStatusComplete = () => {
+    // Refresh jobs and stats after batch delete
     fetchJobs();
     fetchStats();
   };
@@ -171,11 +171,11 @@ export default function JobsListPage() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => setIsDismissModalOpen(true)}
+              onClick={() => setIsDeleteByStatusModalOpen(true)}
               className="text-destructive focus:text-destructive"
             >
-              <XCircle className="mr-2 h-4 w-4" />
-              Dismiss by Status
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete by Status
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleRefresh}>
@@ -253,11 +253,11 @@ export default function JobsListPage() {
         onComplete={handleSearchAllComplete}
       />
 
-      {/* Dismiss by Status Modal */}
-      <DismissByStatusModal
-        isOpen={isDismissModalOpen}
-        onClose={() => setIsDismissModalOpen(false)}
-        onComplete={handleDismissComplete}
+      {/* Delete by Status Modal */}
+      <DeleteByStatusModal
+        isOpen={isDeleteByStatusModalOpen}
+        onClose={() => setIsDeleteByStatusModalOpen(false)}
+        onComplete={handleDeleteByStatusComplete}
         stats={stats}
       />
     </div>

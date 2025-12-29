@@ -316,6 +316,13 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                 # Continue without screening answers
 
         # Step 7: Update the job record
+        # Log what we got from the generator
+        cover_letter_len = len(prep_output.cover_letter) if prep_output.cover_letter else 0
+        logger.info(
+            f"Generated materials: cover_letter={cover_letter_len} chars, "
+            f"prep_notes={len(prep_output.prep_notes)} chars"
+        )
+
         async with get_db_context() as db:
             job = await job_repo.get_by_id_and_user(db, input.job_id, context.user_id)
             if job:
@@ -327,6 +334,9 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                 # Only update cover letter if we generated one
                 if prep_output.cover_letter:
                     update_data["cover_letter"] = prep_output.cover_letter
+                    logger.info(f"Saving cover letter ({cover_letter_len} chars) to job {job.id}")
+                else:
+                    logger.warning(f"No cover letter generated for job {job.id} - this should not happen!")
 
                 await job_repo.update(db, db_job=job, update_data=update_data)
                 await db.commit()

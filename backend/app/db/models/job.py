@@ -20,8 +20,8 @@ class JobStatus(str, Enum):
     """Status of a job in the user's pipeline.
 
     Flow: NEW → PREPPED → REVIEWED → APPLIED → INTERVIEWING
-    - Can go to DISMISSED from any status (user not interested)
     - Can go to REJECTED from APPLIED or INTERVIEWING (employer rejects)
+    - To remove a job from listings, use soft delete (sets deleted_at)
     """
 
     NEW = "new"
@@ -30,7 +30,6 @@ class JobStatus(str, Enum):
     APPLIED = "applied"
     INTERVIEWING = "interviewing"
     REJECTED = "rejected"  # Employer rejected the application
-    DISMISSED = "dismissed"  # User dismissed/not interested
 
 
 class Job(Base, TimestampMixin):

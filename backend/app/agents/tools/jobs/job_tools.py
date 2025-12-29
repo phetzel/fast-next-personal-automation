@@ -1,11 +1,11 @@
 """Job CRUD tools for the Jobs area agent.
 
 This module provides FunctionToolset tools for managing job listings
-through the AI assistant, enabling list, get, dismiss, and stats operations.
+through the AI assistant, enabling list, get, delete, and stats operations.
 
 Note: Status updates are handled by pipelines (job_prep, job_apply), not directly
-by the agent. The agent can dismiss jobs (set status to DISMISSED) but cannot
-arbitrarily change status.
+by the agent. The agent can delete jobs (soft delete) but cannot arbitrarily
+change status.
 """
 
 from uuid import UUID
@@ -55,7 +55,7 @@ async def list_jobs(
     and source.
 
     Args:
-        status: Filter by job status. Options: new, prepped, reviewed, applied, rejected, interviewing, dismissed
+        status: Filter by job status. Options: new, prepped, reviewed, applied, rejected, interviewing
         search: Search text in job title, company name, or description
         min_score: Minimum relevance score (0-10) to include
         max_score: Maximum relevance score (0-10) to include
@@ -80,7 +80,7 @@ async def list_jobs(
         except ValueError:
             return {
                 "success": False,
-                "error": f"Invalid status '{status}'. Valid options: new, prepped, reviewed, applied, rejected, interviewing, dismissed",
+                "error": f"Invalid status '{status}'. Valid options: new, prepped, reviewed, applied, rejected, interviewing",
             }
 
     # Build filters
@@ -180,7 +180,6 @@ async def get_job_stats(ctx: RunContext) -> dict:
                 "applied": stats["applied"],
                 "rejected": stats["rejected"],
                 "interviewing": stats["interviewing"],
-                "dismissed": stats["dismissed"],
             },
             "average_score": stats["avg_score"],
             "high_scoring_jobs": stats["high_scoring"],
@@ -189,19 +188,18 @@ async def get_job_stats(ctx: RunContext) -> dict:
 
 
 @jobs_toolset.tool
-async def dismiss_job(ctx: RunContext, job_id: str, reason: str | None = None) -> dict:
-    """Dismiss a job the user is not interested in.
+async def delete_job(ctx: RunContext, job_id: str, reason: str | None = None) -> dict:
+    """Delete a job the user is not interested in.
 
-    This sets the job status to DISMISSED, indicating the user doesn't want
-    to pursue this opportunity. The job remains in the database but will be
-    filtered out of active job lists.
+    This soft-deletes the job, removing it from active job lists while
+    preserving the record to prevent the same job from being re-scraped.
 
     Use this when the user says they're not interested in a job, want to
     remove it from their list, or has decided not to apply.
 
     Args:
-        job_id: The UUID of the job to dismiss
-        reason: Optional reason for dismissing (saved to notes)
+        job_id: The UUID of the job to delete
+        reason: Optional reason for deleting (saved to notes before deletion)
 
     Returns:
         Success confirmation or error
@@ -220,28 +218,19 @@ async def dismiss_job(ctx: RunContext, job_id: str, reason: str | None = None) -
     if not job:
         return {"success": False, "error": f"Job not found with ID: {job_id}"}
 
-    # Build update data - set status to DISMISSED and optionally add reason to notes
-    update_data = {"status": JobStatus.DISMISSED.value}
+    # Optionally add reason to notes before deletion
     if reason:
-        # Append reason to existing notes if any
         existing_notes = job.notes or ""
         if existing_notes:
-            update_data["notes"] = f"{existing_notes}\n\nDismissed: {reason}"
+            update_data = {"notes": f"{existing_notes}\n\nRemoved: {reason}"}
         else:
-            update_data["notes"] = f"Dismissed: {reason}"
+            update_data = {"notes": f"Removed: {reason}"}
+        await job_repo.update(db, db_job=job, update_data=update_data)
 
-    updated_job = await job_repo.update(db, db_job=job, update_data=update_data)
+    # Soft delete the job
+    deleted_job = await job_repo.delete(db, job_uuid, user_id)
 
     return {
         "success": True,
-        "message": f"Dismissed job: {updated_job.title} at {updated_job.company}",
-        "job": JobSummary(
-            id=updated_job.id,
-            title=updated_job.title,
-            company=updated_job.company,
-            location=updated_job.location,
-            relevance_score=updated_job.relevance_score,
-            status=JobStatus(updated_job.status),
-            job_url=updated_job.job_url,
-        ).model_dump(mode="json"),
+        "message": f"Deleted job: {deleted_job.title} at {deleted_job.company}",
     }

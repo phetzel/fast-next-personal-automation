@@ -228,7 +228,7 @@ class TestJobsToolsets:
     def test_jobs_toolset_has_expected_tools(self):
         """Test jobs_toolset has the expected tools."""
         tool_names = set(jobs_toolset.tools.keys())
-        expected = {"list_jobs", "get_job", "update_job_status", "get_job_stats", "delete_job"}
+        expected = {"list_jobs", "get_job", "get_job_stats", "delete_job"}
         assert tool_names == expected
 
     def test_job_profiles_toolset_exists(self):

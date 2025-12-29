@@ -13,7 +13,6 @@ export const JOB_STATUSES = [
   "applied",
   "interviewing",
   "rejected",
-  "dismissed",
 ] as const;
 
 /**
@@ -62,11 +61,6 @@ export const JOB_STATUS_CONFIG: Record<
     label: "Rejected",
     description: "Application was declined",
     allowedFrom: ["applied", "interviewing"],
-  },
-  dismissed: {
-    label: "Dismissed",
-    description: "Not interested, removed from active list",
-    allowedFrom: ["new", "prepped", "reviewed", "applied", "interviewing", "rejected"],
   },
 };
 
@@ -153,7 +147,6 @@ export interface JobStats {
   applied: number;
   interviewing: number;
   rejected: number;
-  dismissed: number;
   avg_score: number | null;
   high_scoring: number;
 }
@@ -167,6 +160,7 @@ export interface JobFilters {
   min_score?: number;
   max_score?: number;
   search?: string;
+  posted_within_hours?: number;
   page?: number;
   page_size?: number;
   sort_by?: "created_at" | "relevance_score" | "date_posted" | "company";

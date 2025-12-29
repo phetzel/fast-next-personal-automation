@@ -13,46 +13,48 @@ import {
 import { useJobs } from "@/hooks";
 import { cn } from "@/lib/utils";
 import {
-  XCircle,
+  Trash2,
   Loader2,
   CheckCircle,
   ChevronDown,
   AlertTriangle,
+  XCircle,
 } from "lucide-react";
 import type { JobStatus, JobStats } from "@/types";
 
-interface DismissByStatusModalProps {
+interface DeleteByStatusModalProps {
   isOpen: boolean;
   onClose: () => void;
   onComplete?: () => void;
   stats: JobStats | null;
 }
 
-type DismissableStatus = "new" | "prepped" | "reviewed";
+type DeletableStatus = "new" | "prepped" | "reviewed";
 
-const STATUS_OPTIONS: { value: DismissableStatus; label: string; description: string }[] = [
+const STATUS_OPTIONS: { value: DeletableStatus; label: string; description: string }[] = [
   { value: "new", label: "New", description: "Jobs not yet prepped" },
   { value: "prepped", label: "Prepped", description: "Jobs with generated materials" },
   { value: "reviewed", label: "Reviewed", description: "Jobs marked as reviewed" },
 ];
 
 /**
- * Modal for batch dismissing jobs by status.
+ * Modal for batch deleting jobs by status.
  * Allows users to quickly clear out jobs they're not interested in.
+ * Uses soft delete - jobs are hidden but preserved to prevent re-scraping.
  */
-export function DismissByStatusModal({
+export function DeleteByStatusModal({
   isOpen,
   onClose,
   onComplete,
   stats,
-}: DismissByStatusModalProps) {
-  const { dismissByStatus } = useJobs();
-  const [selectedStatus, setSelectedStatus] = useState<DismissableStatus>("new");
+}: DeleteByStatusModalProps) {
+  const { deleteByStatus } = useJobs();
+  const [selectedStatus, setSelectedStatus] = useState<DeletableStatus>("new");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ count: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const getCountForStatus = (status: DismissableStatus): number => {
+  const getCountForStatus = (status: DeletableStatus): number => {
     if (!stats) return 0;
     return stats[status] ?? 0;
   };
@@ -64,10 +66,10 @@ export function DismissByStatusModal({
     setResult(null);
 
     try {
-      const count = await dismissByStatus(selectedStatus as JobStatus);
+      const count = await deleteByStatus(selectedStatus as JobStatus);
       setResult({ count });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to dismiss jobs");
+      setError(err instanceof Error ? err.message : "Failed to delete jobs");
     } finally {
       setIsSubmitting(false);
     }
@@ -89,11 +91,11 @@ export function DismissByStatusModal({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <XCircle className="h-5 w-5 text-destructive" />
-            Dismiss Jobs by Status
+            <Trash2 className="h-5 w-5 text-destructive" />
+            Delete Jobs by Status
           </DialogTitle>
           <DialogDescription>
-            Quickly dismiss all jobs with a specific status that you&apos;re not
+            Quickly remove all jobs with a specific status that you&apos;re not
             interested in pursuing.
           </DialogDescription>
         </DialogHeader>
@@ -101,12 +103,12 @@ export function DismissByStatusModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Status selector */}
           <div className="space-y-2">
-            <Label htmlFor="status">Select Status to Dismiss</Label>
+            <Label htmlFor="status">Select Status to Delete</Label>
             <div className="relative">
               <select
                 id="status"
                 value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value as DismissableStatus)}
+                onChange={(e) => setSelectedStatus(e.target.value as DeletableStatus)}
                 disabled={isSubmitting || result !== null}
                 className={cn(
                   "border-input bg-background ring-offset-background",
@@ -135,11 +137,11 @@ export function DismissByStatusModal({
                 <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
                 <div>
                   <p className="font-medium text-amber-600 dark:text-amber-400">
-                    This will dismiss {selectedCount} job{selectedCount !== 1 ? "s" : ""}
+                    This will delete {selectedCount} job{selectedCount !== 1 ? "s" : ""}
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Dismissed jobs will be moved out of your active list. This action
-                    cannot be undone easily.
+                    Jobs will be removed from your list but preserved to prevent
+                    re-scraping the same jobs in future searches.
                   </p>
                 </div>
               </div>
@@ -150,7 +152,7 @@ export function DismissByStatusModal({
           {selectedCount === 0 && !result && (
             <div className="rounded-lg border border-muted bg-muted/30 p-4 text-center">
               <p className="text-sm text-muted-foreground">
-                No jobs with &quot;{selectedStatus}&quot; status to dismiss.
+                No jobs with &quot;{selectedStatus}&quot; status to delete.
               </p>
             </div>
           )}
@@ -161,7 +163,7 @@ export function DismissByStatusModal({
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-green-500" />
                 <p className="font-medium text-green-600 dark:text-green-400">
-                  {result.count} job{result.count !== 1 ? "s" : ""} dismissed
+                  {result.count} job{result.count !== 1 ? "s" : ""} deleted
                 </p>
               </div>
             </div>
@@ -201,12 +203,12 @@ export function DismissByStatusModal({
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Dismissing...
+                      Deleting...
                     </>
                   ) : (
                     <>
-                      <XCircle className="mr-2 h-4 w-4" />
-                      Dismiss {selectedCount} Job{selectedCount !== 1 ? "s" : ""}
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete {selectedCount} Job{selectedCount !== 1 ? "s" : ""}
                     </>
                   )}
                 </Button>

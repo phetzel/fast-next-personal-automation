@@ -4,7 +4,7 @@ Contains database operations for Job entity. Business logic
 should be handled by JobService in app/services/job.py.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import Select, func, or_, select
@@ -58,6 +58,10 @@ def _apply_filters(query: Select, user_id: UUID, filters: JobFilters) -> Select:
                 Job.description.ilike(search_term),
             )
         )
+
+    if filters.posted_within_hours is not None:
+        cutoff_time = datetime.now(UTC) - timedelta(hours=filters.posted_within_hours)
+        query = query.where(Job.date_posted >= cutoff_time)
 
     return query
 
@@ -278,34 +282,30 @@ async def get_stats(db: AsyncSession, user_id: UUID) -> dict:
         "applied": status_counts.get(JobStatus.APPLIED.value, 0),
         "interviewing": status_counts.get(JobStatus.INTERVIEWING.value, 0),
         "rejected": status_counts.get(JobStatus.REJECTED.value, 0),
-        "dismissed": status_counts.get(JobStatus.DISMISSED.value, 0),
         "avg_score": round(avg_score, 2) if avg_score else None,
         "high_scoring": high_scoring,
     }
 
 
-async def dismiss_by_status(
+async def soft_delete_by_status(
     db: AsyncSession,
     user_id: UUID,
     status: JobStatus,
 ) -> int:
-    """Dismiss all jobs with a given status for a user.
+    """Soft delete all jobs with a given status for a user.
 
-    Sets the status to DISMISSED for all matching jobs.
+    Sets deleted_at timestamp for all matching jobs, removing them from listings
+    while preserving records for duplicate checking.
 
     Args:
         db: Database session
         user_id: User ID
-        status: Status of jobs to dismiss (e.g., NEW, PREPPED, REVIEWED)
+        status: Status of jobs to delete (e.g., NEW, PREPPED, REVIEWED)
 
     Returns:
-        Count of jobs dismissed
+        Count of jobs deleted
     """
     from sqlalchemy import update
-
-    # Don't allow dismissing already dismissed jobs
-    if status == JobStatus.DISMISSED:
-        return 0
 
     result = await db.execute(
         update(Job)
@@ -314,7 +314,7 @@ async def dismiss_by_status(
             Job.status == status.value,
             Job.deleted_at.is_(None),
         )
-        .values(status=JobStatus.DISMISSED.value)
+        .values(deleted_at=datetime.now(UTC))
     )
     await db.flush()
 

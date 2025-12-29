@@ -309,29 +309,21 @@ class JobService:
 
         return await self.generate_cover_letter_pdf(job_id, user, profile)
 
-    async def dismiss_by_status(
+    async def delete_by_status(
         self,
         user_id: UUID,
         status: JobStatus,
     ) -> int:
-        """Dismiss all jobs with a given status.
+        """Soft delete all jobs with a given status.
 
-        Sets the status to DISMISSED for all matching jobs.
+        Sets deleted_at timestamp for all matching jobs, removing them from
+        listings while preserving records for duplicate checking.
 
         Args:
             user_id: User ID
-            status: Status of jobs to dismiss (e.g., NEW, PREPPED, REVIEWED)
+            status: Status of jobs to delete (e.g., NEW, PREPPED, REVIEWED)
 
         Returns:
-            Count of jobs dismissed
-
-        Raises:
-            ValidationError: If trying to dismiss already dismissed jobs
+            Count of jobs deleted
         """
-        if status == JobStatus.DISMISSED:
-            raise ValidationError(
-                message="Cannot dismiss already dismissed jobs",
-                details={"status": status.value},
-            )
-
-        return await job_repo.dismiss_by_status(self.db, user_id, status)
+        return await job_repo.soft_delete_by_status(self.db, user_id, status)

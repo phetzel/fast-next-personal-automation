@@ -11,5 +11,5 @@ export { SearchJobsModal } from "./search-jobs-modal";
 export { SearchAllJobsModal } from "./search-all-jobs-modal";
 export { PrepJobModal } from "./prep-job-modal";
 export { BatchPrepModal } from "./batch-prep-modal";
-export { DismissByStatusModal } from "./dismiss-by-status-modal";
+export { DeleteByStatusModal } from "./delete-by-status-modal";
 

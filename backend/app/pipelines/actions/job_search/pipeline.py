@@ -37,13 +37,12 @@ class JobSearchInput(BaseModel):
         default="jobspy",
         description="Data source (jobspy for real jobs, mock for testing)",
     )
-    # Hidden fields with sensible defaults - not shown in form
+    # Search parameters
     hours_old: int = Field(
         default=72,
         ge=1,
         le=720,
-        description="Maximum age of job postings in hours",
-        json_schema_extra={"x-hidden": True},
+        description="Only include jobs posted within this many hours (e.g., 24, 48, 72)",
     )
     results_per_term: int = Field(
         default=10,
