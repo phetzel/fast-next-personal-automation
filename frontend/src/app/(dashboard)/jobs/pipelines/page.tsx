@@ -1,10 +1,28 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 import { PipelineList } from "@/components/pipelines";
 import { Card, CardContent } from "@/components/ui";
 import { Workflow, Briefcase, Sparkles } from "lucide-react";
 
 export default function JobPipelinesPage() {
+  const searchParams = useSearchParams();
+  
+  // Read pipeline and initial values from URL params
+  const expandedPipeline = searchParams.get("pipeline") || undefined;
+  const initialValues = useMemo(() => {
+    const values: Record<string, unknown> = {};
+    const jobId = searchParams.get("job_id");
+    if (jobId) {
+      values.job_id = jobId;
+    }
+    const profileId = searchParams.get("profile_id");
+    if (profileId) {
+      values.profile_id = profileId;
+    }
+    return Object.keys(values).length > 0 ? values : undefined;
+  }, [searchParams]);
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -32,7 +50,12 @@ export default function JobPipelinesPage() {
       </Card>
 
       {/* Job-specific pipelines */}
-      <PipelineList area="jobs" showFilters={false} />
+      <PipelineList 
+        area="jobs" 
+        showFilters={false} 
+        expandedPipeline={expandedPipeline}
+        initialValues={initialValues}
+      />
 
       {/* How it works */}
       <Card>

@@ -6,7 +6,7 @@ import type { Project, ProjectSummary, ProjectUpdate, ProjectTextResponse } from
 
 /**
  * Hook for managing projects.
- * Supports upload, list, update, delete, and toggle active operations.
+ * Projects are linked to profiles rather than having their own active status.
  */
 export function useProjects() {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
@@ -76,8 +76,7 @@ export function useProjects() {
   const uploadProject = useCallback(
     async (
       file: File,
-      name: string,
-      isActive: boolean = true
+      name: string
     ): Promise<Project | null> => {
       setIsLoading(true);
       setError(null);
@@ -86,7 +85,6 @@ export function useProjects() {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("name", name);
-        formData.append("is_active", isActive.toString());
 
         // Use fetch directly for FormData upload
         const response = await fetch("/api/projects", {
@@ -114,7 +112,7 @@ export function useProjects() {
   );
 
   /**
-   * Update a project's name or active status.
+   * Update a project's name.
    */
   const updateProject = useCallback(
     async (id: string, data: ProjectUpdate): Promise<Project | null> => {
@@ -164,60 +162,22 @@ export function useProjects() {
   );
 
   /**
-   * Toggle a project's active status.
-   */
-  const toggleActive = useCallback(
-    async (id: string, isActive: boolean): Promise<Project | null> => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const updated = await apiClient.post<Project>(
-          `/projects/${id}/toggle-active?is_active=${isActive}`
-        );
-        // Refresh projects list to update active status
-        await fetchProjects();
-        return updated;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to toggle project active status");
-        return null;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [fetchProjects]
-  );
-
-  /**
-   * Get all active projects from the loaded projects.
-   */
-  const activeProjects = projects.filter((p) => p.is_active);
-
-  /**
    * Check if user has any projects.
    */
   const hasProjects = projects.length > 0;
 
-  /**
-   * Check if user has any active projects.
-   */
-  const hasActiveProjects = activeProjects.length > 0;
-
   return {
     projects,
     currentProject,
-    activeProjects,
     isLoading,
     error,
     hasProjects,
-    hasActiveProjects,
     fetchProjects,
     getProject,
     getProjectText,
     uploadProject,
     updateProject,
     deleteProject,
-    toggleActive,
     setCurrentProject,
     setError,
   };

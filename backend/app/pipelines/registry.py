@@ -40,7 +40,7 @@ def register_pipeline(pipeline_cls: type[ActionPipeline]) -> type[ActionPipeline
         The same class (unchanged), allowing use as a decorator.
 
     Raises:
-        ValueError: If pipeline name is missing or already registered.
+        ValueError: If pipeline name is missing or already registered by different class.
     """
     if not hasattr(pipeline_cls, "name") or not pipeline_cls.name:
         raise ValueError(f"Pipeline {pipeline_cls.__name__} must define a 'name' attribute")
@@ -50,6 +50,18 @@ def register_pipeline(pipeline_cls: type[ActionPipeline]) -> type[ActionPipeline
 
     name = pipeline_cls.name
     if name in _PIPELINE_REGISTRY:
+        # Allow re-registration of same class during module reload
+        # After reload, class identity changes but qualified name stays same
+        existing = _PIPELINE_REGISTRY[name]
+        if (
+            existing.__module__ == pipeline_cls.__module__
+            and existing.__qualname__ == pipeline_cls.__qualname__
+        ):
+            # Update to the new class from the reloaded module
+            _PIPELINE_REGISTRY[name] = pipeline_cls
+            # Clear cached instance so it uses new class
+            _PIPELINE_INSTANCES.pop(name, None)
+            return pipeline_cls
         raise ValueError(f"Pipeline '{name}' is already registered")
 
     _PIPELINE_REGISTRY[name] = pipeline_cls

@@ -611,14 +611,217 @@ S3_REGION = "us-east-1"
 
 ---
 
+## Phase 8: Job Prep Pipeline
+
+**Goal:** Generate tailored cover letters and prep notes for job applications.
+
+### Backend Changes
+
+1. **Add PREPPED status to JobStatus enum**
+2. **Add new fields to Job model:**
+   - `cover_letter` - AI-generated cover letter (text)
+   - `cover_letter_file_path` - S3 path to generated PDF
+   - `cover_letter_generated_at` - When PDF was generated
+   - `prep_notes` - Combined resume highlights and talking points
+   - `prepped_at` - When prep materials were generated
+3. **Create job_prep pipeline** in `app/pipelines/actions/job_prep/`
+   - Uses resume, primary story, and active projects
+   - Generates tailored cover letter and prep notes
+   - Updates job status to PREPPED
+4. **Create cover letter PDF service** in `app/core/cover_letter_pdf.py`
+   - Generates professional PDFs using ReportLab
+   - Stores in S3 for later download/upload to job sites
+5. **Add PDF endpoints:**
+   - `POST /api/v1/jobs/{job_id}/cover-letter/generate-pdf` - Generate PDF after review
+   - `GET /api/v1/jobs/{job_id}/cover-letter/download` - Download the PDF
+
+### Frontend Changes
+
+1. **Add JobSelectField component** for pipeline forms
+2. **Add "Prep" button** to job table for jobs with status "new"
+3. **Update StatusBadge** with prepped status styling
+4. **Support URL params** to pre-fill pipeline forms
+
+### Workflow
+```
+NEW → PREPPED → REVIEWED → (generate PDF) → APPLIED
+         ↓           ↓
+    AI generates  User edits    User calls
+    cover letter  cover letter  generate-pdf endpoint
+    (text)        (text)        → PDF stored in S3
+```
+
+### Completion Criteria
+- [x] PREPPED status added to JobStatus enum
+- [x] Job model has cover_letter, prep_notes, prepped_at fields
+- [x] Job model has cover_letter_file_path, cover_letter_generated_at fields
+- [x] job_prep pipeline generates materials from resume/story/projects
+- [x] Cover letter PDF generation service created
+- [x] PDF generation and download endpoints added
+- [x] JobSelectField shows job dropdown in pipeline forms
+- [x] Prep button on job table navigates to pipeline with job pre-selected
+- [x] StatusBadge shows "Prepped" status
+
+---
+
+## Phase 9: Profile-Based Story and Project Linking
+
+**Goal:** Link stories and projects to profiles for dynamic material selection per profile.
+
+### Changes Made
+
+1. **Backend - JobProfile Model Updates:**
+   - Added `story_id` FK (nullable, references Story)
+   - Added `project_ids` JSON field (array of project UUID strings)
+   - Added `story` relationship for eager loading
+
+2. **Backend - Project Model Updates:**
+   - Removed `is_active` field (projects are now linked via profiles instead)
+
+3. **Backend - Schema Updates:**
+   - Added `story_id` and `project_ids` to JobProfileCreate/Update
+   - Added `StoryInfo` and `ProjectInfo` embedded schemas for responses
+   - Added `has_story`, `story_name`, `project_count` to JobProfileSummary
+   - Removed `is_active` from Project schemas
+
+4. **Backend - Service Updates:**
+   - Added validation for story and project ownership in JobProfileService
+   - Added `get_linked_projects()` method to fetch projects for a profile
+   - Removed `toggle_active` and `get_active_for_user` from ProjectService
+
+5. **Backend - API Updates:**
+   - Profile endpoints now return story and project info
+   - Removed `/projects/{id}/toggle-active` endpoint
+
+6. **Frontend - Type Updates:**
+   - Added story and project fields to JobProfile types
+   - Removed `is_active` from Project types
+
+7. **Frontend - ProfileForm Updates:**
+   - Added story selector (dropdown)
+   - Added project multi-select (checkboxes)
+   - ProfileCard now shows linked story and projects
+
+8. **Frontend - ProjectsTab Updates:**
+   - Removed is_active toggle
+   - Added info about linking projects to profiles
+
+### Benefits
+- Different profiles can have different story/project combinations
+- More flexible material selection for different job types
+- Cleaner project management (no more individual active toggles)
+
+### Completion Criteria
+- [x] story_id FK added to job_profiles
+- [x] project_ids JSON array added to job_profiles
+- [x] is_active removed from projects
+- [x] Profile form includes story and project selectors
+- [x] Profile card shows linked materials
+- [x] API returns story and project info in profile responses
+
+---
+
+## Phase 10: Inline Pipeline Execution from Listings
+
+**Goal:** Run pipelines directly from the job listings page without navigating away.
+
+### Changes Made
+
+1. **SearchJobsModal Component:**
+   - New modal for running job_search pipeline inline
+   - Shows profile selector and scraper type
+   - Displays real-time progress and results
+   - Shows top matching jobs with scores after completion
+   - Refreshes job list automatically when done
+
+2. **PrepJobModal Component:**
+   - New modal for running job_prep pipeline inline
+   - Shows job being prepped with profile and tone selectors
+   - Displays progress during AI generation
+   - Shows preview of cover letter and prep notes
+   - Refreshes job list to reflect "prepped" status
+
+3. **Enhanced JobDetailModal:**
+   - Cover letter editing with inline save
+   - Collapsible prep notes section
+   - PDF download button when PDF exists
+   - "Reviewed" transition generates PDF automatically
+   - Shows "Prepare Materials" CTA for new jobs without prep
+
+4. **JobTable Updates:**
+   - Prep button now opens modal instead of navigating
+   - Shows "Prepping..." indicator on row during pipeline execution
+   - Visual feedback while prep is in progress
+
+5. **New API Routes:**
+   - `POST /api/jobs/[id]/cover-letter/generate-pdf` - Proxies to backend for PDF generation
+   - `GET /api/jobs/[id]/cover-letter/download` - Proxies binary PDF download
+
+6. **Job Type Updates:**
+   - Added `cover_letter_file_path` and `cover_letter_generated_at` fields
+
+### User Flow
+
+1. **Search Jobs**: Click "Search Jobs" button in header → modal opens → configure → run → see results → list refreshes
+2. **Prep Job**: Click "Prep" on any "new" job row → modal opens → configure → generate → see preview → close → job status = "prepped"
+3. **Edit Cover Letter**: Click prepped job → edit cover letter → save changes
+4. **Mark as Reviewed**: Click "Reviewed" status → cover letter saved → PDF generated → status = "reviewed"
+5. **Download PDF**: Click "Download PDF" button → browser downloads cover letter PDF
+
+### Completion Criteria
+- [x] SearchJobsModal opens from listings header
+- [x] PrepJobModal opens from "Prep" button on job rows
+- [x] Prep progress shows inline on table row
+- [x] Cover letter editable in job detail modal
+- [x] Save cover letter changes works
+- [x] Prepped → Reviewed generates PDF
+- [x] PDF download works
+- [x] Frontend API routes for PDF generation/download
+
+---
+
+## Phase 11: Soft Delete and Enhanced Scraping
+
+**Goal:** Prevent re-scraping of deleted jobs and capture additional job metadata.
+
+### Changes Made
+
+1. **Soft Delete Implementation:**
+   - Added `deleted_at` timestamp field to Job model
+   - `delete()` now sets `deleted_at` instead of hard deleting
+   - Deleted jobs excluded from listings but still checked for duplicates
+   - Prevents re-scraping the same job after user deletes it
+
+2. **Additional Scrape Fields from python-jobspy:**
+   - `is_remote` (boolean) - Whether job is remote
+   - `job_type` (string) - fulltime, parttime, internship, contract
+   - `company_url` (string) - URL to company page
+
+3. **Frontend Enhancements:**
+   - Source column is now a clickable link (opens job posting)
+   - Removed redundant external link button from actions
+   - Location column shows "Remote" badge and job type badges
+
+### Completion Criteria
+- [x] Soft delete implemented for jobs
+- [x] Deleted jobs prevent re-scraping
+- [x] Additional scrape fields added
+- [x] Frontend shows remote/job_type badges
+- [x] Source is clickable link
+
+---
+
 ## Future Enhancements (Out of Scope)
 
 1. **Job Application Tracking** - Track applied jobs, responses, interviews
-2. **Cover Letter Generation** - AI-generated cover letters per job
-3. **Interview Prep** - Company research, question preparation
-4. **Salary Research** - Market data integration
-5. **Scheduled Searches** - Cron-based job searches with notifications
-6. **Email Notifications** - New high-scoring job alerts
+2. ~~**Cover Letter Generation** - AI-generated cover letters per job~~ ✅ Implemented in Phase 8
+3. ~~**Cover Letter PDF Export** - Professional PDF for job applications~~ ✅ Implemented in Phase 8
+4. ~~**Interview Prep** - Company research, question preparation~~ ✅ Partially implemented (prep notes)
+5. **Salary Research** - Market data integration
+6. **Scheduled Searches** - Cron-based job searches with notifications
+7. **Email Notifications** - New high-scoring job alerts
+8. **Job Apply Pipeline** - Track application submission and method
+9. **Auto-upload to Job Sites** - Automatically upload cover letter PDFs to Indeed/LinkedIn
 
 ---
 
@@ -633,8 +836,12 @@ S3_REGION = "us-east-1"
 | Phase 5 | ✅ Complete | - | Pipeline tagging system (tags, area) |
 | Phase 6 | ✅ Complete | - | Area-specific agents with filtered pipelines + CRUD toolsets |
 | Phase 7 | ✅ Complete | - | Profile selection in pipeline execution |
+| Phase 8 | ✅ Complete | - | Job prep pipeline with cover letter and prep notes |
+| Phase 9 | ✅ Complete | - | Profile-based story and project linking |
+| Phase 10 | ✅ Complete | - | Inline pipeline execution from listings page |
+| Phase 11 | ✅ Complete | - | Soft delete and enhanced scraping fields |
 
 ---
 
-*Last Updated: 2025-12-23*
+*Last Updated: 2025-12-27*
 

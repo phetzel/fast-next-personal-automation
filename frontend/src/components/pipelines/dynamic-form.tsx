@@ -5,12 +5,15 @@ import { Input, Label, Button } from "@/components/ui";
 import type { JSONSchema, JSONSchemaProperty } from "@/types";
 import { cn } from "@/lib/utils";
 import { ProfileSelectField } from "./profile-select-field";
+import { JobSelectField } from "./job-select-field";
 
 interface DynamicFormProps {
   schema: JSONSchema;
   onSubmit: (data: Record<string, unknown>) => void;
   isSubmitting?: boolean;
   submitLabel?: string;
+  /** Initial values to pre-fill the form */
+  initialValues?: Record<string, unknown>;
 }
 
 /**
@@ -22,13 +25,17 @@ export function DynamicForm({
   onSubmit,
   isSubmitting = false,
   submitLabel = "Run",
+  initialValues,
 }: DynamicFormProps) {
   const [formData, setFormData] = useState<Record<string, unknown>>(() => {
     // Initialize with default values from schema
     const defaults: Record<string, unknown> = {};
     if (schema.properties) {
       for (const [key, prop] of Object.entries(schema.properties)) {
-        if (prop.default !== undefined) {
+        // Use initial value if provided, otherwise use schema default
+        if (initialValues && initialValues[key] !== undefined) {
+          defaults[key] = initialValues[key];
+        } else if (prop.default !== undefined) {
           defaults[key] = prop.default;
         } else if (prop.type === "boolean") {
           defaults[key] = false;
@@ -92,6 +99,19 @@ function FormField({ name, property, value, onChange, required }: FormFieldProps
   if (property.format === "x-profile-select") {
     return (
       <ProfileSelectField
+        id={id}
+        value={value}
+        onChange={(v) => onChange(v)}
+        required={required}
+        description={description}
+      />
+    );
+  }
+
+  // Handle custom x-job-select format for job selection
+  if (property.format === "x-job-select") {
+    return (
+      <JobSelectField
         id={id}
         value={value}
         onChange={(v) => onChange(v)}

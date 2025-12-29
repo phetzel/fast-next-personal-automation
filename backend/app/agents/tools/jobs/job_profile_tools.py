@@ -36,6 +36,9 @@ def _profile_to_summary(profile) -> dict:
         is_default=profile.is_default,
         has_resume=profile.resume_id is not None,
         resume_name=profile.resume.name if profile.resume else None,
+        has_story=profile.story_id is not None,
+        story_name=profile.story.name if profile.story else None,
+        project_count=len(profile.project_ids) if profile.project_ids else 0,
         target_roles_count=len(profile.target_roles) if profile.target_roles else 0,
         min_score_threshold=profile.min_score_threshold,
     ).model_dump(mode="json")

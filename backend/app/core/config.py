@@ -154,6 +154,11 @@ class Settings(BaseSettings):
     AI_TEMPERATURE: float = 0.7
     AI_FRAMEWORK: str = "pydantic_ai"
 
+    # === Browser Automation ===
+    BROWSER_HEADLESS: bool = True
+    BROWSER_TIMEOUT: int = 30000  # 30 seconds in milliseconds
+    BROWSER_USE_AI_MODEL: str = "gpt-4o"  # Model for browser-use AI analysis
+
     # === CORS ===
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8080"]
     CORS_ALLOW_CREDENTIALS: bool = True

@@ -6,6 +6,10 @@ export { JobDetailModal } from "./job-detail-modal";
 export { JobStatsCard } from "./job-stats-card";
 export { StatusBadge } from "./status-badge";
 export { ScoreBadge } from "./score-badge";
-export { ResumeManager } from "./resume-manager";
 export { ResumeSelector } from "./resume-selector";
+export { SearchJobsModal } from "./search-jobs-modal";
+export { SearchAllJobsModal } from "./search-all-jobs-modal";
+export { PrepJobModal } from "./prep-job-modal";
+export { BatchPrepModal } from "./batch-prep-modal";
+export { DeleteByStatusModal } from "./delete-by-status-modal";
 

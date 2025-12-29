@@ -13,12 +13,22 @@ interface PipelineListProps {
   tags?: string[];
   /** Optional: Show filter controls (default: true) */
   showFilters?: boolean;
+  /** Optional: Pipeline to expand by default */
+  expandedPipeline?: string;
+  /** Optional: Initial values for the expanded pipeline's form */
+  initialValues?: Record<string, unknown>;
 }
 
 /**
  * Displays a grid of available pipelines with optional filtering.
  */
-export function PipelineList({ area: initialArea, tags: initialTags, showFilters = true }: PipelineListProps) {
+export function PipelineList({ 
+  area: initialArea, 
+  tags: initialTags, 
+  showFilters = true,
+  expandedPipeline,
+  initialValues,
+}: PipelineListProps) {
   const [selectedArea, setSelectedArea] = useState<string | null>(initialArea || null);
   const [selectedTags, setSelectedTags] = useState<string[]>(initialTags || []);
 
@@ -194,6 +204,7 @@ export function PipelineList({ area: initialArea, tags: initialTags, showFilters
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
           {filteredPipelines.map((pipeline) => {
             const execState = getExecutionState(pipeline.name);
+            const isTargetPipeline = pipeline.name === expandedPipeline;
             return (
               <PipelineCard
                 key={pipeline.name}
@@ -206,6 +217,8 @@ export function PipelineList({ area: initialArea, tags: initialTags, showFilters
                   const lastInput = execState.lastInput || {};
                   executePipeline(pipeline.name, { ...lastInput, profile_id: profileId });
                 }}
+                defaultExpanded={isTargetPipeline}
+                initialValues={isTargetPipeline ? initialValues : undefined}
               />
             );
           })}

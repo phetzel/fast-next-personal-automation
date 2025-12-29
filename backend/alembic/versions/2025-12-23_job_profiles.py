@@ -6,16 +6,17 @@ Create Date: 2025-12-23 10:00:00.000000
 
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "5b0cc4de3456"
-down_revision: Union[str, None] = "4a9bb3cd2345"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "4a9bb3cd2345"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -87,9 +88,7 @@ def downgrade() -> None:
     # Drop new indexes and constraints
     op.execute("DROP INDEX IF EXISTS job_profiles_user_default_idx")
     op.drop_index("job_profiles_user_id_idx", table_name="job_profiles")
-    op.drop_constraint(
-        "job_profiles_user_id_name_key", "job_profiles", type_="unique"
-    )
+    op.drop_constraint("job_profiles_user_id_name_key", "job_profiles", type_="unique")
 
     # Update primary key and foreign key names back
     op.drop_constraint("job_profiles_pkey", "job_profiles", type_="primary")
@@ -116,9 +115,7 @@ def downgrade() -> None:
         WHERE a.id > b.id AND a.user_id = b.user_id
         """
     )
-    op.create_unique_constraint(
-        "user_profiles_user_id_key", "user_profiles", ["user_id"]
-    )
+    op.create_unique_constraint("user_profiles_user_id_key", "user_profiles", ["user_id"])
     op.create_index(
         "user_profiles_user_id_idx",
         "user_profiles",
@@ -129,4 +126,3 @@ def downgrade() -> None:
     # Drop new columns
     op.drop_column("user_profiles", "is_default")
     op.drop_column("user_profiles", "name")
-

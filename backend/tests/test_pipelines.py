@@ -433,3 +433,155 @@ class TestEchoPipeline:
         assert result.success is True
         assert result.output.source == "agent"
         assert result.metadata["user_id"] == str(user_id)
+
+
+# =============================================================================
+# Batch Job Prep Pipeline Tests
+# =============================================================================
+
+
+class TestBatchJobPrepPipeline:
+    """Tests for the batch job prep pipeline."""
+
+    def setup_method(self):
+        """Initialize pipelines before each test."""
+        clear_registry()
+        from app.pipelines.actions import discover_pipelines
+
+        discover_pipelines(force_reload=True)
+
+    def test_batch_job_prep_pipeline_registered(self):
+        """Test that batch job prep pipeline is registered."""
+        pipeline = get_pipeline("job_prep_batch")
+        assert pipeline is not None
+        assert pipeline.name == "job_prep_batch"
+
+    def test_batch_job_prep_pipeline_has_correct_metadata(self):
+        """Test that batch job prep pipeline has correct tags and area."""
+        info = get_pipeline_info("job_prep_batch")
+        assert info is not None
+        assert info["area"] == "jobs"
+        assert "jobs" in info["tags"]
+        assert "batch" in info["tags"]
+
+    def test_batch_job_prep_pipeline_input_schema(self):
+        """Test that input schema has expected fields."""
+        info = get_pipeline_info("job_prep_batch")
+        assert info is not None
+        schema = info["input_schema"]
+        assert "properties" in schema
+
+        props = schema["properties"]
+        # Simplified input - only tone and max_jobs are exposed
+        assert "tone" in props
+        assert "max_jobs" in props
+        assert "max_concurrent" in props
+        # These were removed - pipeline now gets all NEW jobs automatically
+        assert "status" not in props
+        assert "profile_id" not in props
+
+    def test_batch_job_prep_pipeline_output_schema(self):
+        """Test that output schema has expected fields."""
+        info = get_pipeline_info("job_prep_batch")
+        assert info is not None
+        schema = info["output_schema"]
+        assert "properties" in schema
+
+        props = schema["properties"]
+        assert "total_processed" in props
+        assert "successful" in props
+        assert "failed" in props
+        assert "skipped" in props
+        assert "results" in props
+        # profile_used was removed - each result has its own profile_used
+
+    @pytest.mark.anyio
+    async def test_batch_job_prep_requires_authentication(self):
+        """Test that batch job prep requires user authentication."""
+        context = PipelineContext(source=PipelineSource.API, user_id=None)
+        result = await execute_pipeline(
+            "job_prep_batch",
+            {},  # Empty input uses defaults
+            context,
+        )
+
+        assert result.success is False
+        assert "authentication required" in result.error.lower()
+
+    @pytest.mark.anyio
+    async def test_batch_job_prep_validates_max_jobs_range(self):
+        """Test that max_jobs must be within 1-50."""
+        from uuid import uuid4
+
+        context = PipelineContext(source=PipelineSource.API, user_id=uuid4())
+
+        # Test max_jobs > 50
+        result = await execute_pipeline(
+            "job_prep_batch",
+            {"max_jobs": 100},
+            context,
+        )
+        assert result.success is False
+
+        # Test max_jobs < 1
+        result = await execute_pipeline(
+            "job_prep_batch",
+            {"max_jobs": 0},
+            context,
+        )
+        assert result.success is False
+
+
+# =============================================================================
+# Batch Job Search Pipeline Tests
+# =============================================================================
+
+
+class TestBatchJobSearchPipeline:
+    """Tests for the batch job search pipeline."""
+
+    def setup_method(self):
+        """Initialize pipelines before each test."""
+        clear_registry()
+        from app.pipelines.actions import discover_pipelines
+
+        discover_pipelines(force_reload=True)
+
+    def test_batch_job_search_pipeline_registered(self):
+        """Test that batch job search pipeline is registered."""
+        pipeline = get_pipeline("job_search_batch")
+        assert pipeline is not None
+        assert pipeline.name == "job_search_batch"
+
+    def test_batch_job_search_pipeline_has_correct_metadata(self):
+        """Test that batch job search pipeline has correct tags and area."""
+        info = get_pipeline_info("job_search_batch")
+        assert info is not None
+        assert info["area"] == "jobs"
+        assert "jobs" in info["tags"]
+        assert "batch" in info["tags"]
+
+    def test_batch_job_search_pipeline_input_schema(self):
+        """Test that input schema has expected fields."""
+        info = get_pipeline_info("job_search_batch")
+        assert info is not None
+        schema = info["input_schema"]
+        assert "properties" in schema
+
+        props = schema["properties"]
+        # Should have minimal config - just hours_old and results_per_term
+        assert "hours_old" in props
+        assert "results_per_term" in props
+
+    @pytest.mark.anyio
+    async def test_batch_job_search_requires_authentication(self):
+        """Test that batch job search requires user authentication."""
+        context = PipelineContext(source=PipelineSource.API, user_id=None)
+        result = await execute_pipeline(
+            "job_search_batch",
+            {},
+            context,
+        )
+
+        assert result.success is False
+        assert "authentication required" in result.error.lower()

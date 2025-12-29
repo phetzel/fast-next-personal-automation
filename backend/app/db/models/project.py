@@ -3,7 +3,7 @@
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Text
+from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,8 +17,8 @@ class Project(Base, TimestampMixin):
     """Project model for storing project descriptions.
 
     Stores project descriptions (markdown files) that users want to reference
-    during job applications. Unlike resumes and stories, multiple projects
-    can be active at once - each has its own is_active toggle.
+    during job applications. Projects are linked to profiles via the profile's
+    project_ids field, allowing dynamic selection per profile.
     """
 
     __tablename__ = "projects"
@@ -46,9 +46,6 @@ class Project(Base, TimestampMixin):
 
     # Extracted/stored text content (markdown content)
     text_content: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-    # Active toggle - multiple projects can be active
-    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     # Relationship
     user: Mapped["User"] = relationship("User", lazy="selectin")

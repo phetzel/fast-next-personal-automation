@@ -4,6 +4,7 @@ Contains database operations for Job entity. Business logic
 should be handled by JobService in app/services/job.py.
 """
 
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import Select, func, or_, select
@@ -19,20 +20,22 @@ async def get_by_id(db: AsyncSession, job_id: UUID) -> Job | None:
 
 
 async def get_by_id_and_user(db: AsyncSession, job_id: UUID, user_id: UUID) -> Job | None:
-    """Get job by ID ensuring it belongs to the user."""
-    result = await db.execute(select(Job).where(Job.id == job_id, Job.user_id == user_id))
+    """Get job by ID ensuring it belongs to the user (excludes soft-deleted)."""
+    result = await db.execute(
+        select(Job).where(Job.id == job_id, Job.user_id == user_id, Job.deleted_at.is_(None))
+    )
     return result.scalar_one_or_none()
 
 
 async def get_by_url_and_user(db: AsyncSession, job_url: str, user_id: UUID) -> Job | None:
-    """Check if a job URL already exists for a user."""
+    """Check if a job URL already exists for a user (includes soft-deleted to prevent re-scraping)."""
     result = await db.execute(select(Job).where(Job.job_url == job_url, Job.user_id == user_id))
     return result.scalar_one_or_none()
 
 
 def _apply_filters(query: Select, user_id: UUID, filters: JobFilters) -> Select:
-    """Apply filters to a job query."""
-    query = query.where(Job.user_id == user_id)
+    """Apply filters to a job query (excludes soft-deleted jobs)."""
+    query = query.where(Job.user_id == user_id, Job.deleted_at.is_(None))
 
     if filters.status:
         query = query.where(Job.status == filters.status.value)
@@ -55,6 +58,10 @@ def _apply_filters(query: Select, user_id: UUID, filters: JobFilters) -> Select:
                 Job.description.ilike(search_term),
             )
         )
+
+    if filters.posted_within_hours is not None:
+        cutoff_time = datetime.now(UTC) - timedelta(hours=filters.posted_within_hours)
+        query = query.where(Job.date_posted >= cutoff_time)
 
     return query
 
@@ -109,6 +116,7 @@ async def create(
     title: str,
     company: str,
     job_url: str,
+    profile_id: UUID | None = None,
     location: str | None = None,
     description: str | None = None,
     salary_range: str | None = None,
@@ -117,10 +125,14 @@ async def create(
     relevance_score: float | None = None,
     reasoning: str | None = None,
     search_terms: str | None = None,
+    is_remote: bool | None = None,
+    job_type: str | None = None,
+    company_url: str | None = None,
 ) -> Job:
     """Create a new job."""
     job = Job(
         user_id=user_id,
+        profile_id=profile_id,
         title=title,
         company=company,
         job_url=job_url,
@@ -132,6 +144,9 @@ async def create(
         relevance_score=relevance_score,
         reasoning=reasoning,
         search_terms=search_terms,
+        is_remote=is_remote,
+        job_type=job_type,
+        company_url=company_url,
     )
     db.add(job)
     await db.flush()
@@ -207,23 +222,29 @@ async def update_status(
 
 
 async def delete(db: AsyncSession, job_id: UUID, user_id: UUID) -> Job | None:
-    """Delete a job."""
+    """Soft delete a job (sets deleted_at timestamp).
+
+    Soft-deleted jobs are excluded from listings but still checked for duplicates
+    to prevent re-scraping the same job.
+    """
     job = await get_by_id_and_user(db, job_id, user_id)
     if job:
-        await db.delete(job)
+        job.deleted_at = datetime.now(UTC)
+        db.add(job)
         await db.flush()
+        await db.refresh(job)
     return job
 
 
 async def get_stats(db: AsyncSession, user_id: UUID) -> dict:
-    """Get job statistics for a user."""
+    """Get job statistics for a user (excludes soft-deleted jobs)."""
     # Count by status
     status_query = (
         select(
             Job.status,
             func.count(Job.id).label("count"),
         )
-        .where(Job.user_id == user_id)
+        .where(Job.user_id == user_id, Job.deleted_at.is_(None))
         .group_by(Job.status)
     )
 
@@ -233,6 +254,7 @@ async def get_stats(db: AsyncSession, user_id: UUID) -> dict:
     # Average score
     avg_query = select(func.avg(Job.relevance_score)).where(
         Job.user_id == user_id,
+        Job.deleted_at.is_(None),
         Job.relevance_score.isnot(None),
     )
     avg_result = await db.execute(avg_query)
@@ -241,23 +263,59 @@ async def get_stats(db: AsyncSession, user_id: UUID) -> dict:
     # High scoring count (>= 7.0)
     high_query = select(func.count(Job.id)).where(
         Job.user_id == user_id,
+        Job.deleted_at.is_(None),
         Job.relevance_score >= 7.0,
     )
     high_result = await db.execute(high_query)
     high_scoring = high_result.scalar() or 0
 
     # Total count
-    total_query = select(func.count(Job.id)).where(Job.user_id == user_id)
+    total_query = select(func.count(Job.id)).where(Job.user_id == user_id, Job.deleted_at.is_(None))
     total_result = await db.execute(total_query)
     total = total_result.scalar() or 0
 
     return {
         "total": total,
         "new": status_counts.get(JobStatus.NEW.value, 0),
+        "prepped": status_counts.get(JobStatus.PREPPED.value, 0),
         "reviewed": status_counts.get(JobStatus.REVIEWED.value, 0),
         "applied": status_counts.get(JobStatus.APPLIED.value, 0),
-        "rejected": status_counts.get(JobStatus.REJECTED.value, 0),
         "interviewing": status_counts.get(JobStatus.INTERVIEWING.value, 0),
+        "rejected": status_counts.get(JobStatus.REJECTED.value, 0),
         "avg_score": round(avg_score, 2) if avg_score else None,
         "high_scoring": high_scoring,
     }
+
+
+async def soft_delete_by_status(
+    db: AsyncSession,
+    user_id: UUID,
+    status: JobStatus,
+) -> int:
+    """Soft delete all jobs with a given status for a user.
+
+    Sets deleted_at timestamp for all matching jobs, removing them from listings
+    while preserving records for duplicate checking.
+
+    Args:
+        db: Database session
+        user_id: User ID
+        status: Status of jobs to delete (e.g., NEW, PREPPED, REVIEWED)
+
+    Returns:
+        Count of jobs deleted
+    """
+    from sqlalchemy import update
+
+    result = await db.execute(
+        update(Job)
+        .where(
+            Job.user_id == user_id,
+            Job.status == status.value,
+            Job.deleted_at.is_(None),
+        )
+        .values(deleted_at=datetime.now(UTC))
+    )
+    await db.flush()
+
+    return result.rowcount

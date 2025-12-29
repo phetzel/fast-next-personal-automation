@@ -35,6 +35,32 @@ class JobProfileBase(BaseSchema):
         default=None,
         description="Additional preferences (remote_only, salary_min, etc.)",
     )
+    # Contact info for cover letters
+    contact_full_name: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Full name for cover letter header (e.g., 'Phillip Hetzel')",
+    )
+    contact_phone: str | None = Field(
+        default=None,
+        max_length=50,
+        description="Phone number for cover letter header (e.g., '510-684-9802')",
+    )
+    contact_email: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Email for cover letter header (e.g., 'phetzel89@gmail.com')",
+    )
+    contact_location: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Location for cover letter header (e.g., 'Portland, Oregon')",
+    )
+    contact_website: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Website for cover letter header (e.g., 'philliphetzel.com')",
+    )
 
 
 class JobProfileCreate(JobProfileBase):
@@ -48,6 +74,14 @@ class JobProfileCreate(JobProfileBase):
         default=None,
         description="ID of the resume to link to this profile",
     )
+    story_id: UUID | None = Field(
+        default=None,
+        description="ID of the story to link to this profile",
+    )
+    project_ids: list[UUID] | None = Field(
+        default=None,
+        description="IDs of projects to link to this profile",
+    )
 
 
 class JobProfileUpdate(BaseSchema):
@@ -58,11 +92,19 @@ class JobProfileUpdate(BaseSchema):
 
     name: str | None = Field(default=None, min_length=1, max_length=100)
     resume_id: UUID | None = None
+    story_id: UUID | None = None
+    project_ids: list[UUID] | None = None
     target_roles: list[str] | None = None
     target_locations: list[str] | None = None
     min_score_threshold: float | None = Field(default=None, ge=0.0, le=10.0)
     preferences: dict[str, Any] | None = None
     is_default: bool | None = None
+    # Contact info for cover letters
+    contact_full_name: str | None = Field(default=None, max_length=255)
+    contact_phone: str | None = Field(default=None, max_length=50)
+    contact_email: str | None = Field(default=None, max_length=255)
+    contact_location: str | None = Field(default=None, max_length=255)
+    contact_website: str | None = Field(default=None, max_length=255)
 
 
 class ResumeInfo(BaseSchema):
@@ -74,6 +116,21 @@ class ResumeInfo(BaseSchema):
     has_text: bool
 
 
+class StoryInfo(BaseSchema):
+    """Embedded story info in profile response."""
+
+    id: UUID
+    name: str
+
+
+class ProjectInfo(BaseSchema):
+    """Embedded project info in profile response."""
+
+    id: UUID
+    name: str
+    has_text: bool
+
+
 class JobProfileResponse(JobProfileBase, TimestampSchema):
     """Schema for reading a job profile (API response)."""
 
@@ -82,6 +139,10 @@ class JobProfileResponse(JobProfileBase, TimestampSchema):
     is_default: bool = Field(description="Whether this is the user's default profile")
     resume_id: UUID | None = Field(default=None, description="ID of the linked resume")
     resume: ResumeInfo | None = Field(default=None, description="Linked resume details")
+    story_id: UUID | None = Field(default=None, description="ID of the linked story")
+    story: StoryInfo | None = Field(default=None, description="Linked story details")
+    project_ids: list[UUID] | None = Field(default=None, description="IDs of linked projects")
+    projects: list[ProjectInfo] | None = Field(default=None, description="Linked project details")
 
 
 class JobProfileSummary(BaseSchema):
@@ -92,6 +153,9 @@ class JobProfileSummary(BaseSchema):
     is_default: bool = False
     has_resume: bool = False
     resume_name: str | None = None
+    has_story: bool = False
+    story_name: str | None = None
+    project_count: int = 0
     target_roles_count: int = 0
     min_score_threshold: float = 7.0
 

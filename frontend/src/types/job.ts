@@ -3,9 +3,81 @@
  */
 
 /**
+ * All possible job statuses.
+ * Order matters - this is the linear flow order.
+ */
+export const JOB_STATUSES = [
+  "new",
+  "prepped",
+  "reviewed",
+  "applied",
+  "interviewing",
+  "rejected",
+] as const;
+
+/**
  * Status of a job in the user's workflow.
  */
-export type JobStatus = "new" | "reviewed" | "applied" | "rejected" | "interviewing";
+export type JobStatus = (typeof JOB_STATUSES)[number];
+
+/**
+ * Metadata for each job status including display info and allowed transitions.
+ */
+export const JOB_STATUS_CONFIG: Record<
+  JobStatus,
+  {
+    label: string;
+    description: string;
+    /** Statuses that can transition TO this status */
+    allowedFrom: JobStatus[];
+  }
+> = {
+  new: {
+    label: "New",
+    description: "Just scraped, not reviewed yet",
+    allowedFrom: [], // Initial state, nothing transitions to new
+  },
+  prepped: {
+    label: "Prepped",
+    description: "Cover letter & notes generated",
+    allowedFrom: ["new"],
+  },
+  reviewed: {
+    label: "Reviewed",
+    description: "Ready to apply, PDF generated",
+    allowedFrom: ["prepped"],
+  },
+  applied: {
+    label: "Applied",
+    description: "Application submitted",
+    allowedFrom: ["reviewed"],
+  },
+  interviewing: {
+    label: "Interviewing",
+    description: "In interview process",
+    allowedFrom: ["applied"],
+  },
+  rejected: {
+    label: "Rejected",
+    description: "Application was declined",
+    allowedFrom: ["applied", "interviewing"],
+  },
+};
+
+/**
+ * Check if a status transition is allowed.
+ */
+export function canTransitionTo(from: JobStatus, to: JobStatus): boolean {
+  if (from === to) return false;
+  return JOB_STATUS_CONFIG[to].allowedFrom.includes(from);
+}
+
+/**
+ * Get all statuses that the given status can transition to.
+ */
+export function getAllowedTransitions(from: JobStatus): JobStatus[] {
+  return JOB_STATUSES.filter((status) => canTransitionTo(from, status));
+}
 
 /**
  * A job listing from the database.
@@ -26,6 +98,16 @@ export interface Job {
   status: JobStatus;
   search_terms: string | null;
   notes: string | null;
+  // Additional scrape fields
+  is_remote: boolean | null;
+  job_type: string | null;
+  company_url: string | null;
+  // Prep materials
+  cover_letter: string | null;
+  cover_letter_file_path: string | null;
+  cover_letter_generated_at: string | null;
+  prep_notes: string | null;
+  prepped_at: string | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -60,10 +142,11 @@ export interface JobListResponse {
 export interface JobStats {
   total: number;
   new: number;
+  prepped: number;
   reviewed: number;
   applied: number;
-  rejected: number;
   interviewing: number;
+  rejected: number;
   avg_score: number | null;
   high_scoring: number;
 }
@@ -77,6 +160,7 @@ export interface JobFilters {
   min_score?: number;
   max_score?: number;
   search?: string;
+  posted_within_hours?: number;
   page?: number;
   page_size?: number;
   sort_by?: "created_at" | "relevance_score" | "date_posted" | "company";
@@ -89,6 +173,8 @@ export interface JobFilters {
 export interface JobUpdate {
   status?: JobStatus;
   notes?: string;
+  cover_letter?: string;
+  prep_notes?: string;
 }
 
 // ===========================================================================
@@ -137,7 +223,24 @@ export interface ResumeInfo {
 // ===========================================================================
 
 /**
- * Job profile with resume link and preferences.
+ * Story info embedded in profile response.
+ */
+export interface StoryInfo {
+  id: string;
+  name: string;
+}
+
+/**
+ * Project info embedded in profile response.
+ */
+export interface ProjectInfo {
+  id: string;
+  name: string;
+  has_text: boolean;
+}
+
+/**
+ * Job profile with resume, story, and projects link and preferences.
  * A user can have multiple profiles with different configurations.
  */
 export interface JobProfile {
@@ -147,10 +250,20 @@ export interface JobProfile {
   is_default: boolean;
   resume_id: string | null;
   resume: ResumeInfo | null;
+  story_id: string | null;
+  story: StoryInfo | null;
+  project_ids: string[] | null;
+  projects: ProjectInfo[] | null;
   target_roles: string[] | null;
   target_locations: string[] | null;
   min_score_threshold: number;
   preferences: Record<string, unknown> | null;
+  // Contact info for cover letters
+  contact_full_name: string | null;
+  contact_phone: string | null;
+  contact_email: string | null;
+  contact_location: string | null;
+  contact_website: string | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -164,6 +277,9 @@ export interface JobProfileSummary {
   is_default: boolean;
   has_resume: boolean;
   resume_name: string | null;
+  has_story: boolean;
+  story_name: string | null;
+  project_count: number;
   target_roles_count: number;
   min_score_threshold: number;
 }
@@ -175,10 +291,18 @@ export interface JobProfileCreate {
   name: string;
   is_default?: boolean;
   resume_id?: string | null;
+  story_id?: string | null;
+  project_ids?: string[] | null;
   target_roles?: string[] | null;
   target_locations?: string[] | null;
   min_score_threshold?: number;
   preferences?: Record<string, unknown> | null;
+  // Contact info for cover letters
+  contact_full_name?: string | null;
+  contact_phone?: string | null;
+  contact_email?: string | null;
+  contact_location?: string | null;
+  contact_website?: string | null;
 }
 
 /**
@@ -188,10 +312,18 @@ export interface JobProfileUpdate {
   name?: string;
   is_default?: boolean;
   resume_id?: string | null;
+  story_id?: string | null;
+  project_ids?: string[] | null;
   target_roles?: string[] | null;
   target_locations?: string[] | null;
   min_score_threshold?: number;
   preferences?: Record<string, unknown> | null;
+  // Contact info for cover letters
+  contact_full_name?: string | null;
+  contact_phone?: string | null;
+  contact_email?: string | null;
+  contact_location?: string | null;
+  contact_website?: string | null;
 }
 
 // ===========================================================================
@@ -284,7 +416,6 @@ export interface Project {
   original_filename: string;
   file_size: number;
   mime_type: string;
-  is_active: boolean;
   has_text: boolean;
   created_at: string;
   updated_at: string | null;
@@ -297,7 +428,6 @@ export interface ProjectSummary {
   id: string;
   name: string;
   original_filename: string;
-  is_active: boolean;
   has_text: boolean;
 }
 
@@ -315,7 +445,6 @@ export interface ProjectTextResponse {
  */
 export interface ProjectUpdate {
   name?: string;
-  is_active?: boolean;
 }
 
 // ===========================================================================

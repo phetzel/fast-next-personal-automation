@@ -6,17 +6,18 @@ Create Date: 2025-12-22 15:00:00.000000
 
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "4a9bb3cd2345"
-down_revision: Union[str, None] = "3f8aa2bc1234"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "3f8aa2bc1234"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -26,16 +27,10 @@ def upgrade() -> None:
         sa.Column("id", sa.UUID(), nullable=False),
         sa.Column("user_id", sa.UUID(), nullable=False),
         sa.Column("resume_text", sa.Text(), nullable=True),
-        sa.Column(
-            "target_roles", postgresql.JSON(astext_type=sa.Text()), nullable=True
-        ),
-        sa.Column(
-            "target_locations", postgresql.JSON(astext_type=sa.Text()), nullable=True
-        ),
+        sa.Column("target_roles", postgresql.JSON(astext_type=sa.Text()), nullable=True),
+        sa.Column("target_locations", postgresql.JSON(astext_type=sa.Text()), nullable=True),
         sa.Column("min_score_threshold", sa.Float(), nullable=False, default=7.0),
-        sa.Column(
-            "preferences", postgresql.JSON(astext_type=sa.Text()), nullable=True
-        ),
+        sa.Column("preferences", postgresql.JSON(astext_type=sa.Text()), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -131,4 +126,3 @@ def downgrade() -> None:
     # Drop user_profiles table
     op.drop_index(op.f("user_profiles_user_id_idx"), table_name="user_profiles")
     op.drop_table("user_profiles")
-

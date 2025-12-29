@@ -2,6 +2,7 @@
 
 import { Button, Input } from "@/components/ui";
 import type { JobFilters, JobStatus } from "@/types";
+import { JOB_STATUSES, JOB_STATUS_CONFIG } from "@/types";
 import { cn } from "@/lib/utils";
 import { Search, X, Filter } from "lucide-react";
 import { useState } from "react";
@@ -13,13 +14,13 @@ interface JobFiltersProps {
   className?: string;
 }
 
+// Generate status options from the shared constant
 const STATUS_OPTIONS: { value: JobStatus | "all"; label: string }[] = [
   { value: "all", label: "All Status" },
-  { value: "new", label: "New" },
-  { value: "reviewed", label: "Reviewed" },
-  { value: "applied", label: "Applied" },
-  { value: "interviewing", label: "Interviewing" },
-  { value: "rejected", label: "Rejected" },
+  ...JOB_STATUSES.map((status) => ({
+    value: status,
+    label: JOB_STATUS_CONFIG[status].label,
+  })),
 ];
 
 const SORT_OPTIONS: { value: string; label: string }[] = [
@@ -29,6 +30,14 @@ const SORT_OPTIONS: { value: string; label: string }[] = [
   { value: "relevance_score:asc", label: "Lowest Score" },
   { value: "company:asc", label: "Company A-Z" },
   { value: "date_posted:desc", label: "Recently Posted" },
+];
+
+const RECENCY_OPTIONS: { value: string; label: string }[] = [
+  { value: "all", label: "Any Time" },
+  { value: "24", label: "Last 24 Hours" },
+  { value: "48", label: "Last 48 Hours" },
+  { value: "72", label: "Last 3 Days" },
+  { value: "168", label: "Last Week" },
 ];
 
 export function JobFilters({
@@ -60,11 +69,20 @@ export function JobFilters({
     onFiltersChange({ sort_by, sort_order, page: 1 });
   };
 
+  const handleRecencyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    onFiltersChange({
+      posted_within_hours: value === "all" ? undefined : parseInt(value, 10),
+      page: 1,
+    });
+  };
+
   const hasActiveFilters =
     filters.status ||
     filters.search ||
     filters.min_score !== undefined ||
-    filters.max_score !== undefined;
+    filters.max_score !== undefined ||
+    filters.posted_within_hours !== undefined;
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -100,6 +118,19 @@ export function JobFilters({
           className="border-input bg-background ring-offset-background focus:ring-ring h-10 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-offset-2"
         >
           {STATUS_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+
+        {/* Recency filter */}
+        <select
+          value={filters.posted_within_hours?.toString() || "all"}
+          onChange={handleRecencyChange}
+          className="border-input bg-background ring-offset-background focus:ring-ring h-10 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-offset-2"
+        >
+          {RECENCY_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>

@@ -10,8 +10,8 @@ export interface JSONSchemaProperty {
   description?: string;
   default?: unknown;
   enum?: string[];
-  /** Standard formats plus custom x-profile-select for job profile selection */
-  format?: "email" | "date" | "date-time" | "uri" | "uuid" | "x-profile-select";
+  /** Standard formats plus custom formats for job-related selections */
+  format?: "email" | "date" | "date-time" | "uri" | "uuid" | "x-profile-select" | "x-job-select";
   minLength?: number;
   maxLength?: number;
   minimum?: number;

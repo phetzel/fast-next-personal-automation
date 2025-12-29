@@ -1,5 +1,6 @@
 export { DynamicForm } from "./dynamic-form";
 export { ExecutionResult } from "./execution-result";
+export { JobSelectField } from "./job-select-field";
 export { PipelineCard } from "./pipeline-card";
 export { PipelineList } from "./pipeline-list";
 export { PipelineRunHistory } from "./pipeline-run-history";

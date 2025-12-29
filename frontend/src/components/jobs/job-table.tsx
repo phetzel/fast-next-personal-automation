@@ -33,6 +33,7 @@ import {
   Building2,
   MapPin,
   Trash2,
+  FileText,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -43,8 +44,10 @@ interface JobTableProps {
   page: number;
   pageSize: number;
   isLoading?: boolean;
+  preppingJobId?: string | null;
   onJobClick?: (job: Job) => void;
   onDelete?: (jobId: string) => void;
+  onPrep?: (job: Job) => void;
   onPageChange?: (page: number) => void;
   onSort?: (sortBy: string, sortOrder: "asc" | "desc") => void;
   className?: string;
@@ -56,8 +59,10 @@ export function JobTable({
   page,
   pageSize,
   isLoading,
+  preppingJobId,
   onJobClick,
   onDelete,
+  onPrep,
   onPageChange,
   onSort,
   className,
@@ -127,12 +132,27 @@ export function JobTable({
         accessorKey: "location",
         header: "Location",
         cell: ({ row }) => {
-          const location = row.original.location;
-          if (!location) return <span className="text-muted-foreground">—</span>;
+          const job = row.original;
           return (
-            <div className="flex items-center gap-1.5 text-sm">
-              <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span className="truncate max-w-[150px]">{location}</span>
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-1.5 text-sm">
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <span className="truncate max-w-[150px]">
+                  {job.location || "—"}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                {job.is_remote && (
+                  <span className="inline-flex items-center rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400">
+                    Remote
+                  </span>
+                )}
+                {job.job_type && (
+                  <span className="inline-flex items-center rounded-full bg-gray-500/10 px-1.5 py-0.5 text-[10px] font-medium capitalize text-muted-foreground">
+                    {job.job_type}
+                  </span>
+                )}
+              </div>
             </div>
           );
         },
@@ -188,12 +208,20 @@ export function JobTable({
         accessorKey: "source",
         header: "Source",
         cell: ({ row }) => {
-          const source = row.original.source;
-          if (!source) return <span className="text-muted-foreground">—</span>;
+          const job = row.original;
+          if (!job.source) return <span className="text-muted-foreground">—</span>;
           return (
-            <span className="text-xs capitalize text-muted-foreground">
-              {source}
-            </span>
+            <a
+              href={job.job_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs capitalize text-muted-foreground transition-colors hover:text-foreground"
+              onClick={(e) => e.stopPropagation()}
+              title="View original job posting"
+            >
+              {job.source}
+              <ExternalLink className="h-3 w-3" />
+            </a>
           );
         },
         enableSorting: false,
@@ -201,34 +229,49 @@ export function JobTable({
       {
         id: "actions",
         header: "",
-        cell: ({ row }) => (
-          <div className="flex items-center gap-1">
-            <a
-              href={row.original.job_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              onClick={(e) => e.stopPropagation()}
-              title="Open job posting"
-            >
-              <ExternalLink className="h-4 w-4" />
-            </a>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete?.(row.original.id);
-              }}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-              title="Delete job"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-        ),
+        cell: ({ row }) => {
+          const job = row.original;
+          const isPrepping = preppingJobId === job.id;
+          const showPrepButton = job.status === "new" && onPrep;
+
+          return (
+            <div className="flex items-center gap-1">
+              {isPrepping && (
+                <span className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-500/10 px-2 text-xs font-medium text-blue-600">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Prepping...
+                </span>
+              )}
+              {showPrepButton && !isPrepping && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPrep(job);
+                  }}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary/10 px-2 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+                  title="Prepare cover letter & notes"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  Prep
+                </button>
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete?.(job.id);
+                }}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                title="Delete job"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          );
+        },
         enableSorting: false,
       },
     ],
-    [onJobClick, onDelete]
+    [onJobClick, onDelete, onPrep, preppingJobId]
   );
 
   // Filter out hidden columns

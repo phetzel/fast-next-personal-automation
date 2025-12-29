@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { useJobStore } from "@/stores/job-store";
 import { apiClient } from "@/lib/api-client";
-import type { Job, JobFilters, JobListResponse, JobStats, JobUpdate } from "@/types";
+import type { Job, JobFilters, JobListResponse, JobStats, JobStatus, JobUpdate } from "@/types";
 
 /**
  * Hook for managing jobs data and API interactions.
@@ -48,6 +48,8 @@ export function useJobs() {
       if (appliedFilters.max_score !== undefined)
         params.set("max_score", String(appliedFilters.max_score));
       if (appliedFilters.search) params.set("search", appliedFilters.search);
+      if (appliedFilters.posted_within_hours !== undefined)
+        params.set("posted_within_hours", String(appliedFilters.posted_within_hours));
       if (appliedFilters.page) params.set("page", String(appliedFilters.page));
       if (appliedFilters.page_size)
         params.set("page_size", String(appliedFilters.page_size));
@@ -132,6 +134,20 @@ export function useJobs() {
   );
 
   /**
+   * Delete all jobs with a specific status (soft delete).
+   */
+  const deleteByStatus = useCallback(
+    async (status: JobStatus): Promise<number> => {
+      const response = await apiClient.post<{ deleted_count: number; status: string }>(
+        "/jobs/batch/delete",
+        { status }
+      );
+      return response.deleted_count;
+    },
+    []
+  );
+
+  /**
    * Change page.
    */
   const goToPage = useCallback(
@@ -164,24 +180,11 @@ export function useJobs() {
     fetchJob,
     updateJobStatus,
     deleteJob,
+    deleteByStatus,
     setFilters,
     resetFilters,
     setSelectedJob,
     goToPage,
   };
-}
-
-/**
- * Hook to fetch jobs on mount with current filters.
- */
-export function useJobsOnMount() {
-  const { fetchJobs, fetchStats, filters } = useJobs();
-
-  useEffect(() => {
-    fetchJobs();
-    fetchStats();
-  }, [filters.page, filters.status, filters.sort_by, filters.sort_order]);
-
-  return useJobs();
 }
 

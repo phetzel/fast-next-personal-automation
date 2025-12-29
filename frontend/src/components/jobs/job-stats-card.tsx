@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   Briefcase,
   Sparkles,
+  FileText,
   Eye,
   Send,
   ThumbsDown,
@@ -46,8 +47,8 @@ export function JobStatsCard({ stats, isLoading, className }: JobStatsCardProps)
     return (
       <Card className={className}>
         <CardContent className="py-6">
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-4 lg:grid-cols-8">
-            {Array.from({ length: 8 }).map((_, i) => (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9">
+            {Array.from({ length: 9 }).map((_, i) => (
               <div key={i} className="h-16 animate-pulse rounded-lg bg-gray-200" />
             ))}
           </div>
@@ -59,9 +60,9 @@ export function JobStatsCard({ stats, isLoading, className }: JobStatsCardProps)
   return (
     <Card className={className}>
       <CardContent className="py-6">
-        <div className="grid grid-cols-2 gap-6 sm:grid-cols-4 lg:grid-cols-8">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9">
           <StatItem
-            label="Total Jobs"
+            label="Total"
             value={stats?.total ?? 0}
             Icon={Briefcase}
             color="bg-primary/10 text-primary"
@@ -71,6 +72,12 @@ export function JobStatsCard({ stats, isLoading, className }: JobStatsCardProps)
             value={stats?.new ?? 0}
             Icon={Sparkles}
             color="bg-blue-500/10 text-blue-600"
+          />
+          <StatItem
+            label="Prepped"
+            value={stats?.prepped ?? 0}
+            Icon={FileText}
+            color="bg-cyan-500/10 text-cyan-600"
           />
           <StatItem
             label="Reviewed"
@@ -94,10 +101,10 @@ export function JobStatsCard({ stats, isLoading, className }: JobStatsCardProps)
             label="Rejected"
             value={stats?.rejected ?? 0}
             Icon={ThumbsDown}
-            color="bg-gray-500/10 text-gray-500"
+            color="bg-red-500/10 text-red-500"
           />
           <StatItem
-            label="High Scoring"
+            label="High Score"
             value={stats?.high_scoring ?? 0}
             Icon={TrendingUp}
             color="bg-emerald-500/10 text-emerald-600"

@@ -62,6 +62,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[LifespanState, None]:
 
     await close_db()
 
+    # Close browser instance if it was used
+    from app.browser.client import close_browser
+
+    await close_browser()
+
 
 # Environments where API docs should be visible
 SHOW_DOCS_ENVIRONMENTS = ("local", "staging", "development")

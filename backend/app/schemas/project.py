@@ -25,14 +25,12 @@ class ProjectCreate(ProjectBase):
     file_size: int
     mime_type: str
     text_content: str | None = None
-    is_active: bool = True
 
 
 class ProjectUpdate(BaseSchema):
     """Schema for updating a project."""
 
     name: str | None = Field(default=None, min_length=1, max_length=100)
-    is_active: bool | None = None
 
 
 class ProjectResponse(ProjectBase, TimestampSchema):
@@ -43,7 +41,6 @@ class ProjectResponse(ProjectBase, TimestampSchema):
     original_filename: str
     file_size: int
     mime_type: str
-    is_active: bool
     has_text: bool = Field(description="Whether text was extracted from the file")
 
 
@@ -53,7 +50,6 @@ class ProjectSummary(BaseSchema):
     id: UUID
     name: str
     original_filename: str
-    is_active: bool
     has_text: bool
 
 
