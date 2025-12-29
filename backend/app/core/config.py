@@ -97,6 +97,11 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/oauth/google/callback"
+    GOOGLE_GMAIL_REDIRECT_URI: str = "http://localhost:8000/api/v1/email/gmail/callback"
+
+    # === Email Sync ===
+    EMAIL_SYNC_INTERVAL_MINUTES: int = 15  # How often to sync email sources
+    EMAIL_SYNC_LOOKBACK_HOURS: int = 72  # How far back to look for emails on first sync
 
     # === Auth (API Key) ===
     API_KEY: str = "change-me-in-production"

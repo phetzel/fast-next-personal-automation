@@ -25,6 +25,8 @@ from app.repositories import story as story_repo
 
 from app.repositories import project as project_repo
 
+from app.repositories import email_source as email_source_repo
+
 __all__ = [
     "BaseRepository",
     "user_repo",
@@ -38,4 +40,5 @@ __all__ = [
     "resume_repo",
     "story_repo",
     "project_repo",
+    "email_source_repo",
 ]

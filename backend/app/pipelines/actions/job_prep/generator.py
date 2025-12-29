@@ -174,7 +174,7 @@ Please create a tailored cover letter and comprehensive prep notes based on the 
     try:
         result = await agent.run(prompt, deps=deps)
         output = result.output
-        
+
         # Validate cover letter was actually generated (not empty)
         if not skip_cover_letter and (not output.cover_letter or not output.cover_letter.strip()):
             # AI returned empty cover letter when we expected one - use fallback
@@ -189,7 +189,7 @@ Please create a tailored cover letter and comprehensive prep notes based on the 
                 ),
                 prep_notes=output.prep_notes,
             )
-        
+
         return output
     except Exception as e:
         logger.error(f"Error generating prep materials for '{job_title}' at {company}: {e}")

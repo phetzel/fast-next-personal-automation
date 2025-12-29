@@ -125,6 +125,20 @@ Job profiles include contact info fields for cover letter generation:
 | POST | `/resumes/{id}/set-primary` | Set as primary |
 | POST | `/resumes/{id}/re-extract` | Re-extract text |
 
+### Email Integration
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/email/sources` | List connected email accounts |
+| GET | `/email/sources/{id}` | Get email source with stats |
+| GET | `/email/gmail/connect` | Start Gmail OAuth flow |
+| GET | `/email/gmail/callback` | Handle Gmail OAuth callback |
+| POST | `/email/sources/{id}/sync` | Trigger manual email sync |
+| PATCH | `/email/sources/{id}` | Update source settings |
+| DELETE | `/email/sources/{id}` | Disconnect email account |
+| GET | `/email/sources/{id}/messages` | List processed messages |
+| GET | `/email/config` | Get email config (supported senders) |
+
 ### Pipelines
 
 | Method | Endpoint | Description |
@@ -141,6 +155,7 @@ Job profiles include contact info fields for cover letter generation:
 | `job_search` | Search job boards and analyze fit against resume |
 | `job_prep` | Auto-analyzes application page, then generates cover letter (if needed) and prep notes |
 | `job_apply` | Assist with or automate application submission |
+| `email_sync_jobs` | Sync job listings from connected email accounts |
 
 > **Note:** `job_analyze` exists as an internal module used by `job_prep` (via `auto_analyze=True`) and `job_apply`, but is not exposed as a standalone pipeline.
 
@@ -251,6 +266,9 @@ settings.OPENAI_API_KEY
 | `BROWSER_HEADLESS` | `True` | Run Playwright browser in headless mode |
 | `BROWSER_TIMEOUT` | `30000` | Browser operation timeout in milliseconds |
 | `BROWSER_USE_AI_MODEL` | `gpt-4o` | Model for AI-powered browser analysis |
+| `GOOGLE_GMAIL_REDIRECT_URI` | - | Gmail OAuth callback URL |
+| `EMAIL_SYNC_INTERVAL_MINUTES` | `15` | How often to sync email sources |
+| `EMAIL_SYNC_LOOKBACK_HOURS` | `72` | How far back to look on first sync |
 
 ## Exception Handling
 

@@ -34,6 +34,7 @@ def discover_pipelines(force_reload: bool = False) -> None:
         "app.pipelines.actions.job_prep.pipeline",
         "app.pipelines.actions.job_prep.batch_pipeline",
         "app.pipelines.actions.job_apply.pipeline",
+        "app.pipelines.actions.email_sync.pipeline",
     ]
 
     for module_name in pipeline_modules:

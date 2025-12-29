@@ -19,6 +19,7 @@ from app.api.routes.v1 import job_profile
 from app.api.routes.v1 import resumes
 from app.api.routes.v1 import stories
 from app.api.routes.v1 import projects
+from app.api.routes.v1 import email_sources
 
 v1_router = APIRouter()
 
@@ -72,3 +73,6 @@ v1_router.include_router(stories.router, prefix="/stories", tags=["stories"])
 
 # Project routes (project description management)
 v1_router.include_router(projects.router, prefix="/projects", tags=["projects"])
+
+# Email source routes (Gmail integration)
+v1_router.include_router(email_sources.router, prefix="/email", tags=["email"])

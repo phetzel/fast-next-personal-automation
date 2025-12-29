@@ -12,6 +12,8 @@ from app.db.models.job_profile import JobProfile
 from app.db.models.resume import Resume
 from app.db.models.story import Story
 from app.db.models.project import Project
+from app.db.models.email_source import EmailSource
+from app.db.models.email_message import EmailMessage
 
 __all__ = [
     "User",
@@ -31,4 +33,6 @@ __all__ = [
     "Resume",
     "Story",
     "Project",
+    "EmailSource",
+    "EmailMessage",
 ]
