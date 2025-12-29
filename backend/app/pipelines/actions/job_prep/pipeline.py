@@ -316,8 +316,13 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                 # Continue without screening answers
 
         # Step 7: Update the job record
-        # Log what we got from the generator
-        cover_letter_len = len(prep_output.cover_letter) if prep_output.cover_letter else 0
+        # Check if we have a real cover letter (not just placeholder)
+        has_real_cover_letter = (
+            prep_output.cover_letter
+            and prep_output.cover_letter.strip()
+            and prep_output.cover_letter != "Not requested"
+        )
+        cover_letter_len = len(prep_output.cover_letter) if has_real_cover_letter else 0
         logger.info(
             f"Generated materials: cover_letter={cover_letter_len} chars, "
             f"prep_notes={len(prep_output.prep_notes)} chars"
@@ -331,8 +336,8 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                     "prepped_at": datetime.now(UTC),
                     "status": JobStatus.PREPPED.value,
                 }
-                # Only update cover letter if we generated one
-                if prep_output.cover_letter:
+                # Only update cover letter if we generated a real one
+                if has_real_cover_letter:
                     update_data["cover_letter"] = prep_output.cover_letter
                     logger.info(f"Saving cover letter ({cover_letter_len} chars) to job {job.id}")
                 else:
@@ -342,9 +347,9 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                 await db.commit()
                 logger.info(f"Updated job {job.id} with prep materials, status set to PREPPED")
 
-        # Step 8: Generate and store PDF if we have a cover letter
+        # Step 8: Generate and store PDF if we have a real cover letter
         cover_letter_file_path: str | None = None
-        if prep_output.cover_letter:
+        if has_real_cover_letter:
             try:
                 # Get user for contact info fallback
                 async with get_db_context() as db:

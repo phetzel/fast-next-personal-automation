@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 class PrepOutput(BaseModel):
     """Output from the job prep generator."""
 
-    cover_letter: str | None = Field(
-        default=None, description="A tailored cover letter for the job application"
+    cover_letter: str = Field(
+        description="A tailored cover letter body (3-4 paragraphs, no greeting/closing/signature)"
     )
     prep_notes: str = Field(description="Markdown notes with resume highlights and talking points")
 
@@ -156,7 +156,7 @@ Generate prep notes ONLY for this job (cover letter is not required):
 {job_description or "No description available - focus on the job title and company."}
 
 Please create comprehensive prep notes based on the candidate's background.
-For the cover_letter field, return null or an empty string.
+For the cover_letter field, return a simple placeholder like "Not requested".
 """
     else:
         prompt = f"""
@@ -174,29 +174,31 @@ Please create a tailored cover letter and comprehensive prep notes based on the 
     try:
         result = await agent.run(prompt, deps=deps)
         output = result.output
-        # Ensure cover_letter is None if we skipped it
-        if skip_cover_letter:
-            output.cover_letter = None
-        elif not output.cover_letter or not output.cover_letter.strip():
+        
+        # Validate cover letter was actually generated (not empty)
+        if not skip_cover_letter and (not output.cover_letter or not output.cover_letter.strip()):
             # AI returned empty cover letter when we expected one - use fallback
             logger.warning(
                 f"AI returned empty cover letter for '{job_title}' at {company}, using fallback"
             )
-            output.cover_letter = (
-                f"I am excited to apply for the {job_title} position at {company}. "
-                f"With my background and experience, I am confident I would be a strong addition to your team.\n\n"
-                f"[AI generation returned empty. Please complete this cover letter manually or retry generation.]"
+            output = PrepOutput(
+                cover_letter=(
+                    f"I am excited to apply for the {job_title} position at {company}. "
+                    f"With my background and experience, I am confident I would be a strong addition to your team.\n\n"
+                    f"[AI generation returned empty. Please complete this cover letter manually or retry generation.]"
+                ),
+                prep_notes=output.prep_notes,
             )
+        
         return output
     except Exception as e:
         logger.error(f"Error generating prep materials for '{job_title}' at {company}: {e}")
         # Return a basic template on error
-        if skip_cover_letter:
-            return PrepOutput(
-                cover_letter=None,
-                prep_notes=f"# Prep Notes for {job_title} at {company}\n\n*Generation failed: {str(e)[:100]}*\n\n## Resume Highlights\n- [Add manually]\n\n## Talking Points\n- [Add manually]",
-            )
+        error_msg = str(e)[:100]
         return PrepOutput(
-            cover_letter=f"I am writing to express my interest in the {job_title} position at {company}.\n\n[Generation failed: {str(e)[:100]}. Please complete this cover letter manually.]",
-            prep_notes=f"# Prep Notes for {job_title} at {company}\n\n*Generation failed: {str(e)[:100]}*\n\n## Resume Highlights\n- [Add manually]\n\n## Talking Points\n- [Add manually]",
+            cover_letter=(
+                "Not requested" if skip_cover_letter
+                else f"I am writing to express my interest in the {job_title} position at {company}.\n\n[Generation failed: {error_msg}. Please complete this cover letter manually.]"
+            ),
+            prep_notes=f"# Prep Notes for {job_title} at {company}\n\n*Generation failed: {error_msg}*\n\n## Resume Highlights\n- [Add manually]\n\n## Talking Points\n- [Add manually]",
         )
