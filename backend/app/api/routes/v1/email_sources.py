@@ -71,15 +71,34 @@ async def get_email_source(
 
 
 @router.get("/gmail/connect")
-async def connect_gmail(request: Request, current_user: CurrentUser):
+async def connect_gmail(
+    request: Request,
+    token: str = Query(..., description="JWT access token"),
+    db: DBSession = None,
+):
     """Start Gmail OAuth flow to connect email account.
 
+    Accepts JWT token as query param since this is a browser redirect.
     Redirects user to Google consent screen with Gmail read permissions.
     """
+    from app.core.security import verify_token
+
+    # Verify the token from query param
+    payload = verify_token(token)
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    if payload.get("type") != "access":
+        raise HTTPException(status_code=401, detail="Invalid token type")
+
+    user_id = payload.get("sub")
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+
     redirect_uri = settings.GOOGLE_GMAIL_REDIRECT_URI
 
     # Store user ID in session for callback
-    request.session["gmail_connect_user_id"] = str(current_user.id)
+    request.session["gmail_connect_user_id"] = user_id
 
     return await oauth.google_gmail.authorize_redirect(request, redirect_uri)
 

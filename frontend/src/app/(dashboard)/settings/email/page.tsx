@@ -11,10 +11,9 @@ import {
   Check,
   AlertCircle,
   Clock,
-  ExternalLink,
   Loader2,
   Inbox,
-  Briefcase,
+  Globe,
 } from "lucide-react";
 import type { EmailSource, EmailConfig, EmailSyncOutput } from "@/types";
 
@@ -38,9 +37,7 @@ function Alert({
 
 // Simple skeleton component
 function Skeleton({ className = "" }: { className?: string }) {
-  return (
-    <div className={`animate-pulse rounded bg-muted ${className}`} />
-  );
+  return <div className={`animate-pulse rounded bg-muted ${className}`} />;
 }
 
 export default function EmailSettingsPage() {
@@ -51,6 +48,7 @@ export default function EmailSettingsPage() {
   const [syncing, setSyncing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState(false);
 
   // Check for success/error from OAuth callback
   useEffect(() => {
@@ -88,9 +86,26 @@ export default function EmailSettingsPage() {
     fetchData();
   }, []);
 
-  const handleConnect = () => {
-    // Redirect to backend OAuth endpoint
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/email/gmail/connect`;
+  const handleConnect = async () => {
+    try {
+      setConnecting(true);
+      setError(null);
+      // Call our frontend API route which will handle the auth token
+      const response = await fetch("/api/email/connect");
+      const data = await response.json();
+
+      if (data.url) {
+        // Redirect to the OAuth URL
+        window.location.href = data.url;
+      } else if (data.error) {
+        setError(data.error);
+        setConnecting(false);
+      }
+    } catch (err) {
+      setError("Failed to initiate connection");
+      setConnecting(false);
+      console.error(err);
+    }
   };
 
   const handleSync = async (sourceId: string) => {
@@ -101,11 +116,12 @@ export default function EmailSettingsPage() {
         `/email/sources/${sourceId}/sync`
       );
       setSuccess(
-        `Synced ${result.emails_processed} emails, extracted ${result.jobs_extracted} jobs, saved ${result.jobs_saved} new jobs`
+        `Synced ${result.emails_processed} emails, extracted ${result.jobs_extracted} items, saved ${result.jobs_saved} new`
       );
 
       // Refresh sources to update last_sync_at
-      const updatedSources = await apiClient.get<EmailSource[]>("/email/sources");
+      const updatedSources =
+        await apiClient.get<EmailSource[]>("/email/sources");
       setSources(updatedSources);
     } catch (err) {
       setError("Failed to sync email source");
@@ -161,7 +177,7 @@ export default function EmailSettingsPage() {
             Email Integration
           </h1>
           <p className="text-muted-foreground">
-            Connect your email to automatically import job alerts
+            Connect your email to automatically sync and parse content
           </p>
         </div>
         <Card className="p-6">
@@ -178,8 +194,7 @@ export default function EmailSettingsPage() {
           Email Integration
         </h1>
         <p className="text-muted-foreground">
-          Connect your email to automatically import job alerts from Indeed,
-          LinkedIn, HiringCafe, and more
+          Connect your email to automatically sync and parse content
         </p>
       </div>
 
@@ -203,8 +218,16 @@ export default function EmailSettingsPage() {
       <Card className="p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Connected Accounts</h2>
-          <Button onClick={handleConnect} className="gap-2">
-            <Mail className="h-4 w-4" />
+          <Button
+            onClick={handleConnect}
+            className="gap-2"
+            disabled={connecting}
+          >
+            {connecting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Mail className="h-4 w-4" />
+            )}
             Connect Gmail
           </Button>
         </div>
@@ -212,9 +235,11 @@ export default function EmailSettingsPage() {
         {sources.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <Inbox className="mb-4 h-12 w-12 text-muted-foreground" />
-            <p className="mb-2 text-lg font-medium">No email accounts connected</p>
+            <p className="mb-2 text-lg font-medium">
+              No email accounts connected
+            </p>
             <p className="mb-4 text-sm text-muted-foreground">
-              Connect your Gmail to automatically sync job alerts
+              Connect your Gmail to automatically sync emails
             </p>
           </div>
         ) : (
@@ -231,7 +256,9 @@ export default function EmailSettingsPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{source.email_address}</span>
-                      <Badge variant={source.is_active ? "default" : "secondary"}>
+                      <Badge
+                        variant={source.is_active ? "default" : "secondary"}
+                      >
                         {source.is_active ? "Active" : "Paused"}
                       </Badge>
                     </div>
@@ -283,13 +310,13 @@ export default function EmailSettingsPage() {
         )}
       </Card>
 
-      {/* Supported Job Boards */}
+      {/* Supported Sources */}
       {config && (
         <Card className="p-6">
-          <h2 className="mb-4 text-lg font-semibold">Supported Job Boards</h2>
+          <h2 className="mb-4 text-lg font-semibold">Supported Email Sources</h2>
           <p className="mb-4 text-sm text-muted-foreground">
-            Emails from these job boards will be automatically parsed every{" "}
-            {config.sync_interval_minutes} minutes
+            Emails from these senders will be automatically parsed (syncs every{" "}
+            {config.sync_interval_minutes} minutes)
           </p>
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
             {config.default_senders.map((sender) => (
@@ -297,10 +324,12 @@ export default function EmailSettingsPage() {
                 key={sender.domain}
                 className="flex items-center gap-3 rounded-lg border p-3"
               >
-                <Briefcase className="h-5 w-5 text-muted-foreground" />
+                <Globe className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <span className="font-medium">{sender.display_name}</span>
-                  <p className="text-xs text-muted-foreground">{sender.domain}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {sender.domain}
+                  </p>
                 </div>
               </div>
             ))}
@@ -319,7 +348,7 @@ export default function EmailSettingsPage() {
             <div>
               <p className="font-medium">Connect your Gmail</p>
               <p className="text-sm text-muted-foreground">
-                We only request read-only access to fetch job alert emails
+                Grant read-only access to fetch emails from specific senders
               </p>
             </div>
           </div>
@@ -330,8 +359,7 @@ export default function EmailSettingsPage() {
             <div>
               <p className="font-medium">Automatic syncing</p>
               <p className="text-sm text-muted-foreground">
-                Every 15 minutes, we check for new job alert emails from supported
-                job boards
+                Emails are checked hourly and parsed automatically
               </p>
             </div>
           </div>
@@ -340,31 +368,14 @@ export default function EmailSettingsPage() {
               3
             </div>
             <div>
-              <p className="font-medium">Jobs added to your list</p>
+              <p className="font-medium">Content extracted</p>
               <p className="text-sm text-muted-foreground">
-                Job listings are extracted and added to your Jobs list for review
+                Relevant data is extracted and organized in your areas
               </p>
             </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* Privacy Note */}
-      <Card className="border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
-        <div className="flex items-start gap-3">
-          <ExternalLink className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
-          <div>
-            <p className="font-medium text-blue-900 dark:text-blue-100">
-              Privacy Note
-            </p>
-            <p className="text-sm text-blue-700 dark:text-blue-300">
-              We only access emails from specific job board senders. Your personal
-              emails are never read or stored. You can disconnect at any time.
-            </p>
           </div>
         </div>
       </Card>
     </div>
   );
 }
-
