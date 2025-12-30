@@ -32,7 +32,6 @@ Redis = Annotated[RedisClient, Depends(get_redis)]
 from app.services.user import UserService
 from app.services.session import SessionService
 from app.services.webhook import WebhookService
-from app.services.item import ItemService
 from app.services.conversation import ConversationService
 from app.services.pipeline_run import PipelineRunService
 from app.services.job import JobService
@@ -62,14 +61,6 @@ def get_webhook_service(db: DBSession) -> WebhookService:
 
 
 WebhookSvc = Annotated[WebhookService, Depends(get_webhook_service)]
-
-
-def get_item_service(db: DBSession) -> ItemService:
-    """Create ItemService instance with database session."""
-    return ItemService(db)
-
-
-ItemSvc = Annotated[ItemService, Depends(get_item_service)]
 
 
 def get_conversation_service(db: DBSession) -> ConversationService:

@@ -1,4 +1,12 @@
-"""Example Taskiq tasks."""
+"""
+PLACEHOLDER EXAMPLES - Example Taskiq background tasks.
+
+These are template tasks demonstrating how to create background jobs with Taskiq.
+Copy and modify these for your own background tasks.
+
+This file is intentionally kept as a reference example and can be safely
+deleted if not needed.
+"""
 
 import asyncio
 import logging
@@ -12,7 +20,10 @@ logger = logging.getLogger(__name__)
 @broker.task
 async def example_task(message: str) -> dict[str, Any]:
     """
-    Example async task that processes a message.
+    PLACEHOLDER EXAMPLE - Async task that processes a message.
+
+    This is an example task demonstrating Taskiq task structure.
+    Copy and modify this for your own background tasks.
 
     Args:
         message: Message to process
@@ -36,7 +47,9 @@ async def example_task(message: str) -> dict[str, Any]:
 @broker.task
 async def long_running_task(duration: int = 10) -> dict[str, Any]:
     """
-    Example long-running async task.
+    PLACEHOLDER EXAMPLE - Long-running async task.
+
+    This demonstrates how to create tasks that take a long time to complete.
 
     Args:
         duration: Duration in seconds
@@ -59,7 +72,7 @@ async def long_running_task(duration: int = 10) -> dict[str, Any]:
 @broker.task
 async def send_email_task(to: str, subject: str, body: str) -> dict[str, Any]:
     """
-    Example email sending task.
+    PLACEHOLDER EXAMPLE - Email sending task template.
 
     Replace with actual email sending logic (e.g., using aiosmtplib, sendgrid, etc.)
 

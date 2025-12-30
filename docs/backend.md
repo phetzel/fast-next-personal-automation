@@ -54,16 +54,6 @@ All endpoints are prefixed with `/api/v1`.
 | GET | `/conversations/{id}` | Get conversation with messages |
 | DELETE | `/conversations/{id}` | Delete conversation |
 
-### Items (Example CRUD)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/items` | List items (paginated) |
-| POST | `/items` | Create item |
-| GET | `/items/{id}` | Get item |
-| PATCH | `/items/{id}` | Update item |
-| DELETE | `/items/{id}` | Delete item |
-
 ### Webhooks
 
 | Method | Endpoint | Description |

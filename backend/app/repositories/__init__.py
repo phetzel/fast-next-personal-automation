@@ -7,8 +7,6 @@ from app.repositories import user as user_repo
 
 from app.repositories import session as session_repo
 
-from app.repositories import item as item_repo
-
 from app.repositories import conversation as conversation_repo
 
 from app.repositories import webhook as webhook_repo
@@ -31,7 +29,6 @@ __all__ = [
     "BaseRepository",
     "user_repo",
     "session_repo",
-    "item_repo",
     "conversation_repo",
     "webhook_repo",
     "pipeline_run_repo",

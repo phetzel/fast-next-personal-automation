@@ -27,8 +27,8 @@ from app.schemas.email_source import (
 
 router = APIRouter()
 
-# Frontend URL for OAuth callback redirect (TODO: move to settings)
-FRONTEND_URL = "http://localhost:3000"
+# Frontend URL for OAuth callback redirects
+FRONTEND_URL = settings.FRONTEND_URL
 
 
 @router.get("/sources", response_model=list[EmailSourceResponse])
@@ -78,7 +78,13 @@ async def connect_gmail(
 ):
     """Start Gmail OAuth flow to connect email account.
 
-    Accepts JWT token as query param since this is a browser redirect.
+    Security note: JWT is passed as query param because OAuth flows require browser
+    redirects, and HTTP headers cannot be set in redirect URLs. Mitigations:
+    - Token is validated immediately and not stored
+    - User ID is transferred to server-side session after validation
+    - The token only grants permission to initiate this specific OAuth flow
+    - JWTs are short-lived (default 30 minutes)
+
     Redirects user to Google consent screen with Gmail read permissions.
     """
     from app.core.security import verify_token
@@ -169,7 +175,12 @@ async def gmail_callback(request: Request, db: DBSession):
         return RedirectResponse(url=f"{FRONTEND_URL}/settings/email?{params}")
 
     except Exception as e:
-        params = urlencode({"error": str(e)})
+        # Log full error internally but show generic message to user
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.exception(f"Gmail OAuth callback error: {e}")
+        params = urlencode({"error": "An error occurred connecting your Gmail account. Please try again."})
         return RedirectResponse(url=f"{FRONTEND_URL}/settings/email?{params}")
 
 

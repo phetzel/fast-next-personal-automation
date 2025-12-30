@@ -167,29 +167,29 @@ async def my_tool(ctx: RunContext[Deps], param: str) -> dict:
 
 ```python
 # In routes
-from app.api.deps import get_db, get_current_user
+from app.api.deps import DBSession, CurrentUser, JobSvc
 
-@router.get("/items")
-async def list_items(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+@router.get("/jobs")
+async def list_jobs(
+    db: DBSession,
+    current_user: CurrentUser,
+    job_service: JobSvc,
 ):
-    service = ItemService(db)
-    return await service.get_multi()
+    return await job_service.get_by_user(current_user.id)
 ```
 
 ### Service Layer
 
 ```python
 # Services contain business logic
-class ItemService:
+class JobService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def create(self, item_in: ItemCreate) -> Item:
+    async def create(self, user_id: UUID, job_in: JobCreate) -> Job:
         # Business validation
         # Repository calls
-        return await item_repo.create(self.db, **item_in.model_dump())
+        return await job_repo.create(self.db, user_id=user_id, **job_in.model_dump())
 ```
 
 ### Repository Layer

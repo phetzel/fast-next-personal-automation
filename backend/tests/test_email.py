@@ -169,8 +169,9 @@ class TestEmailParserBase:
 
         assert parser._extract_domain_from_url("https://indeed.com/job/123") == "indeed.com"
         assert parser._extract_domain_from_url("https://www.linkedin.com/jobs") == "www.linkedin.com"
-        # Invalid URL returns empty string (no netloc)
-        assert parser._extract_domain_from_url("invalid-url") == ""
+        # Invalid URL returns None (no netloc)
+        assert parser._extract_domain_from_url("invalid-url") is None
+        assert parser._extract_domain_from_url("") is None
 
 
 class TestIndeedParser:

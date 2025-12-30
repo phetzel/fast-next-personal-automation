@@ -55,12 +55,19 @@ class EmailParser(ABC):
         return " ".join(text.split())
 
     def _extract_domain_from_url(self, url: str) -> str | None:
-        """Extract domain from a URL for source identification."""
+        """Extract domain from a URL for source identification.
+
+        Returns:
+            The domain (netloc) in lowercase, or None if the URL is invalid or empty.
+        """
+        if not url:
+            return None
         try:
             from urllib.parse import urlparse
 
             parsed = urlparse(url)
-            return parsed.netloc.lower()
+            domain = parsed.netloc.lower()
+            return domain if domain else None
         except Exception:
             return None
 

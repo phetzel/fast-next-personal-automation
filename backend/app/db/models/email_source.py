@@ -36,7 +36,10 @@ class EmailSource(Base, TimestampMixin):
     email_address: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(50), nullable=False, default="gmail")
 
-    # OAuth tokens (encrypted at rest in production)
+    # OAuth tokens
+    # TODO: These tokens should be encrypted before storage using cryptography.fernet
+    # or a similar library. Currently stored in plain text - acceptable for development
+    # but must be addressed before production deployment.
     access_token: Mapped[str] = mapped_column(Text, nullable=False)
     refresh_token: Mapped[str] = mapped_column(Text, nullable=False)
     token_expiry: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

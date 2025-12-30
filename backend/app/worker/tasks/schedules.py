@@ -13,7 +13,14 @@ logger = logging.getLogger(__name__)
 
 @broker.task(schedule=[{"cron": "* * * * *"}])  # Every minute
 async def scheduled_example() -> dict:
-    """Example scheduled task that runs every minute."""
+    """PLACEHOLDER EXAMPLE - Scheduled task that runs every minute.
+
+    This is an example scheduled task demonstrating cron-based scheduling.
+    Copy and modify this for your own scheduled tasks.
+
+    This task is intentionally kept as a reference example and can be safely
+    disabled or deleted if not needed.
+    """
     result = await example_task.kiq("scheduled")
     return {"scheduled": True, "task_id": str(result.task_id)}
 
@@ -22,7 +29,7 @@ async def scheduled_example() -> dict:
 async def sync_all_email_sources() -> dict:
     """Sync job emails for all active email sources.
 
-    This task runs every hour and:
+    This task runs every hour (matches EMAIL_SYNC_INTERVAL_MINUTES=60) and:
     1. Fetches all active EmailSource records
     2. For each source, runs the email_sync_jobs pipeline
     3. Logs results and any errors

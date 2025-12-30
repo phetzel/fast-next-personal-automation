@@ -60,7 +60,7 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
 
     Can be invoked via:
     - API: POST /api/v1/pipelines/email_sync_jobs/execute
-    - Scheduled task: Every 15 minutes for all active sources
+    - Scheduled task: Every hour for all active sources
     - Manual trigger: POST /api/v1/email/sources/{id}/sync
     """
 
