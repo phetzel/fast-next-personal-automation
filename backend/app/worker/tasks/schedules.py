@@ -18,11 +18,11 @@ async def scheduled_example() -> dict:
     return {"scheduled": True, "task_id": str(result.task_id)}
 
 
-@broker.task(schedule=[{"cron": "*/15 * * * *"}])  # Every 15 minutes
+@broker.task(schedule=[{"cron": "0 * * * *"}])  # Every hour (at minute 0)
 async def sync_all_email_sources() -> dict:
     """Sync job emails for all active email sources.
 
-    This task runs every 15 minutes and:
+    This task runs every hour and:
     1. Fetches all active EmailSource records
     2. For each source, runs the email_sync_jobs pipeline
     3. Logs results and any errors
