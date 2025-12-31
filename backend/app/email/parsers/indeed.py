@@ -245,4 +245,3 @@ class IndeedParser(EmailParser):
                     return text[:500]  # Limit length
 
         return None
-

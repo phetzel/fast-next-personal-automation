@@ -1,13 +1,18 @@
 """Repository for email source operations."""
 
+import logging
 from datetime import datetime
 from uuid import UUID
 
+from cryptography.fernet import InvalidToken
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import decrypt_token, encrypt_token, is_encrypted
 from app.db.models.email_message import EmailMessage
 from app.db.models.email_source import EmailSource
+
+logger = logging.getLogger(__name__)
 
 
 async def get_by_id(db: AsyncSession, source_id: UUID) -> EmailSource | None:
@@ -58,6 +63,40 @@ async def get_by_email_and_user(
     return result.scalar_one_or_none()
 
 
+def get_decrypted_tokens(source: EmailSource) -> tuple[str, str]:
+    """Get decrypted access and refresh tokens for an email source.
+
+    Handles both encrypted and legacy unencrypted tokens for backwards compatibility.
+
+    Args:
+        source: The email source with (possibly encrypted) tokens
+
+    Returns:
+        Tuple of (access_token, refresh_token) in plaintext
+    """
+    # Handle access token
+    if is_encrypted(source.access_token):
+        try:
+            access_token = decrypt_token(source.access_token)
+        except InvalidToken:
+            logger.warning(f"Failed to decrypt access token for source {source.id}")
+            access_token = source.access_token  # Fall back to raw value
+    else:
+        access_token = source.access_token
+
+    # Handle refresh token
+    if is_encrypted(source.refresh_token):
+        try:
+            refresh_token = decrypt_token(source.refresh_token)
+        except InvalidToken:
+            logger.warning(f"Failed to decrypt refresh token for source {source.id}")
+            refresh_token = source.refresh_token  # Fall back to raw value
+    else:
+        refresh_token = source.refresh_token
+
+    return access_token, refresh_token
+
+
 async def create(
     db: AsyncSession,
     user_id: UUID,
@@ -68,12 +107,12 @@ async def create(
     provider: str = "gmail",
     custom_senders: list[str] | None = None,
 ) -> EmailSource:
-    """Create a new email source."""
+    """Create a new email source with encrypted tokens."""
     source = EmailSource(
         user_id=user_id,
         email_address=email_address,
-        access_token=access_token,
-        refresh_token=refresh_token,
+        access_token=encrypt_token(access_token),
+        refresh_token=encrypt_token(refresh_token),
         token_expiry=token_expiry,
         provider=provider,
         custom_senders=custom_senders,
@@ -90,8 +129,8 @@ async def update_tokens(
     access_token: str,
     token_expiry: datetime | None = None,
 ) -> EmailSource:
-    """Update OAuth tokens for an email source."""
-    source.access_token = access_token
+    """Update OAuth tokens for an email source (encrypts the token)."""
+    source.access_token = encrypt_token(access_token)
     if token_expiry:
         source.token_expiry = token_expiry
     db.add(source)
@@ -223,4 +262,3 @@ async def get_message_stats(db: AsyncSession, source_id: UUID) -> dict:
         "successful_parses": successful,
         "failed_parses": failed,
     }
-

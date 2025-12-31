@@ -9,4 +9,3 @@ __all__ = [
     "ExtractedJob",
     "get_parser_for_sender",
 ]
-

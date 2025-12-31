@@ -70,4 +70,3 @@ class EmailParser(ABC):
             return domain if domain else None
         except Exception:
             return None
-

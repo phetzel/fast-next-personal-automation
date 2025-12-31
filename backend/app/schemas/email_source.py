@@ -115,4 +115,3 @@ class EmailConfigResponse(BaseModel):
 
     default_senders: list[DefaultSenderInfo]
     sync_interval_minutes: int
-

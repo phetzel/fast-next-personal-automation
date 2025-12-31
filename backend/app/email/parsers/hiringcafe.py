@@ -224,9 +224,7 @@ class HiringCafeParser(EmailParser):
 
         return None
 
-    def _extract_snippet(
-        self, lines: list[str], title: str, company: str | None
-    ) -> str | None:
+    def _extract_snippet(self, lines: list[str], title: str, company: str | None) -> str | None:
         """Extract description snippet."""
         for line in lines:
             # Skip title and company
@@ -237,4 +235,3 @@ class HiringCafeParser(EmailParser):
                 return line
 
         return None
-

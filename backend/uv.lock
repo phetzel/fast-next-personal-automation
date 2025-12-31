@@ -2802,6 +2802,17 @@ dev = [
     { name = "ruff" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "anyio" },
+    { name = "httpx" },
+    { name = "mypy" },
+    { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "alembic", specifier = ">=1.14.0" },
@@ -2853,6 +2864,17 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32.0" },
 ]
 provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "anyio", specifier = ">=4.12.0" },
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "mypy", specifier = ">=1.19.1" },
+    { name = "pre-commit", specifier = ">=4.5.1" },
+    { name = "pytest", specifier = ">=9.0.2" },
+    { name = "pytest-cov", specifier = ">=7.0.0" },
+    { name = "ruff", specifier = ">=0.14.10" },
+]
 
 [[package]]
 name = "pillow"

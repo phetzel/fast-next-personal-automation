@@ -1,12 +1,71 @@
-"""Security utilities for JWT authentication."""
+"""Security utilities for JWT authentication and data encryption."""
 
+import base64
+import hashlib
 from datetime import UTC, datetime, timedelta
+from functools import lru_cache
 from typing import Any
 
 import bcrypt
 import jwt
+from cryptography.fernet import Fernet
 
 from app.core.config import settings
+
+# === Token Encryption (Fernet) ===
+
+
+@lru_cache(maxsize=1)
+def _get_fernet() -> Fernet:
+    """Get or create a Fernet instance for encryption.
+
+    Derives a 32-byte key from SECRET_KEY using SHA-256.
+    The key is cached for performance.
+    """
+    # Derive a Fernet-compatible key from SECRET_KEY
+    # Fernet requires a 32-byte URL-safe base64-encoded key
+    key_bytes = hashlib.sha256(settings.SECRET_KEY.encode()).digest()
+    fernet_key = base64.urlsafe_b64encode(key_bytes)
+    return Fernet(fernet_key)
+
+
+def encrypt_token(plaintext: str) -> str:
+    """Encrypt a token (e.g., OAuth access/refresh token).
+
+    Args:
+        plaintext: The token string to encrypt
+
+    Returns:
+        Base64-encoded encrypted string
+    """
+    fernet = _get_fernet()
+    encrypted = fernet.encrypt(plaintext.encode())
+    return encrypted.decode()
+
+
+def decrypt_token(ciphertext: str) -> str:
+    """Decrypt a token.
+
+    Args:
+        ciphertext: The encrypted token string
+
+    Returns:
+        Decrypted plaintext token
+
+    Raises:
+        cryptography.fernet.InvalidToken: If decryption fails
+    """
+    fernet = _get_fernet()
+    decrypted = fernet.decrypt(ciphertext.encode())
+    return decrypted.decode()
+
+
+def is_encrypted(value: str) -> bool:
+    """Check if a value appears to be Fernet-encrypted.
+
+    Fernet tokens start with 'gAAAAA' (base64-encoded version byte).
+    """
+    return value.startswith("gAAAAA")
 
 
 def create_access_token(

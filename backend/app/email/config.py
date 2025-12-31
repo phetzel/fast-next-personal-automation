@@ -100,4 +100,3 @@ def get_parser(parser_name: str) -> "EmailParser":
     }
 
     return parsers.get(parser_name, AIEmailParser())
-

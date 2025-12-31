@@ -3,6 +3,8 @@
 Tests email parsing, configuration, and pipeline functionality.
 """
 
+from datetime import datetime
+
 import pytest
 
 from app.email.config import (
@@ -12,6 +14,7 @@ from app.email.config import (
     get_parser_for_sender,
 )
 from app.email.parsers.base import EmailParser, ExtractedJob
+from app.services.job import IngestionResult, RawJob
 
 
 class TestExtractedJob:
@@ -168,7 +171,9 @@ class TestEmailParserBase:
         parser = TestParser()
 
         assert parser._extract_domain_from_url("https://indeed.com/job/123") == "indeed.com"
-        assert parser._extract_domain_from_url("https://www.linkedin.com/jobs") == "www.linkedin.com"
+        assert (
+            parser._extract_domain_from_url("https://www.linkedin.com/jobs") == "www.linkedin.com"
+        )
         # Invalid URL returns None (no netloc)
         assert parser._extract_domain_from_url("invalid-url") is None
         assert parser._extract_domain_from_url("") is None
@@ -305,7 +310,9 @@ class TestEmailSyncPipeline:
         props = schema["properties"]
         assert "emails_processed" in props
         assert "jobs_extracted" in props
+        assert "jobs_analyzed" in props
         assert "jobs_saved" in props
+        assert "high_scoring" in props
         assert "sources_synced" in props
         assert "errors" in props
 
@@ -401,3 +408,109 @@ class TestGmailClient:
         query = client.build_sender_query([])
         assert query == ""
 
+
+class TestRawJob:
+    """Tests for RawJob dataclass."""
+
+    def test_create_raw_job(self):
+        """Test creating a RawJob with all fields."""
+        job = RawJob(
+            title="Software Engineer",
+            company="Acme Corp",
+            job_url="https://example.com/job/123",
+            location="Portland, OR",
+            description="Build software",
+            salary_range="$100k-$150k",
+            date_posted=datetime(2025, 1, 1),
+            source="linkedin",
+            is_remote=True,
+            job_type="fulltime",
+            company_url="https://acme.com",
+        )
+
+        assert job.title == "Software Engineer"
+        assert job.company == "Acme Corp"
+        assert job.job_url == "https://example.com/job/123"
+        assert job.location == "Portland, OR"
+        assert job.source == "linkedin"
+        assert job.is_remote is True
+
+    def test_create_minimal_raw_job(self):
+        """Test creating a RawJob with only required fields."""
+        job = RawJob(
+            title="Engineer",
+            company="Tech Co",
+            job_url="https://example.com/job",
+        )
+
+        assert job.title == "Engineer"
+        assert job.company == "Tech Co"
+        assert job.job_url == "https://example.com/job"
+        assert job.location is None
+        assert job.source is None
+
+    def test_from_extracted(self):
+        """Test creating RawJob from ExtractedJob."""
+        extracted = ExtractedJob(
+            title="Data Scientist",
+            company="Data Corp",
+            job_url="https://indeed.com/job/456",
+            location="Remote",
+            salary_range="$120k-$160k",
+            source="indeed",
+            description_snippet="Analyze data and build models.",
+        )
+
+        raw = RawJob.from_extracted(extracted)
+
+        assert raw.title == "Data Scientist"
+        assert raw.company == "Data Corp"
+        assert raw.job_url == "https://indeed.com/job/456"
+        assert raw.location == "Remote"
+        assert raw.salary_range == "$120k-$160k"
+        assert raw.source == "indeed"
+        assert raw.description == "Analyze data and build models."
+
+    def test_from_extracted_with_source_override(self):
+        """Test creating RawJob with source override."""
+        extracted = ExtractedJob(
+            title="Engineer",
+            company="Tech Co",
+            job_url="https://example.com/job",
+            source="unknown",
+        )
+
+        raw = RawJob.from_extracted(extracted, source_override="linkedin")
+
+        assert raw.source == "linkedin"
+
+
+class TestIngestionResult:
+    """Tests for IngestionResult dataclass."""
+
+    def test_default_values(self):
+        """Test IngestionResult default values."""
+        result = IngestionResult()
+
+        assert result.jobs_received == 0
+        assert result.jobs_analyzed == 0
+        assert result.jobs_saved == 0
+        assert result.duplicates_skipped == 0
+        assert result.high_scoring == 0
+        assert result.saved_jobs is None
+
+    def test_with_values(self):
+        """Test IngestionResult with custom values."""
+        result = IngestionResult(
+            jobs_received=10,
+            jobs_analyzed=8,
+            jobs_saved=5,
+            duplicates_skipped=2,
+            high_scoring=3,
+        )
+
+        assert result.jobs_received == 10
+        assert result.jobs_analyzed == 8
+        assert result.jobs_saved == 5
+        assert result.duplicates_skipped == 2
+        assert result.high_scoring == 3

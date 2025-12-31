@@ -34,9 +34,7 @@ class AIExtractionResult(BaseModel):
     jobs: list[AIExtractedJob] = Field(
         default_factory=list, description="List of job listings found in the email"
     )
-    is_job_email: bool = Field(
-        description="Whether this email contains job listings"
-    )
+    is_job_email: bool = Field(description="Whether this email contains job listings")
 
 
 class AIEmailParser(EmailParser):
@@ -173,4 +171,3 @@ Content:
         text = sub(r"\n\s*\n", "\n\n", text)
 
         return text.strip()
-

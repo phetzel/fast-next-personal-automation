@@ -341,7 +341,9 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                     update_data["cover_letter"] = prep_output.cover_letter
                     logger.info(f"Saving cover letter ({cover_letter_len} chars) to job {job.id}")
                 else:
-                    logger.warning(f"No cover letter generated for job {job.id} - this should not happen!")
+                    logger.warning(
+                        f"No cover letter generated for job {job.id} - this should not happen!"
+                    )
 
                 await job_repo.update(db, db_job=job, update_data=update_data)
                 await db.commit()

@@ -16,7 +16,8 @@ from app.db.session import get_db_context
 from app.email.config import get_default_sender_domains, get_parser, get_parser_for_sender
 from app.pipelines.action_base import ActionPipeline, ActionResult, PipelineContext
 from app.pipelines.registry import register_pipeline
-from app.repositories import email_source_repo, job_repo
+from app.repositories import email_source_repo, job_profile_repo
+from app.services.job import JobService, RawJob
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,9 @@ class EmailSyncOutput(BaseModel):
 
     emails_processed: int = Field(default=0, description="Number of emails processed")
     jobs_extracted: int = Field(default=0, description="Total jobs extracted from emails")
+    jobs_analyzed: int = Field(default=0, description="Jobs analyzed with AI scoring")
     jobs_saved: int = Field(default=0, description="New jobs saved (after deduplication)")
+    high_scoring: int = Field(default=0, description="Jobs with score >= min threshold")
     sources_synced: int = Field(default=0, description="Number of email sources synced")
     errors: list[str] = Field(default_factory=list, description="Any errors encountered")
 
@@ -120,7 +123,9 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
                     )
                     output.emails_processed += result["emails_processed"]
                     output.jobs_extracted += result["jobs_extracted"]
+                    output.jobs_analyzed += result["jobs_analyzed"]
                     output.jobs_saved += result["jobs_saved"]
+                    output.high_scoring += result["high_scoring"]
                     output.sources_synced += 1
 
                 except Exception as e:
@@ -160,13 +165,33 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
         result = {
             "emails_processed": 0,
             "jobs_extracted": 0,
+            "jobs_analyzed": 0,
             "jobs_saved": 0,
+            "high_scoring": 0,
         }
 
-        # Initialize Gmail client
+        # Get user's default profile for AI analysis
+        profile = await job_profile_repo.get_default_for_user(db, user_id)
+        resume_text = None
+        target_roles = None
+        min_score = 7.0
+
+        if profile and profile.resume and profile.resume.text_content:
+            resume_text = profile.resume.text_content
+            target_roles = profile.target_roles
+            min_score = profile.min_score_threshold or 7.0
+            logger.info(f"AI scoring enabled with profile '{profile.name}'")
+        else:
+            logger.info("No profile with resume found - jobs will not be AI scored")
+
+        # Initialize job service
+        job_service = JobService(db)
+
+        # Initialize Gmail client with decrypted tokens
+        access_token, refresh_token = email_source_repo.get_decrypted_tokens(source)
         gmail = GmailClient(
-            access_token=source.access_token,
-            refresh_token=source.refresh_token,
+            access_token=access_token,
+            refresh_token=refresh_token,
             token_expiry=source.token_expiry,
         )
 
@@ -197,9 +222,7 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
             message_id = msg_info["id"]
 
             # Check if already processed
-            existing = await email_source_repo.get_message_by_gmail_id(
-                db, source.id, message_id
-            )
+            existing = await email_source_repo.get_message_by_gmail_id(db, source.id, message_id)
             if existing:
                 logger.debug(f"Skipping already processed message: {message_id}")
                 continue
@@ -221,31 +244,26 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
                 )
                 result["jobs_extracted"] += len(extracted_jobs)
 
-                # Save jobs
-                jobs_saved = 0
-                for job in extracted_jobs:
-                    # Check for duplicate
-                    existing_job = await job_repo.get_by_url_and_user(
-                        db, job.job_url, user_id
-                    )
-                    if existing_job:
-                        continue
+                # Convert to RawJob format and ingest
+                raw_jobs = [
+                    RawJob.from_extracted(job, source_override=source_name.lower())
+                    for job in extracted_jobs
+                ]
 
-                    # Create new job
-                    await job_repo.create(
-                        db,
+                if raw_jobs:
+                    ingestion = await job_service.ingest_jobs(
                         user_id=user_id,
-                        title=job.title,
-                        company=job.company,
-                        location=job.location,
-                        job_url=job.job_url,
-                        salary_range=job.salary_range,
-                        source=job.source or source_name.lower(),
-                        description=job.description_snippet,
+                        jobs=raw_jobs,
+                        ingestion_source="email",
+                        profile_id=profile.id if profile else None,
+                        resume_text=resume_text,
+                        target_roles=target_roles,
+                        min_score=min_score,
+                        save_all=True,  # Save all email jobs, use scores for prioritization
                     )
-                    jobs_saved += 1
-
-                result["jobs_saved"] += jobs_saved
+                    result["jobs_analyzed"] += ingestion.jobs_analyzed
+                    result["jobs_saved"] += ingestion.jobs_saved
+                    result["high_scoring"] += ingestion.high_scoring
 
                 # Record processed message
                 await email_source_repo.create_message(
@@ -263,7 +281,7 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
 
                 logger.info(
                     f"Processed email: {email_content.subject[:50]} - "
-                    f"extracted {len(extracted_jobs)} jobs, saved {jobs_saved} new"
+                    f"extracted {len(extracted_jobs)} jobs"
                 )
 
             except Exception as e:
@@ -296,8 +314,9 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
             f"Sync complete for {source.email_address}: "
             f"{result['emails_processed']} emails, "
             f"{result['jobs_extracted']} extracted, "
-            f"{result['jobs_saved']} saved"
+            f"{result['jobs_analyzed']} analyzed, "
+            f"{result['jobs_saved']} saved, "
+            f"{result['high_scoring']} high scoring"
         )
 
         return result
-

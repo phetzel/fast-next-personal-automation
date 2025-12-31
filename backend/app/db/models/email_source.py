@@ -36,10 +36,8 @@ class EmailSource(Base, TimestampMixin):
     email_address: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(50), nullable=False, default="gmail")
 
-    # OAuth tokens
-    # TODO: These tokens should be encrypted before storage using cryptography.fernet
-    # or a similar library. Currently stored in plain text - acceptable for development
-    # but must be addressed before production deployment.
+    # OAuth tokens (encrypted at rest using Fernet via email_source_repo)
+    # Use email_source_repo.get_decrypted_tokens() to retrieve plaintext tokens
     access_token: Mapped[str] = mapped_column(Text, nullable=False)
     refresh_token: Mapped[str] = mapped_column(Text, nullable=False)
     token_expiry: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -64,4 +62,3 @@ class EmailSource(Base, TimestampMixin):
 
     def __repr__(self) -> str:
         return f"<EmailSource(id={self.id}, email={self.email_address}, provider={self.provider})>"
-

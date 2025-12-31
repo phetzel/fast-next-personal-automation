@@ -43,6 +43,9 @@ def _apply_filters(query: Select, user_id: UUID, filters: JobFilters) -> Select:
     if filters.source:
         query = query.where(Job.source == filters.source)
 
+    if filters.ingestion_source:
+        query = query.where(Job.ingestion_source == filters.ingestion_source)
+
     if filters.min_score is not None:
         query = query.where(Job.relevance_score >= filters.min_score)
 
@@ -122,6 +125,7 @@ async def create(
     salary_range: str | None = None,
     date_posted=None,
     source: str | None = None,
+    ingestion_source: str | None = None,
     relevance_score: float | None = None,
     reasoning: str | None = None,
     search_terms: str | None = None,
@@ -141,6 +145,7 @@ async def create(
         salary_range=salary_range,
         date_posted=date_posted,
         source=source,
+        ingestion_source=ingestion_source,
         relevance_score=relevance_score,
         reasoning=reasoning,
         search_terms=search_terms,

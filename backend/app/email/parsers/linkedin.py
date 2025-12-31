@@ -172,8 +172,7 @@ class LinkedInParser(EmailParser):
             if len(line) < 3:
                 continue
             if any(
-                skip in line.lower()
-                for skip in ["view job", "apply", "see more", "posted", "ago"]
+                skip in line.lower() for skip in ["view job", "apply", "see more", "posted", "ago"]
             ):
                 continue
 
@@ -204,4 +203,3 @@ class LinkedInParser(EmailParser):
                     return location
 
         return None
-

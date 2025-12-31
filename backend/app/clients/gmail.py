@@ -292,4 +292,3 @@ class GmailClient:
         except HttpError as e:
             logger.error(f"Gmail API error getting profile: {e}")
             raise
-

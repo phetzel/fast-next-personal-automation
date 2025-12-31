@@ -180,7 +180,9 @@ async def gmail_callback(request: Request, db: DBSession):
 
         logger = logging.getLogger(__name__)
         logger.exception(f"Gmail OAuth callback error: {e}")
-        params = urlencode({"error": "An error occurred connecting your Gmail account. Please try again."})
+        params = urlencode(
+            {"error": "An error occurred connecting your Gmail account. Please try again."}
+        )
         return RedirectResponse(url=f"{FRONTEND_URL}/settings/email?{params}")
 
 
@@ -293,4 +295,3 @@ async def get_email_config():
         default_senders=default_senders,
         sync_interval_minutes=settings.EMAIL_SYNC_INTERVAL_MINUTES,
     )
-

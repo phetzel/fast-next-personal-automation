@@ -52,5 +52,6 @@ class EmailMessage(Base, TimestampMixin):
     source: Mapped["EmailSource"] = relationship("EmailSource", back_populates="messages")
 
     def __repr__(self) -> str:
-        return f"<EmailMessage(id={self.id}, subject={self.subject[:50]}, jobs={self.jobs_extracted})>"
-
+        return (
+            f"<EmailMessage(id={self.id}, subject={self.subject[:50]}, jobs={self.jobs_extracted})>"
+        )

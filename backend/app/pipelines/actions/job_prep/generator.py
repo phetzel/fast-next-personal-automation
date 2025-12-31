@@ -197,7 +197,8 @@ Please create a tailored cover letter and comprehensive prep notes based on the 
         error_msg = str(e)[:100]
         return PrepOutput(
             cover_letter=(
-                "Not requested" if skip_cover_letter
+                "Not requested"
+                if skip_cover_letter
                 else f"I am writing to express my interest in the {job_title} position at {company}.\n\n[Generation failed: {error_msg}. Please complete this cover letter manually.]"
             ),
             prep_notes=f"# Prep Notes for {job_title} at {company}\n\n*Generation failed: {error_msg}*\n\n## Resume Highlights\n- [Add manually]\n\n## Talking Points\n- [Add manually]",
