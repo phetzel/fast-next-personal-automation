@@ -77,7 +77,7 @@ services:
     container_name: personal_automations_taskiq_worker
     volumes:
       - ./backend/app:/app/app:ro
-    command: taskiq worker app.worker.taskiq_app:broker --workers 1 --reload
+    command: taskiq worker app.worker.taskiq_app:broker --workers 1
     env_file:
       - .env
     environment:
