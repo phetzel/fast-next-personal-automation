@@ -11,7 +11,7 @@ from app.api.deps import CurrentUser, DBSession
 from app.core.config import settings
 from app.core.oauth import oauth
 from app.email.config import DEFAULT_JOB_SENDERS
-from app.pipelines.action_base import PipelineContext
+from app.pipelines.action_base import PipelineContext, PipelineSource
 from app.pipelines.registry import execute_pipeline
 from app.repositories import email_source_repo
 from app.schemas.email_source import (
@@ -75,8 +75,7 @@ async def get_email_source(
 async def connect_gmail(
     request: Request,
     token: str = Query(..., description="JWT access token"),
-    db: DBSession = None,
-):
+) -> RedirectResponse:
     """Start Gmail OAuth flow to connect email account.
 
     Security note: JWT is passed as query param because OAuth flows require browser
@@ -212,7 +211,7 @@ async def sync_email_source(
     # Execute sync pipeline
     context = PipelineContext(
         user_id=current_user.id,
-        source="api",
+        source=PipelineSource.API,
     )
 
     result = await execute_pipeline(

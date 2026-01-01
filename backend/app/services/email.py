@@ -5,6 +5,7 @@ Contains business logic for email operations including syncs, destinations, and 
 
 import logging
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -88,7 +89,7 @@ class EmailService:
         sources_synced: int,
         emails_fetched: int,
         emails_processed: int,
-        metadata: dict | None = None,
+        sync_metadata: dict[str, Any] | None = None,
         error_message: str | None = None,
     ) -> EmailSync:
         """Mark a sync as completed with final stats."""
@@ -98,7 +99,7 @@ class EmailService:
             sources_synced=sources_synced,
             emails_fetched=emails_fetched,
             emails_processed=emails_processed,
-            metadata=metadata,
+            sync_metadata=sync_metadata,
             error_message=error_message,
         )
 
@@ -246,12 +247,12 @@ class EmailService:
         resume_text: str | None = None,
         target_roles: list[str] | None = None,
         min_score: float = 7.0,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Process an email for a specific destination.
 
         Returns processing results including items extracted.
         """
-        results = {
+        results: dict[str, Any] = {
             "items_extracted": 0,
             "parser_used": None,
             "error": None,
@@ -317,8 +318,8 @@ class EmailService:
         parser_used: str | None,
         items_extracted: int,
         processing_error: str | None = None,
-        created_item_ids: list | None = None,
-    ):
+        created_item_ids: list[str] | None = None,
+    ) -> Any:
         """Record that a message was processed by a destination."""
         return await email_destination_repo.create_message_destination(
             self.db,

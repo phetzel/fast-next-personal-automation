@@ -1,5 +1,6 @@
 """Email destinations API routes for managing routing rules."""
 
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter
@@ -87,7 +88,7 @@ async def update_destination(
     email_service: EmailSvc,
 ):
     """Update an email destination's settings."""
-    update_kwargs = {}
+    update_kwargs: dict[str, Any] = {}
 
     if update_data.name is not None:
         update_kwargs["name"] = update_data.name

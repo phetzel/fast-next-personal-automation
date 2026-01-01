@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Query
 
 from app.api.deps import CurrentUser, DBSession, EmailSvc
-from app.pipelines.action_base import PipelineContext
+from app.pipelines.action_base import PipelineContext, PipelineSource
 from app.pipelines.registry import execute_pipeline
 from app.repositories import email_sync_repo
 from app.schemas.email_sync import (
@@ -73,7 +73,7 @@ async def trigger_sync(
     # Execute sync pipeline
     context = PipelineContext(
         user_id=current_user.id,
-        source="api",
+        source=PipelineSource.API,
     )
 
     result = await execute_pipeline(
@@ -85,7 +85,7 @@ async def trigger_sync(
 
     await db.commit()
 
-    if result.success:
+    if result.success and result.output:
         return EmailSyncResult(
             sync_id=sync.id,
             status="completed",
