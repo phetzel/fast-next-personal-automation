@@ -273,10 +273,15 @@ class JobService:
                     analysis: JobAnalysis = await analyze_job(
                         scraped, resume_text, target_roles, preferences
                     )
-                    analyzed_jobs.append((raw_job, {
-                        "relevance_score": analysis.relevance_score,
-                        "reasoning": analysis.reasoning,
-                    }))
+                    analyzed_jobs.append(
+                        (
+                            raw_job,
+                            {
+                                "relevance_score": analysis.relevance_score,
+                                "reasoning": analysis.reasoning,
+                            },
+                        )
+                    )
                     result.jobs_analyzed += 1
 
                     if analysis.relevance_score >= min_score:

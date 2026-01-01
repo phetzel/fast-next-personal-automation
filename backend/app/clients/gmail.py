@@ -200,10 +200,7 @@ class GmailClient:
     def _get_message_sync(self, message_id: str) -> EmailContent:
         """Synchronous implementation of get_message."""
         message = (
-            self.service.users()
-            .messages()
-            .get(userId="me", id=message_id, format="full")
-            .execute()
+            self.service.users().messages().get(userId="me", id=message_id, format="full").execute()
         )
 
         # Extract headers

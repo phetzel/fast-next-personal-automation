@@ -144,9 +144,7 @@ async def get_running_by_user(db: AsyncSession, user_id: UUID) -> EmailSync | No
     return result.scalar_one_or_none()
 
 
-async def cancel_stale_syncs(
-    db: AsyncSession, user_id: UUID, stale_minutes: int = 10
-) -> int:
+async def cancel_stale_syncs(db: AsyncSession, user_id: UUID, stale_minutes: int = 10) -> int:
     """Cancel any syncs that have been running for too long.
 
     Returns the number of syncs cancelled.

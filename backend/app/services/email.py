@@ -212,9 +212,7 @@ class EmailService:
         """Get a message with its destination processing records."""
         from sqlalchemy import select
 
-        result = await self.db.execute(
-            select(EmailMessage).where(EmailMessage.id == message_id)
-        )
+        result = await self.db.execute(select(EmailMessage).where(EmailMessage.id == message_id))
         message = result.scalar_one_or_none()
 
         if message is None:
