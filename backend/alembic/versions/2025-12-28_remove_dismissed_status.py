@@ -9,8 +9,9 @@ This migration:
 2. The dismissed status is no longer used - jobs are just soft-deleted instead
 """
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "remove_dismissed_status"
@@ -25,8 +26,8 @@ def upgrade() -> None:
     op.execute(
         sa.text(
             """
-            UPDATE jobs 
-            SET deleted_at = NOW() 
+            UPDATE jobs
+            SET deleted_at = NOW()
             WHERE status = 'dismissed' AND deleted_at IS NULL
             """
         )
@@ -35,12 +36,12 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Restore dismissed jobs (unset deleted_at for recently deleted dismissed jobs).
-    
+
     Note: This is a best-effort downgrade. Jobs that were dismissed and then
     had deleted_at set by this migration will be restored. Jobs that were
     already soft-deleted before will not be affected.
     """
-    # We can't perfectly reverse this, but we can restore jobs that were 
+    # We can't perfectly reverse this, but we can restore jobs that were
     # dismissed and deleted within the migration window
     # For safety, we won't automatically restore them - manual intervention required
     pass

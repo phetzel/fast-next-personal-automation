@@ -13,6 +13,9 @@ from app.db.models.story import Story
 from app.db.models.project import Project
 from app.db.models.email_source import EmailSource
 from app.db.models.email_message import EmailMessage
+from app.db.models.email_sync import EmailSync
+from app.db.models.email_destination import EmailDestination
+from app.db.models.email_message_destination import EmailMessageDestination
 
 __all__ = [
     "User",
@@ -33,4 +36,7 @@ __all__ = [
     "Project",
     "EmailSource",
     "EmailMessage",
+    "EmailSync",
+    "EmailDestination",
+    "EmailMessageDestination",
 ]

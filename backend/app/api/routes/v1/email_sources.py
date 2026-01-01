@@ -24,6 +24,7 @@ from app.schemas.email_source import (
     EmailSourceWithStats,
     EmailSyncOutput,
 )
+from app.services.email import EmailService
 
 router = APIRouter()
 
@@ -149,6 +150,9 @@ async def gmail_callback(request: Request, db: DBSession):
         # Check if this email is already connected
         existing = await email_source_repo.get_by_email_and_user(db, email_address, user_id)
 
+        # Create email service for default destination seeding
+        email_service = EmailService(db)
+
         if existing:
             # Update existing source with new tokens
             await email_source_repo.update_tokens(db, existing, access_token, token_expiry)
@@ -165,6 +169,10 @@ async def gmail_callback(request: Request, db: DBSession):
                 refresh_token=refresh_token,
                 token_expiry=token_expiry,
             )
+
+            # Ensure user has a default Job Alerts destination
+            await email_service.ensure_default_destination(user_id)
+
             await db.commit()
 
         # Clear session

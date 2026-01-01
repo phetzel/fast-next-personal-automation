@@ -53,14 +53,16 @@ class EmailMessageResponse(BaseModel):
     """Response schema for email message."""
 
     id: UUID
+    sync_id: UUID | None = None
     gmail_message_id: str
-    subject: str
+    subject: str | None = None
     from_address: str
-    received_at: datetime
+    to_address: str | None = None
+    received_at: datetime | None = None
     jobs_extracted: int
     parser_used: str | None
     processing_error: str | None
-    processed_at: datetime
+    processed_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

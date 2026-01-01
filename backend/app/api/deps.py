@@ -39,6 +39,7 @@ from app.services.job_profile import JobProfileService
 from app.services.resume import ResumeService
 from app.services.story import StoryService
 from app.services.project import ProjectService
+from app.services.email import EmailService
 
 
 def get_user_service(db: DBSession) -> UserService:
@@ -117,6 +118,14 @@ def get_project_service(db: DBSession) -> ProjectService:
 
 
 ProjectSvc = Annotated[ProjectService, Depends(get_project_service)]
+
+
+def get_email_service(db: DBSession) -> EmailService:
+    """Create EmailService instance with database session."""
+    return EmailService(db)
+
+
+EmailSvc = Annotated[EmailService, Depends(get_email_service)]
 
 # === Authentication Dependencies ===
 

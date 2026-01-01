@@ -55,3 +55,41 @@ export interface EmailSyncOutput {
   errors: string[];
 }
 
+/**
+ * Email sync record - tracks a sync operation
+ */
+export interface EmailSync {
+  id: string;
+  user_id: string;
+  started_at: string;
+  completed_at: string | null;
+  status: "pending" | "running" | "completed" | "failed";
+  error_message: string | null;
+  sources_synced: number;
+  emails_fetched: number;
+  emails_processed: number;
+  sync_metadata: {
+    jobs_extracted?: number;
+    jobs_analyzed?: number;
+    jobs_saved?: number;
+    high_scoring?: number;
+  } | null;
+}
+
+export interface EmailSyncListResponse {
+  items: EmailSync[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface EmailSyncStats {
+  total_syncs: number;
+  successful_syncs: number;
+  failed_syncs: number;
+  total_emails_processed: number;
+  total_jobs_extracted: number;
+  total_jobs_saved: number;
+  last_sync: EmailSync | null;
+}
+

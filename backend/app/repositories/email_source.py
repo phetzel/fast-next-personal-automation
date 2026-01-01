@@ -198,6 +198,8 @@ async def create_message(
     from_address: str,
     received_at: datetime,
     processed_at: datetime,
+    sync_id: UUID | None = None,
+    to_address: str | None = None,
     jobs_extracted: int = 0,
     parser_used: str | None = None,
     processing_error: str | None = None,
@@ -205,10 +207,12 @@ async def create_message(
     """Create a processed email message record."""
     message = EmailMessage(
         source_id=source_id,
+        sync_id=sync_id,
         gmail_message_id=gmail_message_id,
         gmail_thread_id=gmail_thread_id,
         subject=subject,
         from_address=from_address,
+        to_address=to_address,
         received_at=received_at,
         processed_at=processed_at,
         jobs_extracted=jobs_extracted,

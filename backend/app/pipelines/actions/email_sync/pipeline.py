@@ -16,7 +16,7 @@ from app.db.session import get_db_context
 from app.email.config import get_default_sender_domains, get_parser, get_parser_for_sender
 from app.pipelines.action_base import ActionPipeline, ActionResult, PipelineContext
 from app.pipelines.registry import register_pipeline
-from app.repositories import email_source_repo, job_profile_repo
+from app.repositories import email_source_repo, email_sync_repo, job_profile_repo
 from app.services.job import JobService, RawJob
 
 logger = logging.getLogger(__name__)
@@ -89,12 +89,25 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
 
         output = EmailSyncOutput()
         errors: list[str] = []
+        sync = None
 
         async with get_db_context() as db:
+            # Create EmailSync record
+            sync = await email_sync_repo.create(
+                db,
+                user_id=context.user_id,
+                started_at=datetime.now(UTC),
+                status="running",
+            )
+
             # Get email sources to sync
             if input.source_id:
                 source = await email_source_repo.get_by_id(db, input.source_id)
                 if source is None or source.user_id != context.user_id:
+                    await email_sync_repo.complete(
+                        db, sync, 0, 0, 0, error_message="Email source not found or access denied"
+                    )
+                    await db.commit()
                     return ActionResult(
                         success=False,
                         error="Email source not found or access denied",
@@ -104,6 +117,10 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
                 sources = await email_source_repo.get_active_by_user_id(db, context.user_id)
 
             if not sources:
+                await email_sync_repo.complete(
+                    db, sync, 0, 0, 0, error_message="No active email sources found"
+                )
+                await db.commit()
                 return ActionResult(
                     success=True,
                     output=EmailSyncOutput(
@@ -112,6 +129,8 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
                     metadata={"message": "No email sources to sync"},
                 )
 
+            total_emails_fetched = 0
+
             # Process each source
             for source in sources:
                 try:
@@ -119,6 +138,7 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
                         db,
                         source,
                         context.user_id,
+                        sync_id=sync.id,
                         force_full_sync=input.force_full_sync,
                     )
                     output.emails_processed += result["emails_processed"]
@@ -127,6 +147,7 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
                     output.jobs_saved += result["jobs_saved"]
                     output.high_scoring += result["high_scoring"]
                     output.sources_synced += 1
+                    total_emails_fetched += result.get("emails_fetched", result["emails_processed"])
 
                 except Exception as e:
                     error_msg = f"Error syncing {source.email_address}: {e}"
@@ -138,6 +159,22 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
                         db, source, datetime.now(UTC), error=str(e)
                     )
 
+            # Complete the sync record
+            await email_sync_repo.complete(
+                db,
+                sync,
+                sources_synced=output.sources_synced,
+                emails_fetched=total_emails_fetched,
+                emails_processed=output.emails_processed,
+                sync_metadata={
+                    "jobs_extracted": output.jobs_extracted,
+                    "jobs_analyzed": output.jobs_analyzed,
+                    "jobs_saved": output.jobs_saved,
+                    "high_scoring": output.high_scoring,
+                },
+                error_message="; ".join(errors) if errors else None,
+            )
+
             await db.commit()
 
         output.errors = errors
@@ -147,6 +184,7 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
             output=output,
             error="; ".join(errors) if errors else None,
             metadata={
+                "sync_id": str(sync.id) if sync else None,
                 "sources_processed": len(sources),
                 "total_jobs_saved": output.jobs_saved,
             },
@@ -157,6 +195,7 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
         db,
         source,
         user_id: UUID,
+        sync_id: UUID | None = None,
         force_full_sync: bool = False,
     ) -> dict:
         """Sync a single email source."""
@@ -164,6 +203,7 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
 
         result = {
             "emails_processed": 0,
+            "emails_fetched": 0,
             "jobs_extracted": 0,
             "jobs_analyzed": 0,
             "jobs_saved": 0,
@@ -216,6 +256,7 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
         # Fetch matching messages
         messages = await gmail.list_messages(query, max_results=100)
         logger.info(f"Found {len(messages)} matching emails")
+        result["emails_fetched"] = len(messages)
 
         # Process each message
         for msg_info in messages:
@@ -275,6 +316,7 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
                     from_address=email_content.from_address,
                     received_at=email_content.received_at,
                     processed_at=datetime.now(UTC),
+                    sync_id=sync_id,
                     jobs_extracted=len(extracted_jobs),
                     parser_used=parser_name,
                 )
@@ -297,6 +339,7 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
                     from_address="unknown",
                     received_at=datetime.now(UTC),
                     processed_at=datetime.now(UTC),
+                    sync_id=sync_id,
                     jobs_extracted=0,
                     processing_error=str(e),
                 )
