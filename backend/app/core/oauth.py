@@ -6,11 +6,33 @@ from app.core.config import settings
 
 oauth = OAuth()
 
-# Configure Google OAuth2
+# Configure Google OAuth2 (for login)
 oauth.register(
     name="google",
     client_id=settings.GOOGLE_CLIENT_ID,
     client_secret=settings.GOOGLE_CLIENT_SECRET,
     server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
     client_kwargs={"scope": "openid email profile"},
+)
+
+# Gmail OAuth scope for email access
+GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
+
+# Configure Google OAuth2 with Gmail access (for email integration)
+# This is separate from login to allow existing users to connect Gmail
+oauth.register(
+    name="google_gmail",
+    client_id=settings.GOOGLE_CLIENT_ID,
+    client_secret=settings.GOOGLE_CLIENT_SECRET,
+    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+    client_kwargs={
+        "scope": f"openid email profile {GMAIL_READONLY_SCOPE}",
+    },
+    # These must be in authorize_params to be included in the authorization URL
+    # access_type=offline: Request refresh token
+    # prompt=consent: Force consent screen to ensure refresh token is returned
+    authorize_params={
+        "access_type": "offline",
+        "prompt": "consent",
+    },
 )

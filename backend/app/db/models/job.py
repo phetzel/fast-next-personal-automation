@@ -71,6 +71,9 @@ class Job(Base, TimestampMixin):
     source: Mapped[str | None] = mapped_column(
         String(50), nullable=True
     )  # linkedin, indeed, glassdoor, etc.
+    ingestion_source: Mapped[str | None] = mapped_column(
+        String(20), nullable=True, index=True
+    )  # How the job was discovered: 'scrape', 'email', 'manual'
 
     # AI analysis results
     relevance_score: Mapped[float | None] = mapped_column(Float, nullable=True, index=True)

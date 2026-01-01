@@ -38,9 +38,15 @@ export const ROUTES = {
   JOBS_PROFILES: "/jobs/profiles",
   JOBS_PIPELINES: "/jobs/pipelines",
   JOBS_ASSISTANT: "/jobs/assistant",
+  // Email area routes
+  EMAIL: "/email",
+  EMAIL_SYNCS: "/email/syncs",
+  EMAIL_MESSAGES: "/email/messages",
+  // Settings routes
+  SETTINGS: "/settings",
+  SETTINGS_EMAIL: "/settings/email",
   // Other routes
   PROFILE: "/profile",
-  SETTINGS: "/settings",
 } as const;
 
 // WebSocket URL (for chat - this needs to be direct to backend for WS)

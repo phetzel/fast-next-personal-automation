@@ -6,8 +6,6 @@ from app.schemas.user import UserCreate, UserRead, UserUpdate
 
 from app.schemas.session import SessionRead, SessionListResponse, LogoutAllResponse
 
-from app.schemas.item import ItemCreate, ItemRead, ItemUpdate
-
 from app.schemas.conversation import (
     ConversationCreate,
     ConversationRead,
@@ -77,9 +75,6 @@ __all__ = [
     "SessionRead",
     "SessionListResponse",
     "LogoutAllResponse",
-    "ItemCreate",
-    "ItemRead",
-    "ItemUpdate",
     "ConversationCreate",
     "ConversationRead",
     "ConversationUpdate",

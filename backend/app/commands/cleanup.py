@@ -1,7 +1,11 @@
 """
-Cleanup old or stale data from the database.
+PLACEHOLDER EXAMPLE - Cleanup old or stale data from the database.
 
-This command is useful for maintenance tasks.
+This command template is useful for maintenance tasks.
+Add your own cleanup logic for specific models as needed.
+
+This file is intentionally kept as a reference example and can be safely
+modified or deleted if not needed.
 """
 
 import asyncio
@@ -12,13 +16,16 @@ import click
 from app.commands import command, info, success, warning
 
 
-@command("cleanup", help="Clean up old data from the database")
+@command("cleanup", help="[EXAMPLE] Clean up old data from the database")
 @click.option("--days", "-d", default=30, type=int, help="Delete records older than N days")
 @click.option("--dry-run", is_flag=True, help="Show what would be deleted without making changes")
 @click.option("--force", "-f", is_flag=True, help="Skip confirmation prompt")
 def cleanup(days: int, dry_run: bool, force: bool) -> None:
     """
-    Remove old records from the database.
+    PLACEHOLDER EXAMPLE - Remove old records from the database.
+
+    This is a template cleanup command. Add your own cleanup logic
+    for specific models (e.g., old pipeline runs, expired sessions, etc.)
 
     Example:
         project cmd cleanup --days 90
@@ -42,10 +49,12 @@ def cleanup(days: int, dry_run: bool, force: bool) -> None:
         async with async_session_maker() as _session:
             info(f"Cleaning up records older than {cutoff_date}...")
 
-            # Add your cleanup logic here
-            # Example:
+            # TODO: Add your cleanup logic here
+            # Example for cleaning up old pipeline runs:
+            # from sqlalchemy import delete
+            # from app.db.models import PipelineRun
             # result = await session.execute(
-            #     delete(YourModel).where(YourModel.created_at < cutoff_date)
+            #     delete(PipelineRun).where(PipelineRun.created_at < cutoff_date)
             # )
             # await session.commit()
             # deleted_count = result.rowcount

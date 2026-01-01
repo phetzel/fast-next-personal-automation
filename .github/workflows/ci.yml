@@ -107,12 +107,10 @@ jobs:
       - name: Install dependencies
         run: uv sync --directory backend --dev
 
-      - name: Install pip-audit
-        run: uv pip install pip-audit
-
       - name: Run pip-audit
-        run: uv run pip-audit --require-hashes=false --progress-spinner=off
-        working-directory: backend
+        # CVE-2025-46656: markdownify XSS - ignored because python-jobspy pins old version
+        # and we don't render untrusted markdown as raw HTML
+        run: uv run --directory backend pip-audit --progress-spinner off --ignore-vuln CVE-2025-46656
 
   docker:
     runs-on: ubuntu-latest

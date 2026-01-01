@@ -54,16 +54,6 @@ All endpoints are prefixed with `/api/v1`.
 | GET | `/conversations/{id}` | Get conversation with messages |
 | DELETE | `/conversations/{id}` | Delete conversation |
 
-### Items (Example CRUD)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/items` | List items (paginated) |
-| POST | `/items` | Create item |
-| GET | `/items/{id}` | Get item |
-| PATCH | `/items/{id}` | Update item |
-| DELETE | `/items/{id}` | Delete item |
-
 ### Webhooks
 
 | Method | Endpoint | Description |
@@ -125,6 +115,20 @@ Job profiles include contact info fields for cover letter generation:
 | POST | `/resumes/{id}/set-primary` | Set as primary |
 | POST | `/resumes/{id}/re-extract` | Re-extract text |
 
+### Email Integration
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/email/sources` | List connected email accounts |
+| GET | `/email/sources/{id}` | Get email source with stats |
+| GET | `/email/gmail/connect` | Start Gmail OAuth flow |
+| GET | `/email/gmail/callback` | Handle Gmail OAuth callback |
+| POST | `/email/sources/{id}/sync` | Trigger manual email sync |
+| PATCH | `/email/sources/{id}` | Update source settings |
+| DELETE | `/email/sources/{id}` | Disconnect email account |
+| GET | `/email/sources/{id}/messages` | List processed messages |
+| GET | `/email/config` | Get email config (supported senders) |
+
 ### Pipelines
 
 | Method | Endpoint | Description |
@@ -141,6 +145,7 @@ Job profiles include contact info fields for cover letter generation:
 | `job_search` | Search job boards and analyze fit against resume |
 | `job_prep` | Auto-analyzes application page, then generates cover letter (if needed) and prep notes |
 | `job_apply` | Assist with or automate application submission |
+| `email_sync_jobs` | Sync job listings from connected email accounts |
 
 > **Note:** `job_analyze` exists as an internal module used by `job_prep` (via `auto_analyze=True`) and `job_apply`, but is not exposed as a standalone pipeline.
 
@@ -251,6 +256,9 @@ settings.OPENAI_API_KEY
 | `BROWSER_HEADLESS` | `True` | Run Playwright browser in headless mode |
 | `BROWSER_TIMEOUT` | `30000` | Browser operation timeout in milliseconds |
 | `BROWSER_USE_AI_MODEL` | `gpt-4o` | Model for AI-powered browser analysis |
+| `GOOGLE_GMAIL_REDIRECT_URI` | - | Gmail OAuth callback URL |
+| `EMAIL_SYNC_INTERVAL_MINUTES` | `60` | How often to sync email sources |
+| `EMAIL_SYNC_LOOKBACK_HOURS` | `72` | How far back to look on first sync |
 
 ## Exception Handling
 
@@ -375,4 +383,86 @@ make test-cov
 # Run specific test file
 uv run pytest tests/api/test_auth.py -v
 ```
+
+## Email Integration
+
+### Current Implementation
+
+The email integration automatically syncs job alert emails from connected Gmail accounts:
+
+- **Supported Job Boards**: Indeed, LinkedIn, HiringCafe, Glassdoor, Dice, ZipRecruiter
+- **Sync Frequency**: Every hour via scheduled task
+- **Parsers**: Template-based (BeautifulSoup) for known formats, AI fallback (GPT-4o-mini) for unknown
+
+### Architecture
+
+```
+Gmail API → GmailClient → Email Parsers → Job Records
+                ↑                ↓
+          EmailSource      EmailMessage
+          (OAuth tokens)   (processed tracking)
+```
+
+### Future Enhancements (Phase 3)
+
+#### Real-Time Sync
+- Gmail Watch API for push notifications instead of polling
+- Pub/Sub webhook endpoint for instant processing
+- WebSocket updates to frontend for live notifications
+- Toast notifications: "3 new jobs found!"
+
+#### Smart Parser Improvements
+- Self-improving AI parser that learns from user corrections
+- User feedback buttons: "This wasn't a job" / "Add missing job"
+- Parser confidence scores displayed on job cards
+- Auto-generate template parsers from successful AI extractions
+
+#### Processed Email Viewer
+- View original email that created a job
+- "View source email" link on job detail page
+- Re-parse emails with different parser
+- Mark emails for manual review queue
+
+#### Sync Dashboard
+- Real-time sync status indicator
+- Historical sync timeline and statistics
+- Per-source success/failure rates
+- Parser performance metrics
+
+#### Cross-Area Integrations
+- Detect "interview scheduled" emails → update job status
+- Detect "rejection" emails → auto-dismiss job
+- Detect "offer" emails → highlight job
+- Link emails to conversation threads with recruiters
+
+## Potential Email Management Area
+
+If expanding beyond job alerts to a full email management system:
+
+### Core Features
+- **Inbox View**: List, search, filter all emails
+- **Email Actions**: Mark read/unread, star, archive, delete
+- **Compose**: Send emails (requires `gmail.send` scope)
+- **Threads**: View email conversations grouped by thread
+
+### Smart Parsing
+- Job alerts → Extract to Jobs area
+- Receipts → Extract to Expenses
+- Calendar invites → Extract to Calendar
+- Package tracking → Extract shipment info
+- Custom rules: "If sender=X, apply label Y"
+
+### Automation Rules
+User-defined rules with conditions and actions:
+```python
+class EmailRule:
+    conditions: dict  # {"from_contains": "recruiter", "subject_contains": "interview"}
+    actions: dict     # {"apply_label": "Important", "notify": true, "extract_to": "jobs"}
+```
+
+### Analytics
+- Email volume trends over time
+- Top senders/domains
+- Response time analytics
+- Unsubscribe recommendations for newsletters
 

@@ -12,17 +12,21 @@ from app.db.base import Base, TimestampMixin
 
 
 class WebhookEventType(str, Enum):
-    """Webhook event types."""
+    """Webhook event types.
+
+    PLACEHOLDER EXAMPLE - Add your own event types as needed.
+    This webhook system is kept as infrastructure for future use.
+    """
 
     # User events
     USER_CREATED = "user.created"
     USER_UPDATED = "user.updated"
     USER_DELETED = "user.deleted"
 
-    # Custom events (extend as needed)
-    ITEM_CREATED = "item.created"
-    ITEM_UPDATED = "item.updated"
-    ITEM_DELETED = "item.deleted"
+    # Job events (extend as needed)
+    JOB_CREATED = "job.created"
+    JOB_UPDATED = "job.updated"
+    JOB_DELETED = "job.deleted"
 
 
 class Webhook(Base, TimestampMixin):

@@ -9,8 +9,6 @@ from app.services.user import UserService
 
 from app.services.session import SessionService
 
-from app.services.item import ItemService
-
 from app.services.conversation import ConversationService
 
 from app.services.webhook import WebhookService
@@ -30,7 +28,6 @@ from app.services.project import ProjectService
 __all__ = [
     "UserService",
     "SessionService",
-    "ItemService",
     "ConversationService",
     "WebhookService",
     "PipelineRunService",

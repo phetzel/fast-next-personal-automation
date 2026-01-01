@@ -3,7 +3,6 @@
 # ruff: noqa: I001, RUF022 - Imports structured for Jinja2 template conditionals
 from app.db.models.user import User
 from app.db.models.session import Session
-from app.db.models.item import Item
 from app.db.models.conversation import Conversation, Message, ToolCall
 from app.db.models.webhook import Webhook, WebhookDelivery
 from app.db.models.pipeline_run import PipelineRun, PipelineRunStatus, PipelineTriggerType
@@ -12,11 +11,15 @@ from app.db.models.job_profile import JobProfile
 from app.db.models.resume import Resume
 from app.db.models.story import Story
 from app.db.models.project import Project
+from app.db.models.email_source import EmailSource
+from app.db.models.email_message import EmailMessage
+from app.db.models.email_sync import EmailSync
+from app.db.models.email_destination import EmailDestination
+from app.db.models.email_message_destination import EmailMessageDestination
 
 __all__ = [
     "User",
     "Session",
-    "Item",
     "Conversation",
     "Message",
     "ToolCall",
@@ -31,4 +34,9 @@ __all__ = [
     "Resume",
     "Story",
     "Project",
+    "EmailSource",
+    "EmailMessage",
+    "EmailSync",
+    "EmailDestination",
+    "EmailMessageDestination",
 ]

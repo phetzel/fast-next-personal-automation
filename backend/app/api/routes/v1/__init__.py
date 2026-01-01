@@ -7,7 +7,6 @@ from app.api.routes.v1 import health
 from app.api.routes.v1 import auth, users
 from app.api.routes.v1 import oauth
 from app.api.routes.v1 import sessions
-from app.api.routes.v1 import items
 from app.api.routes.v1 import conversations
 from app.api.routes.v1 import webhooks
 from app.api.routes.v1 import ws
@@ -19,6 +18,9 @@ from app.api.routes.v1 import job_profile
 from app.api.routes.v1 import resumes
 from app.api.routes.v1 import stories
 from app.api.routes.v1 import projects
+from app.api.routes.v1 import email_sources
+from app.api.routes.v1 import email_syncs
+from app.api.routes.v1 import email_destinations
 
 v1_router = APIRouter()
 
@@ -36,9 +38,6 @@ v1_router.include_router(oauth.router, prefix="/oauth", tags=["oauth"])
 
 # Session management routes
 v1_router.include_router(sessions.router, prefix="/sessions", tags=["sessions"])
-
-# Example CRUD routes (items)
-v1_router.include_router(items.router, prefix="/items", tags=["items"])
 
 # Conversation routes (AI chat persistence)
 v1_router.include_router(conversations.router, prefix="/conversations", tags=["conversations"])
@@ -72,3 +71,8 @@ v1_router.include_router(stories.router, prefix="/stories", tags=["stories"])
 
 # Project routes (project description management)
 v1_router.include_router(projects.router, prefix="/projects", tags=["projects"])
+
+# Email routes (Gmail integration)
+v1_router.include_router(email_sources.router, prefix="/email", tags=["email"])
+v1_router.include_router(email_syncs.router, prefix="/email/syncs", tags=["email"])
+v1_router.include_router(email_destinations.router, prefix="/email/destinations", tags=["email"])

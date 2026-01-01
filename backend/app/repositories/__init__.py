@@ -7,8 +7,6 @@ from app.repositories import user as user_repo
 
 from app.repositories import session as session_repo
 
-from app.repositories import item as item_repo
-
 from app.repositories import conversation as conversation_repo
 
 from app.repositories import webhook as webhook_repo
@@ -25,11 +23,16 @@ from app.repositories import story as story_repo
 
 from app.repositories import project as project_repo
 
+from app.repositories import email_source as email_source_repo
+
+from app.repositories import email_sync as email_sync_repo
+
+from app.repositories import email_destination as email_destination_repo
+
 __all__ = [
     "BaseRepository",
     "user_repo",
     "session_repo",
-    "item_repo",
     "conversation_repo",
     "webhook_repo",
     "pipeline_run_repo",
@@ -38,4 +41,7 @@ __all__ = [
     "resume_repo",
     "story_repo",
     "project_repo",
+    "email_source_repo",
+    "email_sync_repo",
+    "email_destination_repo",
 ]

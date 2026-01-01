@@ -5,7 +5,10 @@ from datetime import timedelta
 from app.core.security import (
     create_access_token,
     create_refresh_token,
+    decrypt_token,
+    encrypt_token,
     get_password_hash,
+    is_encrypted,
     verify_password,
     verify_token,
 )
@@ -120,3 +123,67 @@ class TestRefreshToken:
         assert payload is not None
         assert payload["sub"] == subject
         assert payload["type"] == "refresh"
+
+
+class TestTokenEncryption:
+    """Tests for Fernet token encryption functions."""
+
+    def test_encrypt_token(self):
+        """Test encrypting a token."""
+        plaintext = "ya29.access_token_here"
+        encrypted = encrypt_token(plaintext)
+
+        assert encrypted != plaintext
+        assert len(encrypted) > 0
+        # Fernet tokens start with 'gAAAAA'
+        assert encrypted.startswith("gAAAAA")
+
+    def test_decrypt_token(self):
+        """Test decrypting a token."""
+        plaintext = "ya29.access_token_here"
+        encrypted = encrypt_token(plaintext)
+        decrypted = decrypt_token(encrypted)
+
+        assert decrypted == plaintext
+
+    def test_encrypt_decrypt_roundtrip(self):
+        """Test encrypt/decrypt roundtrip preserves data."""
+        tokens = [
+            "short",
+            "a" * 1000,  # Long token
+            "special!@#$%^&*()chars",
+            "unicode: 🔒 émojis",
+        ]
+        for token in tokens:
+            encrypted = encrypt_token(token)
+            decrypted = decrypt_token(encrypted)
+            assert decrypted == token
+
+    def test_is_encrypted_true(self):
+        """Test is_encrypted returns True for encrypted tokens."""
+        plaintext = "test_token"
+        encrypted = encrypt_token(plaintext)
+
+        assert is_encrypted(encrypted) is True
+
+    def test_is_encrypted_false(self):
+        """Test is_encrypted returns False for plaintext."""
+        plaintext_values = [
+            "ya29.access_token",
+            "1//refresh_token",
+            "not_encrypted",
+            "",
+        ]
+        for value in plaintext_values:
+            assert is_encrypted(value) is False
+
+    def test_different_encryptions_produce_different_ciphertext(self):
+        """Test that encrypting same value twice produces different ciphertext."""
+        plaintext = "test_token"
+        encrypted1 = encrypt_token(plaintext)
+        encrypted2 = encrypt_token(plaintext)
+
+        # Fernet uses random IV, so ciphertexts should differ
+        assert encrypted1 != encrypted2
+        # But both should decrypt to same plaintext
+        assert decrypt_token(encrypted1) == decrypt_token(encrypted2) == plaintext

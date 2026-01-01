@@ -1,6 +1,7 @@
 """Taskiq application configuration."""
 
 from taskiq import TaskiqScheduler
+from taskiq.schedule_sources import LabelScheduleSource
 from taskiq_redis import ListQueueBroker, RedisAsyncResultBackend
 
 from app.core.config import settings
@@ -14,10 +15,13 @@ broker = ListQueueBroker(
     )
 )
 
+# Import scheduled tasks so decorators register with broker
+import app.worker.tasks.schedules  # noqa: F401, E402
+
 # Create scheduler for periodic tasks
 scheduler = TaskiqScheduler(
     broker=broker,
-    sources=["app.worker.tasks.schedules"],
+    sources=[LabelScheduleSource(broker)],
 )
 
 

@@ -318,6 +318,7 @@ class JobSearchPipeline(ActionPipeline[JobSearchInput, JobSearchOutput]):
                         "salary_range": scraped_job.salary_range,
                         "date_posted": scraped_job.date_posted,
                         "source": scraped_job.source,
+                        "ingestion_source": "scrape",
                         "relevance_score": analysis.relevance_score,
                         "reasoning": analysis.reasoning,
                         "search_terms": search_terms_str,

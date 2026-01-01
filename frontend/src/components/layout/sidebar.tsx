@@ -14,6 +14,10 @@ import {
   LayoutList,
   UserCircle,
   Bot,
+  Settings,
+  Mail,
+  Inbox,
+  RefreshCw,
   type LucideIcon,
 } from "lucide-react";
 import { useSidebarStore } from "@/stores";
@@ -52,6 +56,28 @@ const areaNavigation: NavArea[] = [
       { name: "Profiles", href: ROUTES.JOBS_PROFILES, icon: UserCircle },
       { name: "Pipelines", href: ROUTES.JOBS_PIPELINES, icon: Workflow },
       { name: "Assistant", href: ROUTES.JOBS_ASSISTANT, icon: Bot },
+    ],
+  },
+  {
+    id: "email",
+    name: "Email",
+    icon: Mail,
+    children: [
+      { name: "Overview", href: ROUTES.EMAIL, icon: LayoutDashboard },
+      { name: "Sync History", href: ROUTES.EMAIL_SYNCS, icon: RefreshCw },
+      { name: "Messages", href: ROUTES.EMAIL_MESSAGES, icon: Inbox },
+    ],
+  },
+];
+
+// Settings navigation
+const settingsNavigation: NavArea[] = [
+  {
+    id: "settings",
+    name: "Settings",
+    icon: Settings,
+    children: [
+      { name: "Email Integration", href: ROUTES.SETTINGS_EMAIL, icon: Mail },
     ],
   },
 ];
@@ -171,6 +197,15 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
           Areas
         </span>
         {areaNavigation.map((area) => (
+          <AreaSection key={area.id} area={area} onNavigate={onNavigate} />
+        ))}
+      </div>
+
+      <Separator />
+
+      {/* Settings navigation */}
+      <div className="space-y-1">
+        {settingsNavigation.map((area) => (
           <AreaSection key={area.id} area={area} onNavigate={onNavigate} />
         ))}
       </div>

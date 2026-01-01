@@ -115,7 +115,10 @@ async def get_user(user_id: UUID, user_service: UserSvc):
 | `ToolCall` | AI tool invocation records |
 | `Webhook` | Webhook subscriptions |
 | `WebhookDelivery` | Webhook delivery logs |
-| `Item` | Example CRUD entity |
+| `Job` | Job listings |
+| `JobProfile` | User job preferences |
+| `Resume` | Uploaded resumes |
+| `EmailSource` | Connected email accounts |
 
 ### Relationships
 

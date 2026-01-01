@@ -4,7 +4,9 @@ Contains business logic for job operations. Uses job repository for database acc
 """
 
 import logging
+from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any, Literal
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +25,68 @@ from app.repositories import job_profile_repo, job_repo
 from app.schemas.job import JobFilters, JobUpdate
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class RawJob:
+    """Common job data structure for ingestion from any source.
+
+    Can be created from ScrapedJob (scraper) or ExtractedJob (email parser).
+    """
+
+    title: str
+    company: str
+    job_url: str
+    location: str | None = None
+    description: str | None = None
+    salary_range: str | None = None
+    date_posted: datetime | None = None
+    source: str | None = None  # linkedin, indeed, etc.
+    is_remote: bool | None = None
+    job_type: str | None = None
+    company_url: str | None = None
+
+    @classmethod
+    def from_scraped(cls, job) -> "RawJob":
+        """Create from a ScrapedJob (job search pipeline)."""
+        return cls(
+            title=job.title,
+            company=job.company,
+            job_url=job.job_url,
+            location=job.location,
+            description=job.description,
+            salary_range=job.salary_range,
+            date_posted=job.date_posted,
+            source=job.source,
+            is_remote=getattr(job, "is_remote", None),
+            job_type=getattr(job, "job_type", None),
+            company_url=getattr(job, "company_url", None),
+        )
+
+    @classmethod
+    def from_extracted(cls, job, source_override: str | None = None) -> "RawJob":
+        """Create from an ExtractedJob (email parser)."""
+        return cls(
+            title=job.title,
+            company=job.company,
+            job_url=job.job_url,
+            location=job.location,
+            description=getattr(job, "description_snippet", None),
+            salary_range=job.salary_range,
+            source=source_override or job.source,
+        )
+
+
+@dataclass
+class IngestionResult:
+    """Result from job ingestion."""
+
+    jobs_received: int = 0
+    jobs_analyzed: int = 0
+    jobs_saved: int = 0
+    duplicates_skipped: int = 0
+    high_scoring: int = 0  # Jobs with score >= min_score
+    saved_jobs: list[Job] | None = None  # Optionally include saved job objects
 
 
 class JobService:
@@ -125,6 +189,159 @@ class JobService:
         """Check if a job URL already exists for user."""
         existing = await job_repo.get_by_url_and_user(self.db, job_url, user_id)
         return existing is not None
+
+    async def ingest_jobs(
+        self,
+        user_id: UUID,
+        jobs: list[RawJob],
+        *,
+        ingestion_source: Literal["scrape", "email", "manual"],
+        profile_id: UUID | None = None,
+        resume_text: str | None = None,
+        target_roles: list[str] | None = None,
+        preferences: dict[str, Any] | None = None,
+        min_score: float = 7.0,
+        save_all: bool = False,
+        search_terms: str | None = None,
+    ) -> IngestionResult:
+        """Ingest jobs from any source with optional AI analysis.
+
+        This is the unified job ingestion method used by both the job search
+        and email sync pipelines. It handles:
+        1. Deduplication by job URL
+        2. Optional AI analysis (if resume_text provided)
+        3. Filtering by score (if analyzing)
+        4. Saving to database
+
+        Args:
+            user_id: The user who owns these jobs
+            jobs: List of RawJob objects to ingest
+            ingestion_source: How jobs were discovered ('scrape', 'email', 'manual')
+            profile_id: Optional profile ID to associate with jobs
+            resume_text: If provided, AI analysis will be performed
+            target_roles: Target roles for AI analysis context
+            preferences: Additional preferences for AI analysis
+            min_score: Minimum score to save (ignored if save_all=True)
+            save_all: If True, save all jobs regardless of score
+            search_terms: Search terms used to find these jobs
+
+        Returns:
+            IngestionResult with counts and optionally saved job objects
+        """
+        result = IngestionResult(jobs_received=len(jobs))
+
+        if not jobs:
+            return result
+
+        # Step 1: Filter out duplicates
+        new_jobs: list[RawJob] = []
+        for job in jobs:
+            existing = await job_repo.get_by_url_and_user(self.db, job.job_url, user_id)
+            if existing:
+                result.duplicates_skipped += 1
+            else:
+                new_jobs.append(job)
+
+        if not new_jobs:
+            return result
+
+        # Step 2: Optionally analyze with AI
+        analyzed_jobs: list[tuple[RawJob, dict | None]] = []
+
+        if resume_text:
+            # Import here to avoid circular imports
+            from app.pipelines.actions.job_search.analyzer import (
+                JobAnalysis,
+                analyze_job,
+            )
+            from app.pipelines.actions.job_search.scraper import ScrapedJob
+
+            for raw_job in new_jobs:
+                # Convert RawJob to ScrapedJob for the analyzer
+                scraped = ScrapedJob(
+                    title=raw_job.title,
+                    company=raw_job.company,
+                    location=raw_job.location,
+                    description=raw_job.description,
+                    job_url=raw_job.job_url,
+                    salary_range=raw_job.salary_range,
+                    date_posted=raw_job.date_posted,
+                    source=raw_job.source,
+                )
+
+                try:
+                    analysis: JobAnalysis = await analyze_job(
+                        scraped, resume_text, target_roles, preferences
+                    )
+                    analyzed_jobs.append(
+                        (
+                            raw_job,
+                            {
+                                "relevance_score": analysis.relevance_score,
+                                "reasoning": analysis.reasoning,
+                            },
+                        )
+                    )
+                    result.jobs_analyzed += 1
+
+                    if analysis.relevance_score >= min_score:
+                        result.high_scoring += 1
+
+                except Exception as e:
+                    logger.warning(f"Failed to analyze job '{raw_job.title}': {e}")
+                    analyzed_jobs.append((raw_job, None))
+        else:
+            # No analysis - just pass through
+            analyzed_jobs = [(job, None) for job in new_jobs]
+
+        # Step 3: Filter and save jobs
+        jobs_to_save: list[dict] = []
+
+        for raw_job, analysis in analyzed_jobs:
+            # Decide whether to save based on score
+            should_save = save_all or analysis is None
+            if analysis and not save_all:
+                should_save = analysis["relevance_score"] >= min_score
+
+            if should_save:
+                job_data = {
+                    "title": raw_job.title,
+                    "company": raw_job.company,
+                    "location": raw_job.location,
+                    "description": raw_job.description,
+                    "job_url": raw_job.job_url,
+                    "salary_range": raw_job.salary_range,
+                    "date_posted": raw_job.date_posted,
+                    "source": raw_job.source,
+                    "ingestion_source": ingestion_source,
+                    "is_remote": raw_job.is_remote,
+                    "job_type": raw_job.job_type,
+                    "company_url": raw_job.company_url,
+                    "profile_id": profile_id,
+                    "search_terms": search_terms,
+                }
+
+                # Add analysis results if available
+                if analysis:
+                    job_data["relevance_score"] = analysis["relevance_score"]
+                    job_data["reasoning"] = analysis["reasoning"]
+
+                jobs_to_save.append(job_data)
+
+        # Save to database
+        if jobs_to_save:
+            saved = await job_repo.create_bulk(self.db, user_id, jobs_to_save)
+            result.jobs_saved = len(saved)
+            result.saved_jobs = saved
+
+        logger.info(
+            f"Ingested {result.jobs_received} jobs: "
+            f"{result.duplicates_skipped} duplicates, "
+            f"{result.jobs_analyzed} analyzed, "
+            f"{result.jobs_saved} saved"
+        )
+
+        return result
 
     async def generate_cover_letter_pdf(
         self,

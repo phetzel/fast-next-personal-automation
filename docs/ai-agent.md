@@ -202,8 +202,8 @@ class AssistantAgent:
 
 ```python
 @agent.tool
-async def search_user_items(ctx: RunContext[Deps], query: str) -> list[dict]:
-    """Search items owned by the current user.
+async def search_user_jobs(ctx: RunContext[Deps], query: str) -> list[dict]:
+    """Search jobs saved by the current user.
     
     Args:
         query: Search query string.
@@ -212,12 +212,12 @@ async def search_user_items(ctx: RunContext[Deps], query: str) -> list[dict]:
         return []
     
     async with get_db_context() as db:
-        items = await item_repo.search(
+        jobs = await job_repo.search(
             db, 
             user_id=ctx.deps.user_id,
             query=query
         )
-    return [{"name": i.name, "id": str(i.id)} for i in items]
+    return [{"title": j.title, "company": j.company, "id": str(j.id)} for j in jobs]
 ```
 
 ## Adding Area Toolsets
