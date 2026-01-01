@@ -7,6 +7,7 @@ from fastapi import APIRouter, Query
 from app.api.deps import CurrentUser, DBSession, EmailSvc
 from app.pipelines.action_base import PipelineContext
 from app.pipelines.registry import execute_pipeline
+from app.repositories import email_sync_repo
 from app.schemas.email_sync import (
     EmailSyncCreate,
     EmailSyncDetailResponse,
@@ -96,3 +97,46 @@ async def trigger_sync(
             status="failed",
             message=result.error or "Sync failed",
         )
+
+
+@router.post("/{sync_id}/cancel", response_model=EmailSyncResult)
+async def cancel_sync(
+    sync_id: UUID,
+    db: DBSession,
+    current_user: CurrentUser,
+    email_service: EmailSvc,
+):
+    """Cancel a running sync."""
+    sync = await email_service.get_sync_by_id(sync_id, current_user.id)
+
+    if sync.status not in ("pending", "running"):
+        return EmailSyncResult(
+            sync_id=sync.id,
+            status=sync.status,
+            message=f"Sync is already {sync.status}",
+        )
+
+    await email_sync_repo.cancel_sync(db, sync)
+    await db.commit()
+
+    return EmailSyncResult(
+        sync_id=sync.id,
+        status="cancelled",
+        message="Sync has been cancelled",
+    )
+
+
+@router.post("/cancel-stale", response_model=EmailSyncResult)
+async def cancel_stale_syncs(
+    db: DBSession,
+    current_user: CurrentUser,
+):
+    """Cancel any syncs that have been running for more than 10 minutes."""
+    cancelled_count = await email_sync_repo.cancel_stale_syncs(db, current_user.id)
+    await db.commit()
+
+    return EmailSyncResult(
+        sync_id=None,
+        status="completed",
+        message=f"Cancelled {cancelled_count} stale sync(s)",
+    )

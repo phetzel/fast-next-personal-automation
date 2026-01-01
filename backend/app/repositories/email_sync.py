@@ -142,3 +142,44 @@ async def get_running_by_user(db: AsyncSession, user_id: UUID) -> EmailSync | No
         )
     )
     return result.scalar_one_or_none()
+
+
+async def cancel_stale_syncs(
+    db: AsyncSession, user_id: UUID, stale_minutes: int = 10
+) -> int:
+    """Cancel any syncs that have been running for too long.
+
+    Returns the number of syncs cancelled.
+    """
+    from datetime import timedelta
+
+    from sqlalchemy import update
+
+    cutoff = datetime.utcnow() - timedelta(minutes=stale_minutes)
+
+    result = await db.execute(
+        update(EmailSync)
+        .where(
+            EmailSync.user_id == user_id,
+            EmailSync.status.in_(["pending", "running"]),
+            EmailSync.started_at < cutoff,
+        )
+        .values(
+            status="failed",
+            completed_at=datetime.utcnow(),
+            error_message="Sync timed out (cancelled as stale)",
+        )
+    )
+    await db.flush()
+    return result.rowcount
+
+
+async def cancel_sync(db: AsyncSession, sync: EmailSync) -> EmailSync:
+    """Force cancel a running sync."""
+    sync.status = "failed"
+    sync.completed_at = datetime.utcnow()
+    sync.error_message = "Sync was manually cancelled"
+    db.add(sync)
+    await db.flush()
+    await db.refresh(sync)
+    return sync

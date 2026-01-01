@@ -73,6 +73,6 @@ class EmailSyncDetailResponse(EmailSyncResponse):
 class EmailSyncResult(BaseModel):
     """Result returned after triggering a sync."""
 
-    sync_id: UUID
+    sync_id: UUID | None = None
     status: str
     message: str

@@ -3,10 +3,11 @@
 Provides a class-based Gmail client for reading and parsing job alert emails.
 """
 
+import asyncio
 import base64
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 
 from google.auth.transport.requests import Request
@@ -53,13 +54,23 @@ class GmailClient:
             refresh_token: OAuth refresh token for token renewal.
             token_expiry: When the access token expires.
         """
+        # Google's Credentials class expects timezone-naive datetime for expiry
+        # (it compares against datetime.utcnow() internally)
+        expiry_naive = None
+        if token_expiry is not None:
+            if token_expiry.tzinfo is not None:
+                # Convert to UTC and strip timezone
+                expiry_naive = token_expiry.replace(tzinfo=None)
+            else:
+                expiry_naive = token_expiry
+
         self.credentials = Credentials(
             token=access_token,
             refresh_token=refresh_token,
             token_uri="https://oauth2.googleapis.com/token",
             client_id=settings.GOOGLE_CLIENT_ID,
             client_secret=settings.GOOGLE_CLIENT_SECRET,
-            expiry=token_expiry,
+            expiry=expiry_naive,
         )
         self._service = None
         self._tokens_refreshed = False
@@ -135,6 +146,37 @@ class GmailClient:
 
         return query
 
+    def _list_messages_sync(self, query: str, max_results: int) -> list[dict]:
+        """Synchronous implementation of list_messages."""
+        messages = []
+        request = (
+            self.service.users()
+            .messages()
+            .list(userId="me", q=query, maxResults=min(max_results, 100))
+        )
+
+        while request is not None and len(messages) < max_results:
+            response = request.execute()
+            batch = response.get("messages", [])
+            messages.extend(batch)
+
+            # Check for more pages
+            if "nextPageToken" in response and len(messages) < max_results:
+                request = (
+                    self.service.users()
+                    .messages()
+                    .list(
+                        userId="me",
+                        q=query,
+                        maxResults=min(max_results - len(messages), 100),
+                        pageToken=response["nextPageToken"],
+                    )
+                )
+            else:
+                break
+
+        return messages[:max_results]
+
     async def list_messages(
         self,
         query: str,
@@ -150,38 +192,46 @@ class GmailClient:
             List of message metadata dicts with 'id' and 'threadId'.
         """
         try:
-            messages = []
-            request = (
-                self.service.users()
-                .messages()
-                .list(userId="me", q=query, maxResults=min(max_results, 100))
-            )
-
-            while request is not None and len(messages) < max_results:
-                response = request.execute()
-                batch = response.get("messages", [])
-                messages.extend(batch)
-
-                # Check for more pages
-                if "nextPageToken" in response and len(messages) < max_results:
-                    request = (
-                        self.service.users()
-                        .messages()
-                        .list(
-                            userId="me",
-                            q=query,
-                            maxResults=min(max_results - len(messages), 100),
-                            pageToken=response["nextPageToken"],
-                        )
-                    )
-                else:
-                    break
-
-            return messages[:max_results]
-
+            return await asyncio.to_thread(self._list_messages_sync, query, max_results)
         except HttpError as e:
             logger.error(f"Gmail API error listing messages: {e}")
             raise
+
+    def _get_message_sync(self, message_id: str) -> EmailContent:
+        """Synchronous implementation of get_message."""
+        message = (
+            self.service.users()
+            .messages()
+            .get(userId="me", id=message_id, format="full")
+            .execute()
+        )
+
+        # Extract headers
+        headers = {h["name"].lower(): h["value"] for h in message["payload"]["headers"]}
+
+        subject = headers.get("subject", "(No Subject)")
+        from_address = headers.get("from", "")
+        date_str = headers.get("date", "")
+
+        # Parse date
+        try:
+            received_at = parsedate_to_datetime(date_str)
+        except (ValueError, TypeError):
+            received_at = datetime.now(UTC)
+
+        # Extract body
+        body_html, body_text = self._extract_body(message["payload"])
+
+        return EmailContent(
+            message_id=message["id"],
+            thread_id=message["threadId"],
+            subject=subject,
+            from_address=from_address,
+            received_at=received_at,
+            body_html=body_html,
+            body_text=body_text,
+            snippet=message.get("snippet", ""),
+        )
 
     async def get_message(self, message_id: str) -> EmailContent:
         """Get full message content.
@@ -193,40 +243,7 @@ class GmailClient:
             EmailContent with parsed message data.
         """
         try:
-            message = (
-                self.service.users()
-                .messages()
-                .get(userId="me", id=message_id, format="full")
-                .execute()
-            )
-
-            # Extract headers
-            headers = {h["name"].lower(): h["value"] for h in message["payload"]["headers"]}
-
-            subject = headers.get("subject", "(No Subject)")
-            from_address = headers.get("from", "")
-            date_str = headers.get("date", "")
-
-            # Parse date
-            try:
-                received_at = parsedate_to_datetime(date_str)
-            except (ValueError, TypeError):
-                received_at = datetime.now()
-
-            # Extract body
-            body_html, body_text = self._extract_body(message["payload"])
-
-            return EmailContent(
-                message_id=message["id"],
-                thread_id=message["threadId"],
-                subject=subject,
-                from_address=from_address,
-                received_at=received_at,
-                body_html=body_html,
-                body_text=body_text,
-                snippet=message.get("snippet", ""),
-            )
-
+            return await asyncio.to_thread(self._get_message_sync, message_id)
         except HttpError as e:
             logger.error(f"Gmail API error getting message {message_id}: {e}")
             raise
@@ -265,6 +282,14 @@ class GmailClient:
 
         return html_body, text_body
 
+    def _mark_as_read_sync(self, message_id: str) -> None:
+        """Synchronous implementation of mark_as_read."""
+        self.service.users().messages().modify(
+            userId="me",
+            id=message_id,
+            body={"removeLabelIds": ["UNREAD"]},
+        ).execute()
+
     async def mark_as_read(self, message_id: str) -> None:
         """Mark a message as read by removing UNREAD label.
 
@@ -272,14 +297,14 @@ class GmailClient:
             message_id: Gmail message ID.
         """
         try:
-            self.service.users().messages().modify(
-                userId="me",
-                id=message_id,
-                body={"removeLabelIds": ["UNREAD"]},
-            ).execute()
+            await asyncio.to_thread(self._mark_as_read_sync, message_id)
         except HttpError as e:
             logger.error(f"Gmail API error marking message {message_id} as read: {e}")
             raise
+
+    def _get_profile_sync(self) -> dict:
+        """Synchronous implementation of get_profile."""
+        return self.service.users().getProfile(userId="me").execute()
 
     async def get_profile(self) -> dict:
         """Get the authenticated user's Gmail profile.
@@ -288,7 +313,7 @@ class GmailClient:
             Dict with email address and other profile info.
         """
         try:
-            return self.service.users().getProfile(userId="me").execute()
+            return await asyncio.to_thread(self._get_profile_sync)
         except HttpError as e:
             logger.error(f"Gmail API error getting profile: {e}")
             raise

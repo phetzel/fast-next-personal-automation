@@ -64,6 +64,9 @@ class EmailService:
         Returns the sync record (will be in 'running' status).
         The actual sync work should be done by the pipeline.
         """
+        # First, cancel any syncs that have been running too long (10 min timeout)
+        await email_sync_repo.cancel_stale_syncs(self.db, user_id, stale_minutes=10)
+
         # Check if there's already a running sync
         existing = await email_sync_repo.get_running_by_user(self.db, user_id)
         if existing:
