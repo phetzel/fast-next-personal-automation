@@ -8,7 +8,7 @@ import { usePipelines } from "@/hooks/use-pipelines";
 import { apiClient } from "@/lib/api-client";
 import { Button, Textarea, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
 import { ScoreBadge, StatusBadge, PrepJobModal } from "@/components/jobs";
-import type { Job, JobStatus, JobUpdate } from "@/types";
+import type { Job, JobStatus } from "@/types";
 import { JOB_STATUSES, JOB_STATUS_CONFIG, canTransitionTo } from "@/types";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -33,10 +33,9 @@ import {
   DollarSign,
   Clock,
   MessageSquare,
-  FileCheck,
 } from "lucide-react";
 
-type TabId = "overview" | "cover-letter" | "application";
+type TabId = "overview" | "prep";
 
 interface TabConfig {
   id: TabId;
@@ -46,8 +45,7 @@ interface TabConfig {
 
 const TABS: TabConfig[] = [
   { id: "overview", label: "Overview", icon: Briefcase },
-  { id: "cover-letter", label: "Cover Letter", icon: FileText },
-  { id: "application", label: "Application", icon: FileCheck },
+  { id: "prep", label: "Prep", icon: Sparkles },
 ];
 
 // Generate status options from the shared constant
@@ -119,6 +117,12 @@ export default function JobDetailPage({
 
   const handleStatusChange = async (newStatus: JobStatus) => {
     if (!job) return;
+
+    // Special handling for transitioning to "prepped" - opens prep modal
+    if (newStatus === "prepped" && job.status === "new") {
+      setIsPrepModalOpen(true);
+      return;
+    }
 
     // Special handling for transitioning to "reviewed" - generates PDF
     if (newStatus === "reviewed" && job.status === "prepped") {
@@ -248,7 +252,7 @@ export default function JobDetailPage({
 
   const handlePrepComplete = async () => {
     await refreshJob();
-    setActiveTab("cover-letter");
+    setActiveTab("prep");
   };
 
   if (isLoading) {
@@ -349,6 +353,7 @@ export default function JobDetailPage({
             {STATUS_OPTIONS.map((option) => {
               const isCurrentStatus = job.status === option.value;
               const canTransition = canTransitionTo(job.status, option.value);
+              const isPreppedTransition = option.value === "prepped" && job.status === "new";
               const isReviewedTransition = option.value === "reviewed" && job.status === "prepped";
 
               return (
@@ -357,14 +362,17 @@ export default function JobDetailPage({
                   variant={isCurrentStatus ? "default" : "outline"}
                   size="sm"
                   onClick={() => handleStatusChange(option.value)}
-                  disabled={isUpdating || isGeneratingPdf || (!isCurrentStatus && !canTransition)}
+                  disabled={isUpdating || isGeneratingPdf || isPrepping || (!isCurrentStatus && !canTransition)}
                   title={option.description}
                   className={cn(
                     !isCurrentStatus && !canTransition && "opacity-40 cursor-not-allowed",
+                    isPreppedTransition && canTransition && "border-cyan-500/50 hover:bg-cyan-500/10",
                     isReviewedTransition && canTransition && "border-purple-500/50 hover:bg-purple-500/10"
                   )}
                 >
-                  {isGeneratingPdf && option.value === "reviewed" ? (
+                  {isPrepping && option.value === "prepped" ? (
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  ) : isGeneratingPdf && option.value === "reviewed" ? (
                     <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                   ) : null}
                   {option.label}
@@ -372,6 +380,12 @@ export default function JobDetailPage({
               );
             })}
           </div>
+          {job.status === "new" && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              <span className="text-cyan-600 dark:text-cyan-400">Tip:</span> Clicking
+              &quot;Prepped&quot; will generate a tailored cover letter and prep notes.
+            </p>
+          )}
           {job.status === "prepped" && (
             <p className="mt-2 text-xs text-muted-foreground">
               <span className="text-purple-600 dark:text-purple-400">Tip:</span> Clicking
@@ -387,7 +401,7 @@ export default function JobDetailPage({
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
-            const showBadge = tab.id === "cover-letter" && hasPreppedMaterials;
+            const showBadge = tab.id === "prep" && hasPreppedMaterials;
 
             return (
               <button
@@ -416,14 +430,20 @@ export default function JobDetailPage({
         {activeTab === "overview" && (
           <OverviewTab
             job={job}
+            notes={notes}
+            setNotes={setNotes}
+            notesDirty={notesDirty}
+            setNotesDirty={setNotesDirty}
+            isUpdating={isUpdating}
+            onSaveNotes={handleSaveNotes}
             onPrep={() => setIsPrepModalOpen(true)}
             hasPreppedMaterials={hasPreppedMaterials}
             isPrepping={isPrepping}
           />
         )}
 
-        {activeTab === "cover-letter" && (
-          <CoverLetterTab
+        {activeTab === "prep" && (
+          <PrepTab
             job={job}
             coverLetter={coverLetter}
             setCoverLetter={setCoverLetter}
@@ -441,18 +461,6 @@ export default function JobDetailPage({
             onPrep={() => setIsPrepModalOpen(true)}
             hasPreppedMaterials={hasPreppedMaterials}
             isPrepping={isPrepping}
-          />
-        )}
-
-        {activeTab === "application" && (
-          <ApplicationTab
-            job={job}
-            notes={notes}
-            setNotes={setNotes}
-            notesDirty={notesDirty}
-            setNotesDirty={setNotesDirty}
-            isUpdating={isUpdating}
-            onSaveNotes={handleSaveNotes}
           />
         )}
       </div>
@@ -474,11 +482,23 @@ export default function JobDetailPage({
 
 function OverviewTab({
   job,
+  notes,
+  setNotes,
+  notesDirty,
+  setNotesDirty,
+  isUpdating,
+  onSaveNotes,
   onPrep,
   hasPreppedMaterials,
   isPrepping,
 }: {
   job: Job;
+  notes: string;
+  setNotes: (v: string) => void;
+  notesDirty: boolean;
+  setNotesDirty: (v: boolean) => void;
+  isUpdating: boolean;
+  onSaveNotes: () => void;
   onPrep: () => void;
   hasPreppedMaterials: boolean;
   isPrepping: boolean;
@@ -515,6 +535,40 @@ function OverviewTab({
             </CardContent>
           </Card>
         )}
+
+        {/* Notes */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <MessageSquare className="h-5 w-5" />
+                Your Notes
+              </CardTitle>
+              {notesDirty && (
+                <Button size="sm" variant="outline" onClick={onSaveNotes} disabled={isUpdating}>
+                  {isUpdating ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  Save
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              value={notes}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                setNotes(e.target.value);
+                setNotesDirty(e.target.value !== (job.notes || ""));
+              }}
+              placeholder="Add notes about this job, interview prep, contact info, follow-up reminders..."
+              rows={6}
+              className="resize-none"
+            />
+          </CardContent>
+        </Card>
       </div>
 
       {/* Sidebar */}
@@ -580,12 +634,67 @@ function OverviewTab({
             )}
           </CardContent>
         </Card>
+
+        {/* Timeline */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Clock className="h-5 w-5" />
+              Timeline
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <TimelineItem
+                label="Added"
+                date={job.created_at}
+                isCompleted
+              />
+              {job.prepped_at && (
+                <TimelineItem
+                  label="Prepped"
+                  date={job.prepped_at}
+                  isCompleted
+                />
+              )}
+              {job.cover_letter_generated_at && (
+                <TimelineItem
+                  label="PDF Generated"
+                  date={job.cover_letter_generated_at}
+                  isCompleted
+                />
+              )}
+              {job.status === "applied" && (
+                <TimelineItem
+                  label="Applied"
+                  date={job.updated_at || job.created_at}
+                  isCompleted
+                />
+              )}
+              {job.status === "interviewing" && (
+                <TimelineItem
+                  label="Interviewing"
+                  date={job.updated_at || job.created_at}
+                  isCompleted
+                />
+              )}
+              {job.status === "rejected" && (
+                <TimelineItem
+                  label="Rejected"
+                  date={job.updated_at || job.created_at}
+                  isCompleted
+                  isRejected
+                />
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
 }
 
-function CoverLetterTab({
+function PrepTab({
   job,
   coverLetter,
   setCoverLetter,
@@ -628,10 +737,10 @@ function CoverLetterTab({
         <div className="rounded-full bg-muted p-4 mb-4">
           <FileText className="h-8 w-8 text-muted-foreground" />
         </div>
-        <h3 className="text-lg font-semibold mb-2">No Cover Letter Yet</h3>
+        <h3 className="text-lg font-semibold mb-2">No Prep Materials Yet</h3>
         <p className="text-muted-foreground mb-6 max-w-md">
-          Generate a tailored cover letter by preparing this job. The AI will create a
-          personalized letter based on your resume and the job description.
+          Generate a tailored cover letter and talking points by preparing this job. The AI will create
+          personalized materials based on your resume and the job description.
         </p>
         <Button onClick={onPrep} disabled={isPrepping}>
           {isPrepping ? (
@@ -647,12 +756,16 @@ function CoverLetterTab({
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
-      {/* Editor */}
+      {/* Main content */}
       <div className="lg:col-span-2 space-y-4">
+        {/* Cover Letter */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Cover Letter</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <FileText className="h-5 w-5" />
+                Cover Letter
+              </CardTitle>
               <div className="flex items-center gap-2">
                 {coverLetterDirty && (
                   <Button size="sm" variant="outline" onClick={onSave} disabled={isUpdating}>
@@ -675,7 +788,7 @@ function CoverLetterTab({
                 setCoverLetterDirty(e.target.value !== job.cover_letter);
               }}
               placeholder="Your cover letter..."
-              rows={20}
+              rows={16}
               className="font-mono text-sm resize-none"
             />
           </CardContent>
@@ -687,11 +800,11 @@ function CoverLetterTab({
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <MessageSquare className="h-5 w-5" />
-                Prep Notes & Talking Points
+                Talking Points & Interview Prep
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <pre className="whitespace-pre-wrap text-sm font-sans">{job.prep_notes}</pre>
+              <pre className="whitespace-pre-wrap text-sm font-sans leading-relaxed">{job.prep_notes}</pre>
             </CardContent>
           </Card>
         )}
@@ -783,118 +896,24 @@ function CoverLetterTab({
             )}
           </CardContent>
         </Card>
-      </div>
-    </div>
-  );
-}
 
-function ApplicationTab({
-  job,
-  notes,
-  setNotes,
-  notesDirty,
-  setNotesDirty,
-  isUpdating,
-  onSaveNotes,
-}: {
-  job: Job;
-  notes: string;
-  setNotes: (v: string) => void;
-  notesDirty: boolean;
-  setNotesDirty: (v: boolean) => void;
-  isUpdating: boolean;
-  onSaveNotes: () => void;
-}) {
-  return (
-    <div className="grid gap-6 lg:grid-cols-3">
-      {/* Main content */}
-      <div className="lg:col-span-2 space-y-6">
-        {/* Notes */}
+        {/* Regenerate Materials */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Your Notes</CardTitle>
-              {notesDirty && (
-                <Button size="sm" variant="outline" onClick={onSaveNotes} disabled={isUpdating}>
-                  {isUpdating ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  Save
-                </Button>
-              )}
-            </div>
+            <CardTitle className="text-lg">Regenerate</CardTitle>
           </CardHeader>
           <CardContent>
-            <Textarea
-              value={notes}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
-                setNotes(e.target.value);
-                setNotesDirty(e.target.value !== (job.notes || ""));
-              }}
-              placeholder="Add notes about this job, interview prep, contact info, follow-up reminders..."
-              rows={10}
-              className="resize-none"
-            />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Sidebar */}
-      <div className="space-y-4">
-        {/* Application Timeline */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Clock className="h-5 w-5" />
-              Timeline
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <TimelineItem
-                label="Added"
-                date={job.created_at}
-                isCompleted
-              />
-              {job.prepped_at && (
-                <TimelineItem
-                  label="Prepped"
-                  date={job.prepped_at}
-                  isCompleted
-                />
+            <p className="text-sm text-muted-foreground mb-3">
+              Need fresh materials? Re-run the prep pipeline to generate new content.
+            </p>
+            <Button variant="outline" onClick={onPrep} disabled={isPrepping} className="w-full">
+              {isPrepping ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-4 w-4" />
               )}
-              {job.cover_letter_generated_at && (
-                <TimelineItem
-                  label="PDF Generated"
-                  date={job.cover_letter_generated_at}
-                  isCompleted
-                />
-              )}
-              {job.status === "applied" && (
-                <TimelineItem
-                  label="Applied"
-                  date={job.updated_at || job.created_at}
-                  isCompleted
-                />
-              )}
-              {job.status === "interviewing" && (
-                <TimelineItem
-                  label="Interviewing"
-                  date={job.updated_at || job.created_at}
-                  isCompleted
-                />
-              )}
-              {job.status === "rejected" && (
-                <TimelineItem
-                  label="Rejected"
-                  date={job.updated_at || job.created_at}
-                  isCompleted
-                  isRejected
-                />
-              )}
-            </div>
+              Re-generate Materials
+            </Button>
           </CardContent>
         </Card>
       </div>
