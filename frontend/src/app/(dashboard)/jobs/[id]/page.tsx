@@ -44,8 +44,8 @@ interface TabConfig {
 }
 
 const TABS: TabConfig[] = [
-  { id: "overview", label: "Overview", icon: Briefcase },
-  { id: "prep", label: "Prep", icon: Sparkles },
+  { id: "overview", label: "Job Details", icon: Briefcase },
+  { id: "prep", label: "Prep Materials", icon: Sparkles },
 ];
 
 // Generate status options from the shared constant
@@ -382,14 +382,14 @@ export default function JobDetailPage({
           </div>
           {job.status === "new" && (
             <p className="mt-2 text-xs text-muted-foreground">
-              <span className="text-cyan-600 dark:text-cyan-400">Tip:</span> Clicking
-              &quot;Prepped&quot; will generate a tailored cover letter and prep notes.
+              <span className="text-cyan-600 dark:text-cyan-400">Next step:</span> Click
+              &quot;Prepped&quot; to generate a tailored cover letter and interview talking points.
             </p>
           )}
           {job.status === "prepped" && (
             <p className="mt-2 text-xs text-muted-foreground">
-              <span className="text-purple-600 dark:text-purple-400">Tip:</span> Clicking
-              &quot;Reviewed&quot; will generate a PDF of your cover letter.
+              <span className="text-purple-600 dark:text-purple-400">Next step:</span> Review your materials, then click
+              &quot;Reviewed&quot; to generate a downloadable PDF.
             </p>
           )}
         </CardContent>
@@ -507,13 +507,13 @@ function OverviewTab({
     <div className="grid gap-6 lg:grid-cols-3">
       {/* Main content */}
       <div className="lg:col-span-2 space-y-6">
-        {/* AI Analysis */}
+        {/* AI Match Analysis */}
         {job.reasoning && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Sparkles className="h-5 w-5 text-amber-500" />
-                AI Analysis
+                AI Match Analysis
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -522,11 +522,11 @@ function OverviewTab({
           </Card>
         )}
 
-        {/* Description */}
+        {/* Full Description */}
         {job.description && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Job Description</CardTitle>
+              <CardTitle className="text-lg">Full Description</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -536,13 +536,13 @@ function OverviewTab({
           </Card>
         )}
 
-        {/* Notes */}
+        {/* Personal Notes */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <MessageSquare className="h-5 w-5" />
-                Your Notes
+                Personal Notes
               </CardTitle>
               {notesDirty && (
                 <Button size="sm" variant="outline" onClick={onSaveNotes} disabled={isUpdating}>
@@ -563,7 +563,7 @@ function OverviewTab({
                 setNotes(e.target.value);
                 setNotesDirty(e.target.value !== (job.notes || ""));
               }}
-              placeholder="Add notes about this job, interview prep, contact info, follow-up reminders..."
+              placeholder="Add personal notes, recruiter contacts, follow-up reminders, questions to ask..."
               rows={6}
               className="resize-none"
             />
@@ -581,9 +581,9 @@ function OverviewTab({
                 <div className="rounded-full bg-primary/10 p-3 mb-3">
                   <Sparkles className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="font-semibold mb-1">Ready to Prepare?</h3>
+                <h3 className="font-semibold mb-1">Ready to Prep?</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Generate a tailored cover letter and prep notes for this job.
+                  AI will generate a tailored cover letter and interview talking points.
                 </p>
                 <Button onClick={onPrep} disabled={isPrepping}>
                   {isPrepping ? (
@@ -591,17 +591,17 @@ function OverviewTab({
                   ) : (
                     <Sparkles className="mr-2 h-4 w-4" />
                   )}
-                  Prepare Materials
+                  Start Prep
                 </Button>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Job Details */}
+        {/* Job Info */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Details</CardTitle>
+            <CardTitle className="text-lg">Job Info</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {job.job_type && (
@@ -635,52 +635,52 @@ function OverviewTab({
           </CardContent>
         </Card>
 
-        {/* Timeline */}
+        {/* Activity */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Clock className="h-5 w-5" />
-              Timeline
+              Activity
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <TimelineItem
-                label="Added"
+                label="Job Added"
                 date={job.created_at}
                 isCompleted
               />
               {job.prepped_at && (
                 <TimelineItem
-                  label="Prepped"
+                  label="Materials Generated"
                   date={job.prepped_at}
                   isCompleted
                 />
               )}
               {job.cover_letter_generated_at && (
                 <TimelineItem
-                  label="PDF Generated"
+                  label="PDF Created"
                   date={job.cover_letter_generated_at}
                   isCompleted
                 />
               )}
               {job.status === "applied" && (
                 <TimelineItem
-                  label="Applied"
+                  label="Application Sent"
                   date={job.updated_at || job.created_at}
                   isCompleted
                 />
               )}
               {job.status === "interviewing" && (
                 <TimelineItem
-                  label="Interviewing"
+                  label="Interview Stage"
                   date={job.updated_at || job.created_at}
                   isCompleted
                 />
               )}
               {job.status === "rejected" && (
                 <TimelineItem
-                  label="Rejected"
+                  label="Not Selected"
                   date={job.updated_at || job.created_at}
                   isCompleted
                   isRejected
@@ -737,10 +737,10 @@ function PrepTab({
         <div className="rounded-full bg-muted p-4 mb-4">
           <FileText className="h-8 w-8 text-muted-foreground" />
         </div>
-        <h3 className="text-lg font-semibold mb-2">No Prep Materials Yet</h3>
+        <h3 className="text-lg font-semibold mb-2">No Materials Generated</h3>
         <p className="text-muted-foreground mb-6 max-w-md">
-          Generate a tailored cover letter and talking points by preparing this job. The AI will create
-          personalized materials based on your resume and the job description.
+          Run the prep pipeline to generate a tailored cover letter and interview talking points
+          based on your resume and the job description.
         </p>
         <Button onClick={onPrep} disabled={isPrepping}>
           {isPrepping ? (
@@ -748,7 +748,7 @@ function PrepTab({
           ) : (
             <Sparkles className="mr-2 h-4 w-4" />
           )}
-          Prepare Materials
+          Start Prep
         </Button>
       </div>
     );
@@ -794,13 +794,13 @@ function PrepTab({
           </CardContent>
         </Card>
 
-        {/* Prep Notes */}
+        {/* Interview Talking Points */}
         {job.prep_notes && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <MessageSquare className="h-5 w-5" />
-                Talking Points & Interview Prep
+                Interview Talking Points
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -812,10 +812,10 @@ function PrepTab({
 
       {/* Sidebar */}
       <div className="space-y-4">
-        {/* PDF Actions */}
+        {/* Cover Letter PDF */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">PDF Document</CardTitle>
+            <CardTitle className="text-lg">Cover Letter PDF</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {pdfError && (
@@ -857,7 +857,7 @@ function PrepTab({
                 {coverLetterDirty && (
                   <>
                     <p className="text-xs text-amber-600 dark:text-amber-400">
-                      Cover letter has been modified. Save and regenerate to update the PDF.
+                      You have unsaved changes. Save first, then regenerate the PDF.
                     </p>
                     <Button
                       variant="outline"
@@ -900,11 +900,11 @@ function PrepTab({
         {/* Regenerate Materials */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Regenerate</CardTitle>
+            <CardTitle className="text-lg">Need Changes?</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-3">
-              Need fresh materials? Re-run the prep pipeline to generate new content.
+              Want to start fresh? Re-run the AI prep to generate new materials.
             </p>
             <Button variant="outline" onClick={onPrep} disabled={isPrepping} className="w-full">
               {isPrepping ? (
@@ -912,7 +912,7 @@ function PrepTab({
               ) : (
                 <RefreshCw className="mr-2 h-4 w-4" />
               )}
-              Re-generate Materials
+              Regenerate All
             </Button>
           </CardContent>
         </Card>
