@@ -6,20 +6,19 @@ from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
 
 from app.api.deps import UserSvc
+from app.core.config import settings
 from app.core.oauth import oauth
 from app.core.security import create_access_token, create_refresh_token
 
 router = APIRouter()
 
 # Frontend URL for OAuth callback redirect
-FRONTEND_URL = "http://localhost:3000"
+FRONTEND_URL = settings.FRONTEND_URL
 
 
 @router.get("/google/login")
 async def google_login(request: Request):
     """Redirect to Google OAuth2 login page."""
-    from app.core.config import settings
-
     redirect_uri = settings.GOOGLE_REDIRECT_URI
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
