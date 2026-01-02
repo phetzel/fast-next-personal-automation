@@ -48,6 +48,7 @@ frontend/src/
 | `/pipelines` | `pipelines/page.tsx` | Pipeline execution |
 | `/jobs` | `jobs/page.tsx` | Jobs area overview |
 | `/jobs/list` | `jobs/list/page.tsx` | Job listings |
+| `/jobs/[id]` | `jobs/[id]/page.tsx` | Job detail page with prep materials |
 | `/jobs/profiles` | `jobs/profiles/page.tsx` | Job search profiles |
 | `/jobs/resumes` | `jobs/resumes/page.tsx` | Resume management |
 | `/jobs/search` | `jobs/search/page.tsx` | Job search pipelines |
