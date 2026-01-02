@@ -81,6 +81,7 @@ export default function JobDetailPage({
   const [coverLetterDirty, setCoverLetterDirty] = useState(false);
   const [notesDirty, setNotesDirty] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   // Fetch job on mount
   useEffect(() => {
@@ -96,13 +97,6 @@ export default function JobDetailPage({
     };
     loadJob();
   }, [jobId, fetchJob]);
-
-  // Auto-switch to cover letter tab when prepped
-  useEffect(() => {
-    if (job?.cover_letter && activeTab === "overview") {
-      // Don't auto-switch, let user explore
-    }
-  }, [job?.cover_letter, activeTab]);
 
   const refreshJob = async () => {
     const fetchedJob = await fetchJob(jobId);
@@ -174,10 +168,8 @@ export default function JobDetailPage({
 
     try {
       await apiClient.post<Job>(`/jobs/${job.id}/cover-letter/generate-pdf`);
-      const updated = await updateJobStatus(job.id, { status: "reviewed" });
-      if (updated) {
-        setJob(updated);
-      }
+      await updateJobStatus(job.id, { status: "reviewed" });
+      // Refresh to get the complete updated job including PDF path
       await refreshJob();
     } catch (error) {
       setPdfError(error instanceof Error ? error.message : "Failed to generate PDF");
@@ -189,6 +181,7 @@ export default function JobDetailPage({
   const handleDownloadPdf = async () => {
     if (!job) return;
     setIsDownloading(true);
+    setDownloadError(null);
     try {
       const response = await fetch(`/api/jobs/${job.id}/cover-letter/download`);
       if (!response.ok) throw new Error("Failed to download PDF");
@@ -207,7 +200,7 @@ export default function JobDetailPage({
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
-      console.error("Download failed:", error);
+      setDownloadError(error instanceof Error ? error.message : "Failed to download PDF");
     } finally {
       setIsDownloading(false);
     }
@@ -215,7 +208,7 @@ export default function JobDetailPage({
 
   const handlePreviewPdf = () => {
     if (!job) return;
-    window.open(`/api/jobs/${job.id}/cover-letter/preview`, "_blank");
+    window.open(`/api/jobs/${job.id}/cover-letter/preview`, "_blank", "noopener,noreferrer");
   };
 
   const handleRegeneratePdf = async () => {
@@ -397,7 +390,7 @@ export default function JobDetailPage({
 
       {/* Tabs */}
       <div className="border-b">
-        <nav className="flex gap-6" aria-label="Tabs">
+        <nav className="flex gap-6" role="tablist" aria-label="Job detail tabs">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -406,6 +399,10 @@ export default function JobDetailPage({
             return (
               <button
                 key={tab.id}
+                id={`tab-${tab.id}`}
+                role="tab"
+                aria-selected={isActive}
+                aria-controls={`tabpanel-${tab.id}`}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
                   "flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors",
@@ -417,7 +414,7 @@ export default function JobDetailPage({
                 <Icon className="h-4 w-4" />
                 {tab.label}
                 {showBadge && (
-                  <span className="flex h-2 w-2 rounded-full bg-cyan-500" />
+                  <span className="flex h-2 w-2 rounded-full bg-cyan-500" aria-label="Has prep materials" />
                 )}
               </button>
             );
@@ -426,7 +423,7 @@ export default function JobDetailPage({
       </div>
 
       {/* Tab Content */}
-      <div className="min-h-[400px]">
+      <div className="min-h-[400px]" role="tabpanel" id={`tabpanel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
         {activeTab === "overview" && (
           <OverviewTab
             job={job}
@@ -454,6 +451,7 @@ export default function JobDetailPage({
             isDownloading={isDownloading}
             hasPdf={hasPdf}
             pdfError={pdfError}
+            downloadError={downloadError}
             onSave={handleSaveCoverLetter}
             onPreview={handlePreviewPdf}
             onDownload={handleDownloadPdf}
@@ -705,6 +703,7 @@ function PrepTab({
   isDownloading,
   hasPdf,
   pdfError,
+  downloadError,
   onSave,
   onPreview,
   onDownload,
@@ -723,6 +722,7 @@ function PrepTab({
   isDownloading: boolean;
   hasPdf: boolean;
   pdfError: string | null;
+  downloadError: string | null;
   onSave: () => void;
   onPreview: () => void;
   onDownload: () => void;
@@ -823,6 +823,15 @@ function PrepTab({
                 <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
                   <AlertCircle className="h-4 w-4" />
                   <span>{pdfError}</span>
+                </div>
+              </div>
+            )}
+
+            {downloadError && (
+              <div className="rounded-md border border-red-500/20 bg-red-500/5 p-3">
+                <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>{downloadError}</span>
                 </div>
               </div>
             )}

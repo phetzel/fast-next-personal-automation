@@ -498,11 +498,12 @@ class JobService:
         # Generate a clean filename without the storage UUID prefix
         # This requires us to get the user's profile for name
         profile = await job_profile_repo.get_default_for_user(self.db, user_id)
-        
+
         # Get user for name fallback
         from app.repositories import user_repo
+
         user = await user_repo.get_by_id(self.db, user_id)
-        
+
         if user:
             contact_info = self._build_contact_info(user, profile)
             filename = generate_cover_letter_filename(

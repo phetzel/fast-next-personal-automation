@@ -236,8 +236,10 @@ services:
 
 networks:
   traefik-public:
+    name: traefik-public
     driver: bridge
   backend-internal:
+    name: backend-internal
     driver: bridge
     internal: true
 
