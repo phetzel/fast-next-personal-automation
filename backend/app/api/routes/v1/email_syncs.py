@@ -57,13 +57,15 @@ async def trigger_sync(
 ):
     """Trigger a new email sync for all active sources.
 
-    Returns immediately with sync ID. The sync runs asynchronously.
+    Runs the sync synchronously and returns results when complete.
     """
-    # Start the sync record
-    sync = await email_service.start_sync(current_user.id, sync_input.force_full_sync)
+    # Start the sync record (returns existing if one is running)
+    sync, is_new = await email_service.start_sync(
+        current_user.id, sync_input.force_full_sync
+    )
 
     # If sync was already running, return that
-    if sync.status == "running" and sync.started_at:
+    if not is_new:
         return EmailSyncResult(
             sync_id=sync.id,
             status="already_running",
