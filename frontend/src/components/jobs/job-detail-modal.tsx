@@ -32,7 +32,9 @@ import {
   Sparkles,
   Eye,
   RefreshCw,
+  Maximize2,
 } from "lucide-react";
+import Link from "next/link";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -533,19 +535,27 @@ export function JobDetailModal({
 
           {/* Actions */}
           <div className="flex items-center justify-between border-t pt-4">
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleDelete}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Trash2 className="mr-2 h-4 w-4" />
-              )}
-              Delete
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-2 h-4 w-4" />
+                )}
+                Delete
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/jobs/${job.id}`} onClick={onClose}>
+                  <Maximize2 className="mr-2 h-4 w-4" />
+                  Full View
+                </Link>
+              </Button>
+            </div>
             <Button asChild>
               <a
                 href={job.job_url}
