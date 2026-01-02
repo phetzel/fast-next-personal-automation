@@ -64,7 +64,9 @@ def _apply_filters(query: Select, user_id: UUID, filters: JobFilters) -> Select:
 
     if filters.posted_within_hours is not None:
         cutoff_time = datetime.now(UTC) - timedelta(hours=filters.posted_within_hours)
-        query = query.where(Job.date_posted >= cutoff_time)
+        # Explicitly require date_posted to exist and be recent
+        # This ensures jobs without date_posted don't slip through
+        query = query.where(Job.date_posted.isnot(None), Job.date_posted >= cutoff_time)
 
     return query
 

@@ -471,7 +471,7 @@ class JobService:
             user_id: The user ID for ownership verification
 
         Returns:
-            Tuple of (pdf_bytes, filename)
+            Tuple of (pdf_bytes, filename) - filename is clean without storage UUID prefix
 
         Raises:
             NotFoundError: If job doesn't exist or doesn't belong to user
@@ -495,8 +495,24 @@ class JobService:
                 details={"file_path": job.cover_letter_file_path},
             ) from e
 
-        # Extract filename from path
-        filename = job.cover_letter_file_path.split("/")[-1]
+        # Generate a clean filename without the storage UUID prefix
+        # This requires us to get the user's profile for name
+        profile = await job_profile_repo.get_default_for_user(self.db, user_id)
+        
+        # Get user for name fallback
+        from app.repositories import user_repo
+        user = await user_repo.get_by_id(self.db, user_id)
+        
+        if user:
+            contact_info = self._build_contact_info(user, profile)
+            filename = generate_cover_letter_filename(
+                company=job.company,
+                job_title=job.title,
+                applicant_name=contact_info.full_name,
+            )
+        else:
+            # Fallback to extracting from path (with UUID prefix)
+            filename = job.cover_letter_file_path.split("/")[-1]
 
         return pdf_bytes, filename
 
