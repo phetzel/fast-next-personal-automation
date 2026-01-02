@@ -213,6 +213,8 @@ services:
       - NODE_ENV=production
       - BACKEND_URL=http://app:8000
       - BACKEND_WS_URL=ws://app:8000
+      - NEXT_PUBLIC_API_URL=https://api.${DOMAIN:-localhost}
+      - NEXT_PUBLIC_WS_URL=wss://api.${DOMAIN:-localhost}
     networks:
       - traefik-public
     labels:
