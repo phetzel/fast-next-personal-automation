@@ -34,6 +34,9 @@ import {
   MapPin,
   Trash2,
   FileText,
+  Mail,
+  Search,
+  PenLine,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -209,19 +212,47 @@ export function JobTable({
         header: "Source",
         cell: ({ row }) => {
           const job = row.original;
-          if (!job.source) return <span className="text-muted-foreground">—</span>;
+          // Ingestion source icon and color
+          const ingestionConfig = {
+            scrape: { icon: Search, color: "text-blue-600 dark:text-blue-400", label: "Scraped" },
+            email: { icon: Mail, color: "text-amber-600 dark:text-amber-400", label: "Email" },
+            manual: { icon: PenLine, color: "text-purple-600 dark:text-purple-400", label: "Manual" },
+          };
+          const ingestion = job.ingestion_source ? ingestionConfig[job.ingestion_source] : null;
+          const IngestionIcon = ingestion?.icon;
+
           return (
-            <a
-              href={job.job_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs capitalize text-muted-foreground transition-colors hover:text-foreground"
-              onClick={(e) => e.stopPropagation()}
-              title="View original job posting"
-            >
-              {job.source}
-              <ExternalLink className="h-3 w-3" />
-            </a>
+            <div className="flex flex-col gap-0.5">
+              {/* Platform source with link */}
+              {job.source ? (
+                <a
+                  href={job.job_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs capitalize text-muted-foreground transition-colors hover:text-foreground"
+                  onClick={(e) => e.stopPropagation()}
+                  title="View original job posting"
+                >
+                  {job.source}
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              ) : (
+                <span className="text-muted-foreground text-xs">—</span>
+              )}
+              {/* Ingestion source indicator */}
+              {ingestion && IngestionIcon && (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 text-[10px] font-medium",
+                    ingestion.color
+                  )}
+                  title={`Added via ${ingestion.label}`}
+                >
+                  <IngestionIcon className="h-3 w-3" />
+                  {ingestion.label}
+                </span>
+              )}
+            </div>
           );
         },
         enableSorting: false,

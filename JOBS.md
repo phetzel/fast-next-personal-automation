@@ -811,6 +811,49 @@ NEW → PREPPED → REVIEWED → (generate PDF) → APPLIED
 
 ---
 
+## Phase 12: Email Sync Enhancements
+
+**Goal:** Normalize email-sourced jobs with scraped jobs by fetching full descriptions and filtering by score.
+
+### Changes Made
+
+1. **Job Description Scraper (`backend/app/browser/job_scraper.py`):**
+   - Playwright-based scraper for fetching full job descriptions from URLs
+   - Domain-specific selectors for LinkedIn, Indeed, Glassdoor, Lever, Greenhouse, Dice, ZipRecruiter, HiringCafe
+   - Fallback generic selectors for unknown sites
+   - Batch scraping with concurrency control
+
+2. **Email Sync Pipeline Enhancements:**
+   - New `enrich_descriptions` input (default: true) - scrapes full descriptions from job URLs
+   - New `save_all` input (default: false) - when false, only saves jobs meeting min_score threshold
+   - New output fields: `jobs_enriched`, `jobs_filtered`
+   - Uses profile's `min_score_threshold` for filtering
+
+3. **Frontend Ingestion Source Display:**
+   - Added `ingestion_source` to Job type (`"scrape" | "email" | "manual"`)
+   - Job table shows ingestion source with icons:
+     - 🔍 Blue for "Scraped" (job search pipeline)
+     - 📧 Amber for "Email" (email sync)
+     - ✏️ Purple for "Manual" (manually added)
+   - Job card also shows ingestion source indicator
+   - New filter dropdown to filter by ingestion source
+
+### Benefits
+- Email-sourced jobs now have full descriptions like scraped jobs
+- Better AI analysis with complete job content
+- Consistent data quality across all ingestion sources
+- Clear visibility into how each job was discovered
+- Option to filter out low-scoring email jobs
+
+### Completion Criteria
+- [x] Job description scraper created using Playwright
+- [x] Email sync enriches descriptions before AI analysis
+- [x] Email sync respects min_score threshold (save_all option)
+- [x] Frontend shows ingestion source in job table and card
+- [x] Frontend filter for ingestion source added
+
+---
+
 ## Future Enhancements (Out of Scope)
 
 1. **Job Application Tracking** - Track applied jobs, responses, interviews
@@ -840,8 +883,9 @@ NEW → PREPPED → REVIEWED → (generate PDF) → APPLIED
 | Phase 9 | ✅ Complete | - | Profile-based story and project linking |
 | Phase 10 | ✅ Complete | - | Inline pipeline execution from listings page |
 | Phase 11 | ✅ Complete | - | Soft delete and enhanced scraping fields |
+| Phase 12 | ✅ Complete | - | Email sync enhancements (description scraping, score filtering, ingestion source display) |
 
 ---
 
-*Last Updated: 2025-12-27*
+*Last Updated: 2025-01-02*
 

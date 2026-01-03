@@ -82,6 +82,14 @@ export function getAllowedTransitions(from: JobStatus): JobStatus[] {
 /**
  * A job listing from the database.
  */
+/**
+ * How a job was discovered/added to the system.
+ */
+export type IngestionSource = "scrape" | "email" | "manual";
+
+/**
+ * A job listing from the database.
+ */
 export interface Job {
   id: string;
   user_id: string;
@@ -93,6 +101,7 @@ export interface Job {
   salary_range: string | null;
   date_posted: string | null;
   source: string | null;
+  ingestion_source: IngestionSource | null;
   relevance_score: number | null;
   reasoning: string | null;
   status: JobStatus;
@@ -157,6 +166,7 @@ export interface JobStats {
 export interface JobFilters {
   status?: JobStatus;
   source?: string;
+  ingestion_source?: IngestionSource;
   min_score?: number;
   max_score?: number;
   search?: string;
