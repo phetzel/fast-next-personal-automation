@@ -12,4 +12,5 @@ export { SearchAllJobsModal } from "./search-all-jobs-modal";
 export { PrepJobModal } from "./prep-job-modal";
 export { BatchPrepModal } from "./batch-prep-modal";
 export { DeleteByStatusModal } from "./delete-by-status-modal";
+export { IngestionSourceBadge, INGESTION_SOURCE_CONFIG } from "./ingestion-source";
 

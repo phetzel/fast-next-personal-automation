@@ -247,5 +247,3 @@ async def scrape_job_descriptions_batch(
     logger.info(f"Batch scrape complete: {success_count}/{len(urls)} successful")
 
     return results
-
-

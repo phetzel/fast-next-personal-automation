@@ -5,7 +5,8 @@ import type { Job } from "@/types";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "./status-badge";
 import { ScoreBadge } from "./score-badge";
-import { Building2, MapPin, Calendar, ExternalLink, Mail, Search, PenLine } from "lucide-react";
+import { IngestionSourceBadge } from "./ingestion-source";
+import { Building2, MapPin, Calendar, ExternalLink } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface JobCardProps {
@@ -74,21 +75,7 @@ export function JobCard({ job, onClick, className }: JobCardProps) {
           <StatusBadge status={job.status} />
           <div className="flex items-center gap-2">
             {/* Ingestion source indicator */}
-            {job.ingestion_source && (
-              <span
-                className={cn(
-                  "inline-flex items-center gap-0.5 text-xs",
-                  job.ingestion_source === "email" && "text-amber-600 dark:text-amber-400",
-                  job.ingestion_source === "scrape" && "text-blue-600 dark:text-blue-400",
-                  job.ingestion_source === "manual" && "text-purple-600 dark:text-purple-400"
-                )}
-                title={`Added via ${job.ingestion_source}`}
-              >
-                {job.ingestion_source === "email" && <Mail className="h-3 w-3" />}
-                {job.ingestion_source === "scrape" && <Search className="h-3 w-3" />}
-                {job.ingestion_source === "manual" && <PenLine className="h-3 w-3" />}
-              </span>
-            )}
+            <IngestionSourceBadge source={job.ingestion_source} />
             {job.source && (
               <span className="text-muted-foreground text-xs capitalize">
                 {job.source}

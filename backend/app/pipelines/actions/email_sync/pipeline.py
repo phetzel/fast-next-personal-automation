@@ -325,7 +325,7 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
                 if raw_jobs and enrich_descriptions:
                     raw_jobs = await self._enrich_job_descriptions(raw_jobs)
                     result["jobs_enriched"] += sum(
-                        1 for job in raw_jobs if job.description and len(job.description) > 200
+                        1 for job in raw_jobs if job.description and len(job.description) > 500
                     )
 
                 if raw_jobs:

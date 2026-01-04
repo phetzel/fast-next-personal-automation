@@ -80,9 +80,6 @@ export function getAllowedTransitions(from: JobStatus): JobStatus[] {
 }
 
 /**
- * A job listing from the database.
- */
-/**
  * How a job was discovered/added to the system.
  */
 export type IngestionSource = "scrape" | "email" | "manual";

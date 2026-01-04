@@ -13,6 +13,7 @@ import {
 import type { Job, JobStatus } from "@/types";
 import { StatusBadge } from "./status-badge";
 import { ScoreBadge } from "./score-badge";
+import { IngestionSourceBadge } from "./ingestion-source";
 import { Button } from "@/components/ui";
 import {
   Table,
@@ -34,9 +35,6 @@ import {
   MapPin,
   Trash2,
   FileText,
-  Mail,
-  Search,
-  PenLine,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -212,14 +210,6 @@ export function JobTable({
         header: "Source",
         cell: ({ row }) => {
           const job = row.original;
-          // Ingestion source icon and color
-          const ingestionConfig = {
-            scrape: { icon: Search, color: "text-blue-600 dark:text-blue-400", label: "Scraped" },
-            email: { icon: Mail, color: "text-amber-600 dark:text-amber-400", label: "Email" },
-            manual: { icon: PenLine, color: "text-purple-600 dark:text-purple-400", label: "Manual" },
-          };
-          const ingestion = job.ingestion_source ? ingestionConfig[job.ingestion_source] : null;
-          const IngestionIcon = ingestion?.icon;
 
           return (
             <div className="flex flex-col gap-0.5">
@@ -240,18 +230,7 @@ export function JobTable({
                 <span className="text-muted-foreground text-xs">—</span>
               )}
               {/* Ingestion source indicator */}
-              {ingestion && IngestionIcon && (
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1 text-[10px] font-medium",
-                    ingestion.color
-                  )}
-                  title={`Added via ${ingestion.label}`}
-                >
-                  <IngestionIcon className="h-3 w-3" />
-                  {ingestion.label}
-                </span>
-              )}
+              <IngestionSourceBadge source={job.ingestion_source} showLabel />
             </div>
           );
         },
