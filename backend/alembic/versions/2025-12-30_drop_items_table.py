@@ -6,6 +6,7 @@ Create Date: 2025-12-30 08:53:08.051010
 
 Removes the legacy Item example/template table that was used for CRUD demonstration.
 """
+
 from collections.abc import Sequence
 
 import sqlalchemy as sa
@@ -13,8 +14,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = 'f97536b40747'
-down_revision: str | None = 'email_sources_001'
+revision: str = "f97536b40747"
+down_revision: str | None = "email_sources_001"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

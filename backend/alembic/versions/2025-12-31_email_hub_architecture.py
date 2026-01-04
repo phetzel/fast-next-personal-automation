@@ -73,7 +73,9 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name="email_destinations_pkey"),
     )
-    op.create_index("email_destinations_user_id_idx", "email_destinations", ["user_id"], unique=False)
+    op.create_index(
+        "email_destinations_user_id_idx", "email_destinations", ["user_id"], unique=False
+    )
 
     # Create email_message_destinations junction table
     op.create_table(

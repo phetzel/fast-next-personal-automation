@@ -43,6 +43,8 @@ export function useJobs() {
 
       if (appliedFilters.status) params.set("status", appliedFilters.status);
       if (appliedFilters.source) params.set("source", appliedFilters.source);
+      if (appliedFilters.ingestion_source)
+        params.set("ingestion_source", appliedFilters.ingestion_source);
       if (appliedFilters.min_score !== undefined)
         params.set("min_score", String(appliedFilters.min_score));
       if (appliedFilters.max_score !== undefined)

@@ -5,6 +5,7 @@ import type { Job } from "@/types";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "./status-badge";
 import { ScoreBadge } from "./score-badge";
+import { IngestionSourceBadge } from "./ingestion-source";
 import { Building2, MapPin, Calendar, ExternalLink } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -73,6 +74,8 @@ export function JobCard({ job, onClick, className }: JobCardProps) {
         <div className="flex items-center justify-between">
           <StatusBadge status={job.status} />
           <div className="flex items-center gap-2">
+            {/* Ingestion source indicator */}
+            <IngestionSourceBadge source={job.ingestion_source} />
             {job.source && (
               <span className="text-muted-foreground text-xs capitalize">
                 {job.source}
