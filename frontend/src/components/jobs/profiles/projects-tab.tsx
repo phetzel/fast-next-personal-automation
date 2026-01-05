@@ -9,14 +9,7 @@ import { PROJECT_ACCEPTED_TYPES, PROJECT_ACCEPTED_EXTENSIONS } from "@/lib/file-
 import { Loader2, FolderOpen } from "lucide-react";
 
 export function ProjectsTab() {
-  const {
-    projects,
-    isLoading,
-    error,
-    fetchProjects,
-    uploadProject,
-    deleteProject,
-  } = useProjects();
+  const { projects, isLoading, error, fetchProjects, uploadProject, deleteProject } = useProjects();
 
   const [isUploading, setIsUploading] = useState(false);
 
@@ -42,8 +35,8 @@ export function ProjectsTab() {
         <CardHeader>
           <CardTitle>Upload Project</CardTitle>
           <CardDescription>
-            Upload project descriptions in Markdown or text format. Multiple projects
-            can be active at the same time.
+            Upload project descriptions in Markdown or text format. Multiple projects can be active
+            at the same time.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -70,7 +63,7 @@ export function ProjectsTab() {
 
       {isLoading && projects.length === 0 && (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
         </div>
       )}
 
@@ -78,11 +71,11 @@ export function ProjectsTab() {
         <div>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold">Your Projects</h2>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-muted-foreground text-sm">
               {projects.length} project{projects.length !== 1 ? "s" : ""}
             </span>
           </div>
-          <p className="mb-3 text-sm text-muted-foreground">
+          <p className="text-muted-foreground mb-3 text-sm">
             Link projects to profiles in the Profiles tab to use them in job applications.
           </p>
           <div className="space-y-2">
@@ -101,9 +94,9 @@ export function ProjectsTab() {
       {!isLoading && projects.length === 0 && (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <FolderOpen className="h-12 w-12 text-muted-foreground/50" />
+            <FolderOpen className="text-muted-foreground/50 h-12 w-12" />
             <h3 className="mt-4 font-semibold">No Projects Yet</h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Upload your first project description to showcase your work.
             </p>
           </CardContent>
@@ -112,4 +105,3 @@ export function ProjectsTab() {
     </div>
   );
 }
-

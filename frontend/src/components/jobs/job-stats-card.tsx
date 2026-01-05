@@ -120,4 +120,3 @@ export function JobStatsCard({ stats, isLoading, className }: JobStatsCardProps)
     </Card>
   );
 }
-

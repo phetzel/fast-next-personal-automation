@@ -77,14 +77,7 @@ class IndeedParser(EmailParser):
                     logger.debug(f"Error parsing Indeed job card: {e}")
                     continue
 
-            # Deduplicate by URL
-            seen_urls = set()
-            unique_jobs = []
-            for job in jobs:
-                if job.job_url not in seen_urls:
-                    seen_urls.add(job.job_url)
-                    unique_jobs.append(job)
-
+            unique_jobs = self._deduplicate_jobs(jobs)
             logger.info(f"Extracted {len(unique_jobs)} jobs from Indeed email")
             return unique_jobs
 

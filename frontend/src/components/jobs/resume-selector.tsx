@@ -73,7 +73,7 @@ export function ResumeSelector({
             </>
           ) : selectedResume ? (
             <>
-              <FileText className="h-4 w-4 text-muted-foreground" />
+              <FileText className="text-muted-foreground h-4 w-4" />
               <span className="truncate">{selectedResume.name}</span>
               {!selectedResume.has_text && (
                 <span className="text-xs text-amber-600">(no text)</span>
@@ -83,16 +83,16 @@ export function ResumeSelector({
             <span className="text-muted-foreground">{placeholder}</span>
           )}
         </span>
-        <ChevronDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
+        <ChevronDown className="text-muted-foreground ml-2 h-4 w-4 shrink-0" />
       </Button>
 
       {/* Dropdown menu */}
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-1 shadow-md">
+        <div className="bg-popover absolute z-50 mt-1 w-full rounded-md border p-1 shadow-md">
           {/* No resume option */}
           <button
             type="button"
-            className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+            className="hover:bg-accent flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm"
             onClick={() => handleSelect(null)}
           >
             <span className="w-4" />
@@ -108,24 +108,22 @@ export function ResumeSelector({
             <button
               key={resume.id}
               type="button"
-              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+              className="hover:bg-accent flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm"
               onClick={() => handleSelect(resume)}
             >
-              <FileText className="h-4 w-4 text-muted-foreground" />
+              <FileText className="text-muted-foreground h-4 w-4" />
               <div className="min-w-0 flex-1 text-left">
                 <div className="flex items-center gap-1.5">
                   <span className="truncate">{resume.name}</span>
                   {resume.is_primary && (
-                    <span className="shrink-0 rounded bg-primary/10 px-1 text-xs text-primary">
+                    <span className="bg-primary/10 text-primary shrink-0 rounded px-1 text-xs">
                       Primary
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
                   <span className="truncate">{resume.original_filename}</span>
-                  {!resume.has_text && (
-                    <span className="text-amber-600">(no text)</span>
-                  )}
+                  {!resume.has_text && <span className="text-amber-600">(no text)</span>}
                 </div>
               </div>
               {value === resume.id && <Check className="ml-auto h-4 w-4 shrink-0" />}
@@ -134,7 +132,7 @@ export function ResumeSelector({
 
           {/* Empty state */}
           {resumes.length === 0 && (
-            <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+            <div className="text-muted-foreground px-2 py-4 text-center text-sm">
               No resumes uploaded yet
             </div>
           )}
@@ -143,7 +141,7 @@ export function ResumeSelector({
           <div className="my-1 border-t" />
           <Link
             href={ROUTES.JOBS_PROFILES}
-            className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-primary hover:bg-accent"
+            className="text-primary hover:bg-accent flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm"
             onClick={() => setIsOpen(false)}
           >
             <ExternalLink className="h-4 w-4" />
@@ -154,4 +152,3 @@ export function ResumeSelector({
     </div>
   );
 }
-

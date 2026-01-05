@@ -8,7 +8,7 @@ import { Workflow, Briefcase, Sparkles } from "lucide-react";
 
 export default function JobPipelinesPage() {
   const searchParams = useSearchParams();
-  
+
   // Read pipeline and initial values from URL params
   const expandedPipeline = searchParams.get("pipeline") || undefined;
   const initialValues = useMemo(() => {
@@ -28,9 +28,7 @@ export default function JobPipelinesPage() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Job Pipelines</h1>
-        <p className="text-muted-foreground">
-          Run automated pipelines for job search and analysis
-        </p>
+        <p className="text-muted-foreground">Run automated pipelines for job search and analysis</p>
       </div>
 
       {/* Info Card */}
@@ -41,18 +39,18 @@ export default function JobPipelinesPage() {
           </div>
           <div className="space-y-1">
             <h3 className="font-medium">Job Pipelines</h3>
-            <p className="text-sm text-muted-foreground">
-              These pipelines are designed to help you find and analyze job opportunities.
-              Select a pipeline below to get started.
+            <p className="text-muted-foreground text-sm">
+              These pipelines are designed to help you find and analyze job opportunities. Select a
+              pipeline below to get started.
             </p>
           </div>
         </CardContent>
       </Card>
 
       {/* Job-specific pipelines */}
-      <PipelineList 
-        area="jobs" 
-        showFilters={false} 
+      <PipelineList
+        area="jobs"
+        showFilters={false}
         expandedPipeline={expandedPipeline}
         initialValues={initialValues}
       />
@@ -60,30 +58,30 @@ export default function JobPipelinesPage() {
       {/* How it works */}
       <Card>
         <CardContent className="py-6">
-          <h3 className="font-semibold mb-4 flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
+          <h3 className="mb-4 flex items-center gap-2 font-semibold">
+            <Sparkles className="text-primary h-4 w-4" />
             How Job Pipelines Work
           </h3>
-          <ul className="space-y-3 text-sm text-muted-foreground">
+          <ul className="text-muted-foreground space-y-3 text-sm">
             <li className="flex items-start gap-2">
-              <Briefcase className="h-4 w-4 mt-0.5 text-primary" />
+              <Briefcase className="text-primary mt-0.5 h-4 w-4" />
               <span>
-                <strong className="text-foreground">Profile Required:</strong> Make sure you have a job profile 
-                with a linked resume before running pipelines.
+                <strong className="text-foreground">Profile Required:</strong> Make sure you have a
+                job profile with a linked resume before running pipelines.
               </span>
             </li>
             <li className="flex items-start gap-2">
-              <Workflow className="h-4 w-4 mt-0.5 text-primary" />
+              <Workflow className="text-primary mt-0.5 h-4 w-4" />
               <span>
-                <strong className="text-foreground">Smart Matching:</strong> AI analyzes each job against 
-                your resume and target roles to calculate a relevance score.
+                <strong className="text-foreground">Smart Matching:</strong> AI analyzes each job
+                against your resume and target roles to calculate a relevance score.
               </span>
             </li>
             <li className="flex items-start gap-2">
-              <Sparkles className="h-4 w-4 mt-0.5 text-primary" />
+              <Sparkles className="text-primary mt-0.5 h-4 w-4" />
               <span>
-                <strong className="text-foreground">Automatic Filtering:</strong> Only jobs above your 
-                minimum score threshold are saved, unless you enable &quot;save all&quot;.
+                <strong className="text-foreground">Automatic Filtering:</strong> Only jobs above
+                your minimum score threshold are saved, unless you enable &quot;save all&quot;.
               </span>
             </li>
           </ul>
@@ -92,4 +90,3 @@ export default function JobPipelinesPage() {
     </div>
   );
 }
-

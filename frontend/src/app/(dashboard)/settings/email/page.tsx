@@ -29,15 +29,13 @@ function Alert({
 }) {
   const baseStyles = "flex items-start gap-3 rounded-lg border p-4";
   const variantStyles =
-    variant === "destructive"
-      ? "border-destructive/50 bg-destructive/10"
-      : className;
+    variant === "destructive" ? "border-destructive/50 bg-destructive/10" : className;
   return <div className={`${baseStyles} ${variantStyles}`}>{children}</div>;
 }
 
 // Simple skeleton component
 function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-muted ${className}`} />;
+  return <div className={`bg-muted animate-pulse rounded ${className}`} />;
 }
 
 export default function EmailSettingsPage() {
@@ -112,16 +110,13 @@ export default function EmailSettingsPage() {
     try {
       setSyncing(sourceId);
       setError(null);
-      const result = await apiClient.post<EmailSyncOutput>(
-        `/email/sources/${sourceId}/sync`
-      );
+      const result = await apiClient.post<EmailSyncOutput>(`/email/sources/${sourceId}/sync`);
       setSuccess(
         `Synced ${result.emails_processed} emails, extracted ${result.jobs_extracted} items, saved ${result.jobs_saved} new`
       );
 
       // Refresh sources to update last_sync_at
-      const updatedSources =
-        await apiClient.get<EmailSource[]>("/email/sources");
+      const updatedSources = await apiClient.get<EmailSource[]>("/email/sources");
       setSources(updatedSources);
     } catch (err) {
       setError("Failed to sync email source");
@@ -138,11 +133,7 @@ export default function EmailSettingsPage() {
       });
 
       // Update local state
-      setSources(
-        sources.map((s) =>
-          s.id === source.id ? { ...s, is_active: !s.is_active } : s
-        )
-      );
+      setSources(sources.map((s) => (s.id === source.id ? { ...s, is_active: !s.is_active } : s)));
     } catch (err) {
       setError("Failed to update email source");
       console.error(err);
@@ -173,9 +164,7 @@ export default function EmailSettingsPage() {
     return (
       <div className="container mx-auto max-w-4xl space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Email Integration
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Email Integration</h1>
           <p className="text-muted-foreground">
             Connect your email to automatically sync and parse content
           </p>
@@ -190,9 +179,7 @@ export default function EmailSettingsPage() {
   return (
     <div className="container mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          Email Integration
-        </h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Email Integration</h1>
         <p className="text-muted-foreground">
           Connect your email to automatically sync and parse content
         </p>
@@ -200,17 +187,15 @@ export default function EmailSettingsPage() {
 
       {error && (
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
-          <p className="text-sm text-destructive">{error}</p>
+          <AlertCircle className="text-destructive h-4 w-4 shrink-0" />
+          <p className="text-destructive text-sm">{error}</p>
         </Alert>
       )}
 
       {success && (
         <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
           <Check className="h-4 w-4 shrink-0 text-green-600" />
-          <p className="text-sm text-green-700 dark:text-green-300">
-            {success}
-          </p>
+          <p className="text-sm text-green-700 dark:text-green-300">{success}</p>
         </Alert>
       )}
 
@@ -218,11 +203,7 @@ export default function EmailSettingsPage() {
       <Card className="p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Connected Accounts</h2>
-          <Button
-            onClick={handleConnect}
-            className="gap-2"
-            disabled={connecting}
-          >
+          <Button onClick={handleConnect} className="gap-2" disabled={connecting}>
             {connecting ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
@@ -234,11 +215,9 @@ export default function EmailSettingsPage() {
 
         {sources.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Inbox className="mb-4 h-12 w-12 text-muted-foreground" />
-            <p className="mb-2 text-lg font-medium">
-              No email accounts connected
-            </p>
-            <p className="mb-4 text-sm text-muted-foreground">
+            <Inbox className="text-muted-foreground mb-4 h-12 w-12" />
+            <p className="mb-2 text-lg font-medium">No email accounts connected</p>
+            <p className="text-muted-foreground mb-4 text-sm">
               Connect your Gmail to automatically sync emails
             </p>
           </div>
@@ -250,26 +229,22 @@ export default function EmailSettingsPage() {
                 className="flex flex-col gap-4 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                    <Mail className="h-5 w-5 text-primary" />
+                  <div className="bg-primary/10 flex h-10 w-10 items-center justify-center rounded-full">
+                    <Mail className="text-primary h-5 w-5" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{source.email_address}</span>
-                      <Badge
-                        variant={source.is_active ? "default" : "secondary"}
-                      >
+                      <Badge variant={source.is_active ? "default" : "secondary"}>
                         {source.is_active ? "Active" : "Paused"}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="text-muted-foreground flex items-center gap-2 text-sm">
                       <Clock className="h-3 w-3" />
                       Last sync: {formatDate(source.last_sync_at)}
                     </div>
                     {source.last_sync_error && (
-                      <p className="mt-1 text-sm text-destructive">
-                        {source.last_sync_error}
-                      </p>
+                      <p className="text-destructive mt-1 text-sm">{source.last_sync_error}</p>
                     )}
                   </div>
                 </div>
@@ -288,11 +263,7 @@ export default function EmailSettingsPage() {
                     )}
                     <span className="ml-2">Sync Now</span>
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleToggle(source)}
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => handleToggle(source)}>
                     {source.is_active ? "Pause" : "Resume"}
                   </Button>
                   <Button
@@ -314,22 +285,17 @@ export default function EmailSettingsPage() {
       {config && (
         <Card className="p-6">
           <h2 className="mb-4 text-lg font-semibold">Supported Email Sources</h2>
-          <p className="mb-4 text-sm text-muted-foreground">
+          <p className="text-muted-foreground mb-4 text-sm">
             Emails from these senders will be automatically parsed (syncs every{" "}
             {config.sync_interval_minutes} minutes)
           </p>
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
             {config.default_senders.map((sender) => (
-              <div
-                key={sender.domain}
-                className="flex items-center gap-3 rounded-lg border p-3"
-              >
-                <Globe className="h-5 w-5 text-muted-foreground" />
+              <div key={sender.domain} className="flex items-center gap-3 rounded-lg border p-3">
+                <Globe className="text-muted-foreground h-5 w-5" />
                 <div>
                   <span className="font-medium">{sender.display_name}</span>
-                  <p className="text-xs text-muted-foreground">
-                    {sender.domain}
-                  </p>
+                  <p className="text-muted-foreground text-xs">{sender.domain}</p>
                 </div>
               </div>
             ))}
@@ -342,34 +308,34 @@ export default function EmailSettingsPage() {
         <h2 className="mb-4 text-lg font-semibold">How It Works</h2>
         <div className="space-y-4">
           <div className="flex items-start gap-3">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+            <div className="bg-primary text-primary-foreground flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold">
               1
             </div>
             <div>
               <p className="font-medium">Connect your Gmail</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Grant read-only access to fetch emails from specific senders
               </p>
             </div>
           </div>
           <div className="flex items-start gap-3">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+            <div className="bg-primary text-primary-foreground flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold">
               2
             </div>
             <div>
               <p className="font-medium">Automatic syncing</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Emails are checked hourly and parsed automatically
               </p>
             </div>
           </div>
           <div className="flex items-start gap-3">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+            <div className="bg-primary text-primary-foreground flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold">
               3
             </div>
             <div>
               <p className="font-medium">Content extracted</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Relevant data is extracted and organized in your areas
               </p>
             </div>

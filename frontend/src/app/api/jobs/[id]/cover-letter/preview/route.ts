@@ -19,14 +19,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
 
-    const response = await fetch(
-      `${backendUrl}/api/v1/jobs/${id}/cover-letter/preview`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
+    const response = await fetch(`${backendUrl}/api/v1/jobs/${id}/cover-letter/preview`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: "Preview failed" }));
@@ -51,10 +48,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     });
   } catch (error) {
     console.error("Cover letter preview error:", error);
-    return NextResponse.json(
-      { detail: "Failed to preview cover letter" },
-      { status: 500 }
-    );
+    return NextResponse.json({ detail: "Failed to preview cover letter" }, { status: 500 });
   }
 }
-

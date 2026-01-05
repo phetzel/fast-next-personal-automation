@@ -2,21 +2,8 @@
 
 from abc import ABC, abstractmethod
 
-from pydantic import BaseModel, Field
-
-
-class ExtractedJob(BaseModel):
-    """Job listing extracted from an email."""
-
-    title: str = Field(description="Job title")
-    company: str = Field(description="Company name")
-    location: str | None = Field(default=None, description="Job location")
-    job_url: str = Field(description="URL to the job listing")
-    salary_range: str | None = Field(default=None, description="Salary range if available")
-    source: str = Field(description="Source of the job (indeed, linkedin, etc.)")
-    description_snippet: str | None = Field(
-        default=None, description="Brief description or snippet"
-    )
+# Re-export ExtractedJob from unified job_data module for backward compatibility
+from app.schemas.job_data import ExtractedJob
 
 
 class EmailParser(ABC):
@@ -53,6 +40,23 @@ class EmailParser(ABC):
             return ""
         # Remove extra whitespace
         return " ".join(text.split())
+
+    def _deduplicate_jobs(self, jobs: list[ExtractedJob]) -> list[ExtractedJob]:
+        """Deduplicate jobs by URL, preserving order.
+
+        Args:
+            jobs: List of extracted jobs that may contain duplicates.
+
+        Returns:
+            List of unique jobs based on job_url.
+        """
+        seen_urls: set[str] = set()
+        unique_jobs: list[ExtractedJob] = []
+        for job in jobs:
+            if job.job_url not in seen_urls:
+                seen_urls.add(job.job_url)
+                unique_jobs.append(job)
+        return unique_jobs
 
     def _extract_domain_from_url(self, url: str) -> str | None:
         """Extract domain from a URL for source identification.

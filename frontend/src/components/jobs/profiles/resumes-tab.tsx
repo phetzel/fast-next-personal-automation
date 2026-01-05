@@ -9,15 +9,8 @@ import { RESUME_ACCEPTED_TYPES, RESUME_ACCEPTED_EXTENSIONS } from "@/lib/file-ut
 import { Loader2, FileText } from "lucide-react";
 
 export function ResumesTab() {
-  const {
-    resumes,
-    isLoading,
-    error,
-    fetchResumes,
-    uploadResume,
-    deleteResume,
-    setPrimary,
-  } = useResumes();
+  const { resumes, isLoading, error, fetchResumes, uploadResume, deleteResume, setPrimary } =
+    useResumes();
 
   const [isUploading, setIsUploading] = useState(false);
 
@@ -47,8 +40,8 @@ export function ResumesTab() {
         <CardHeader>
           <CardTitle>Upload Resume</CardTitle>
           <CardDescription>
-            Upload your resume in PDF, DOCX, or TXT format. Text will be automatically
-            extracted for AI job matching.
+            Upload your resume in PDF, DOCX, or TXT format. Text will be automatically extracted for
+            AI job matching.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -75,7 +68,7 @@ export function ResumesTab() {
 
       {isLoading && resumes.length === 0 && (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
         </div>
       )}
 
@@ -99,9 +92,9 @@ export function ResumesTab() {
       {!isLoading && resumes.length === 0 && (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <FileText className="h-12 w-12 text-muted-foreground/50" />
+            <FileText className="text-muted-foreground/50 h-12 w-12" />
             <h3 className="mt-4 font-semibold">No Resumes Yet</h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Upload your first resume to get started with job matching.
             </p>
           </CardContent>
@@ -110,4 +103,3 @@ export function ResumesTab() {
     </div>
   );
 }
-

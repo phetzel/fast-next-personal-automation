@@ -11,6 +11,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.job_data import ScrapedJob
+
 logger = logging.getLogger(__name__)
 
 
@@ -22,22 +24,6 @@ class SearchConfig(BaseModel):
     is_remote: bool = Field(default=True, description="Filter for remote jobs only")
     hours_old: int = Field(default=24, description="Max age of postings in hours")
     results_per_term: int = Field(default=5, description="Results per search term")
-
-
-class ScrapedJob(BaseModel):
-    """A job listing scraped from a job board."""
-
-    title: str
-    company: str
-    location: str | None = None
-    description: str | None = None
-    job_url: str
-    salary_range: str | None = None
-    date_posted: datetime | None = None
-    source: str | None = None  # linkedin, indeed, glassdoor, etc.
-    is_remote: bool | None = None
-    job_type: str | None = None  # fulltime, parttime, internship, contract
-    company_url: str | None = None
 
 
 class JobScraperBase(ABC):

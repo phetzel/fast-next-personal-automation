@@ -47,11 +47,7 @@ const RECENCY_OPTIONS = [
  * Modal for running the job search pipeline directly from the listings page.
  * Shows the form, executes the pipeline, and displays results inline.
  */
-export function SearchJobsModal({
-  isOpen,
-  onClose,
-  onComplete,
-}: SearchJobsModalProps) {
+export function SearchJobsModal({ isOpen, onClose, onComplete }: SearchJobsModalProps) {
   const { executePipeline, getExecutionState, resetExecution } = usePipelines();
   const [formData, setFormData] = useState<SearchFormData>({
     scraper: "jobspy",
@@ -119,9 +115,7 @@ export function SearchJobsModal({
           <ProfileSelectField
             id="search-profile"
             value={formData.profile_id}
-            onChange={(value) =>
-              setFormData((prev) => ({ ...prev, profile_id: value }))
-            }
+            onChange={(value) => setFormData((prev) => ({ ...prev, profile_id: value }))}
             description="Uses target roles and locations from your profile"
           />
 
@@ -141,8 +135,8 @@ export function SearchJobsModal({
                 disabled={isRunning}
                 className={cn(
                   "border-input bg-background ring-offset-background",
-                  "focus-visible:ring-ring flex h-10 w-full appearance-none rounded-md border pl-3 pr-10 py-2",
-                  "text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+                  "focus-visible:ring-ring flex h-10 w-full appearance-none rounded-md border py-2 pr-10 pl-3",
+                  "text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
                   "disabled:cursor-not-allowed disabled:opacity-50"
                 )}
               >
@@ -152,9 +146,9 @@ export function SearchJobsModal({
                   </option>
                 ))}
               </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <ChevronDown className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2" />
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               Only scrape jobs posted within this time frame
             </p>
           </div>
@@ -175,15 +169,15 @@ export function SearchJobsModal({
                 disabled={isRunning}
                 className={cn(
                   "border-input bg-background ring-offset-background",
-                  "focus-visible:ring-ring flex h-10 w-full appearance-none rounded-md border pl-3 pr-10 py-2",
-                  "text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+                  "focus-visible:ring-ring flex h-10 w-full appearance-none rounded-md border py-2 pr-10 pl-3",
+                  "text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
                   "disabled:cursor-not-allowed disabled:opacity-50"
                 )}
               >
                 <option value="jobspy">Real Jobs (LinkedIn, Indeed, etc.)</option>
                 <option value="mock">Mock Data (Testing)</option>
               </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <ChevronDown className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2" />
             </div>
           </div>
 
@@ -196,7 +190,7 @@ export function SearchJobsModal({
                   <p className="font-medium text-blue-600 dark:text-blue-400">
                     Searching for jobs...
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-muted-foreground text-sm">
                     This may take a minute while we scrape and analyze jobs.
                   </p>
                 </div>
@@ -208,24 +202,22 @@ export function SearchJobsModal({
             <div className="space-y-3 rounded-lg border border-green-500/20 bg-green-500/5 p-4">
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-green-500" />
-                <p className="font-medium text-green-600 dark:text-green-400">
-                  Search Complete!
-                </p>
+                <p className="font-medium text-green-600 dark:text-green-400">Search Complete!</p>
               </div>
 
               {/* Stats grid */}
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-md bg-background/50 p-2">
+                <div className="bg-background/50 rounded-md p-2">
                   <p className="text-2xl font-bold">{output.jobs_saved || 0}</p>
-                  <p className="text-xs text-muted-foreground">Jobs Saved</p>
+                  <p className="text-muted-foreground text-xs">Jobs Saved</p>
                 </div>
-                <div className="rounded-md bg-background/50 p-2">
+                <div className="bg-background/50 rounded-md p-2">
                   <p className="text-2xl font-bold">{output.high_scoring || 0}</p>
-                  <p className="text-xs text-muted-foreground">High Matches</p>
+                  <p className="text-muted-foreground text-xs">High Matches</p>
                 </div>
-                <div className="rounded-md bg-background/50 p-2">
+                <div className="bg-background/50 rounded-md p-2">
                   <p className="text-2xl font-bold">{output.duplicates_skipped || 0}</p>
-                  <p className="text-xs text-muted-foreground">Duplicates</p>
+                  <p className="text-muted-foreground text-xs">Duplicates</p>
                 </div>
               </div>
 
@@ -237,13 +229,11 @@ export function SearchJobsModal({
                     {output.top_jobs.slice(0, 3).map((job) => (
                       <div
                         key={job.id}
-                        className="flex items-center justify-between rounded-md bg-background/50 px-3 py-2 text-sm"
+                        className="bg-background/50 flex items-center justify-between rounded-md px-3 py-2 text-sm"
                       >
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium">{job.title}</p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {job.company}
-                          </p>
+                          <p className="text-muted-foreground truncate text-xs">{job.company}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="rounded bg-green-500/10 px-1.5 py-0.5 text-xs font-medium text-green-600">
@@ -272,10 +262,8 @@ export function SearchJobsModal({
               <div className="flex items-start gap-2">
                 <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
                 <div>
-                  <p className="font-medium text-red-600 dark:text-red-400">
-                    Search Failed
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="font-medium text-red-600 dark:text-red-400">Search Failed</p>
+                  <p className="text-muted-foreground mt-1 text-sm">
                     {execState.result?.error || "An unexpected error occurred"}
                   </p>
                 </div>
@@ -297,12 +285,7 @@ export function SearchJobsModal({
               </>
             ) : (
               <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleClose}
-                  disabled={isRunning}
-                >
+                <Button type="button" variant="outline" onClick={handleClose} disabled={isRunning}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isRunning}>
@@ -326,4 +309,3 @@ export function SearchJobsModal({
     </Dialog>
   );
 }
-

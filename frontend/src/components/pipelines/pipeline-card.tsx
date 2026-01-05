@@ -51,10 +51,7 @@ export function PipelineCard({
         hasResult && executionState.status === "error" && "border-red-500/30"
       )}
     >
-      <CardHeader
-        className="cursor-pointer select-none"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
+      <CardHeader className="cursor-pointer select-none" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-3">
             <div className="bg-primary/10 mt-0.5 rounded-lg p-2">
@@ -73,12 +70,12 @@ export function PipelineCard({
               {/* Tags */}
               {pipeline.tags.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1 pt-1">
-                  <TagIcon className="h-3 w-3 text-muted-foreground" />
+                  <TagIcon className="text-muted-foreground h-3 w-3" />
                   {pipeline.tags.map((tag) => (
                     <Badge
                       key={tag}
                       variant="secondary"
-                      className="text-xs font-normal py-0 px-1.5 h-5"
+                      className="h-5 px-1.5 py-0 text-xs font-normal"
                     >
                       {tag}
                     </Badge>
@@ -141,8 +138,8 @@ export function PipelineCard({
           {/* Execution result */}
           {(hasResult || isRunning) && (
             <div className="mt-4">
-              <ExecutionResult 
-                state={executionState} 
+              <ExecutionResult
+                state={executionState}
                 onReset={onReset}
                 onRetryWithProfile={onRetryWithProfile}
               />
@@ -153,4 +150,3 @@ export function PipelineCard({
     </Card>
   );
 }
-

@@ -12,14 +12,9 @@ interface ResumeListItemProps {
   isLoading?: boolean;
 }
 
-export function ResumeListItem({
-  resume,
-  onDelete,
-  onSetPrimary,
-  isLoading,
-}: ResumeListItemProps) {
+export function ResumeListItem({ resume, onDelete, onSetPrimary, isLoading }: ResumeListItemProps) {
   return (
-    <Card className={resume.is_primary ? "border-primary/50 ring-1 ring-primary/20" : ""}>
+    <Card className={resume.is_primary ? "border-primary/50 ring-primary/20 ring-1" : ""}>
       <CardContent className="flex items-center gap-4 py-4">
         {getFileIcon(resume.original_filename)}
 
@@ -33,9 +28,7 @@ export function ResumeListItem({
               </Badge>
             )}
           </div>
-          <p className="truncate text-sm text-muted-foreground">
-            {resume.original_filename}
-          </p>
+          <p className="text-muted-foreground truncate text-sm">{resume.original_filename}</p>
           <div className="mt-1 flex items-center gap-2 text-xs">
             {resume.has_text ? (
               <span className="flex items-center gap-1 text-green-600">
@@ -78,4 +71,3 @@ export function ResumeListItem({
     </Card>
   );
 }
-

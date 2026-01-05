@@ -46,17 +46,13 @@ export function JobSelectField({
       params.set("sort_by", "created_at");
       params.set("sort_order", "desc");
 
-      const response = await apiClient.get<JobListResponse>(
-        `/jobs?${params.toString()}`
-      );
+      const response = await apiClient.get<JobListResponse>(`/jobs?${params.toString()}`);
 
       let filteredJobs = response.jobs;
 
       // Apply status filter if provided
       if (statusFilter && statusFilter.length > 0) {
-        filteredJobs = filteredJobs.filter((job) =>
-          statusFilter.includes(job.status)
-        );
+        filteredJobs = filteredJobs.filter((job) => statusFilter.includes(job.status));
       }
 
       setJobs(filteredJobs);
@@ -80,16 +76,14 @@ export function JobSelectField({
           Job
           {required && <span className="text-destructive">*</span>}
         </Label>
-        <div className="rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/5 p-4">
+        <div className="border-muted-foreground/30 bg-muted/5 rounded-lg border-2 border-dashed p-4">
           <div className="flex items-start gap-3">
-            <div className="rounded-full bg-muted p-2">
-              <Briefcase className="h-5 w-5 text-muted-foreground" />
+            <div className="bg-muted rounded-full p-2">
+              <Briefcase className="text-muted-foreground h-5 w-5" />
             </div>
             <div className="flex-1">
-              <p className="font-medium text-muted-foreground">
-                No Jobs Found
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="text-muted-foreground font-medium">No Jobs Found</p>
+              <p className="text-muted-foreground mt-1 text-sm">
                 {statusFilter
                   ? "No jobs match the required status. Try running a job search first."
                   : "Run a job search to find jobs, then come back to prep."}
@@ -109,9 +103,9 @@ export function JobSelectField({
           Job
           {required && <span className="text-destructive">*</span>}
         </Label>
-        <div className="flex h-10 w-full items-center gap-2 rounded-md border bg-muted/50 px-3">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Loading jobs...</span>
+        <div className="bg-muted/50 flex h-10 w-full items-center gap-2 rounded-md border px-3">
+          <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+          <span className="text-muted-foreground text-sm">Loading jobs...</span>
         </div>
       </div>
     );
@@ -125,9 +119,9 @@ export function JobSelectField({
           Job
           {required && <span className="text-destructive">*</span>}
         </Label>
-        <div className="flex h-10 w-full items-center gap-2 rounded-md border border-destructive/50 bg-destructive/5 px-3">
-          <AlertTriangle className="h-4 w-4 text-destructive" />
-          <span className="text-sm text-destructive">{error}</span>
+        <div className="border-destructive/50 bg-destructive/5 flex h-10 w-full items-center gap-2 rounded-md border px-3">
+          <AlertTriangle className="text-destructive h-4 w-4" />
+          <span className="text-destructive text-sm">{error}</span>
         </div>
       </div>
     );
@@ -150,8 +144,8 @@ export function JobSelectField({
           required={required}
           className={cn(
             "border-input bg-background ring-offset-background",
-            "focus-visible:ring-ring flex h-10 w-full appearance-none rounded-md border pl-3 pr-10 py-2",
-            "text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+            "focus-visible:ring-ring flex h-10 w-full appearance-none rounded-md border py-2 pr-10 pl-3",
+            "text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
             "disabled:cursor-not-allowed disabled:opacity-50"
           )}
         >
@@ -163,16 +157,14 @@ export function JobSelectField({
             </option>
           ))}
         </select>
-        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <ChevronDown className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2" />
       </div>
 
       {/* Show selected job info */}
       {selectedJob && <SelectedJobInfo job={selectedJob} />}
 
       {/* Description */}
-      {description && (
-        <p className="text-xs text-muted-foreground">{description}</p>
-      )}
+      {description && <p className="text-muted-foreground text-xs">{description}</p>}
     </div>
   );
 }
@@ -182,32 +174,26 @@ export function JobSelectField({
  */
 function SelectedJobInfo({ job }: { job: Job }) {
   return (
-    <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+    <div className="bg-muted/30 space-y-2 rounded-md border p-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <StatusBadge status={job.status} />
           <ScoreBadge score={job.relevance_score} />
         </div>
         {job.source && (
-          <span className="text-xs text-muted-foreground capitalize">
-            via {job.source}
-          </span>
+          <span className="text-muted-foreground text-xs capitalize">via {job.source}</span>
         )}
       </div>
       <div>
-        <p className="font-medium text-sm">{job.title}</p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm font-medium">{job.title}</p>
+        <p className="text-muted-foreground text-xs">
           {job.company}
           {job.location && ` • ${job.location}`}
         </p>
       </div>
       {job.reasoning && (
-        <p className="text-xs text-muted-foreground line-clamp-2">
-          {job.reasoning}
-        </p>
+        <p className="text-muted-foreground line-clamp-2 text-xs">{job.reasoning}</p>
       )}
     </div>
   );
 }
-
-

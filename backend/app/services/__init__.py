@@ -5,6 +5,8 @@ and raising domain exceptions for error handling.
 """
 # ruff: noqa: I001, RUF022 - Imports structured for Jinja2 template conditionals
 
+from app.services.base import BaseService, PrimaryEntityService
+
 from app.services.user import UserService
 
 from app.services.session import SessionService
@@ -26,6 +28,8 @@ from app.services.story import StoryService
 from app.services.project import ProjectService
 
 __all__ = [
+    "BaseService",
+    "PrimaryEntityService",
     "UserService",
     "SessionService",
     "ConversationService",

@@ -20,7 +20,7 @@ export function StoryListItem({
   isLoading,
 }: StoryListItemProps) {
   return (
-    <Card className={story.is_primary ? "border-primary/50 ring-1 ring-primary/20" : ""}>
+    <Card className={story.is_primary ? "border-primary/50 ring-primary/20 ring-1" : ""}>
       <CardContent className="flex items-start gap-4 py-4">
         <BookOpen className="mt-1 h-5 w-5 text-purple-500" />
 
@@ -34,9 +34,7 @@ export function StoryListItem({
               </Badge>
             )}
           </div>
-          <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
-            {story.content_preview}
-          </p>
+          <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">{story.content_preview}</p>
         </div>
 
         <div className="flex shrink-0 gap-1">
@@ -69,4 +67,3 @@ export function StoryListItem({
     </Card>
   );
 }
-

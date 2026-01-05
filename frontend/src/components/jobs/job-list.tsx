@@ -55,11 +55,7 @@ export function JobList({
       {/* Job grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {jobs.map((job) => (
-          <JobCard
-            key={job.id}
-            job={job}
-            onClick={() => onJobClick?.(job)}
-          />
+          <JobCard key={job.id} job={job} onClick={() => onJobClick?.(job)} />
         ))}
       </div>
 
@@ -67,8 +63,7 @@ export function JobList({
       {totalPages > 1 && (
         <div className="flex items-center justify-between border-t pt-4">
           <p className="text-muted-foreground text-sm">
-            Showing {(page - 1) * pageSize + 1}-
-            {Math.min(page * pageSize, total)} of {total} jobs
+            Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} of {total} jobs
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -98,4 +93,3 @@ export function JobList({
     </div>
   );
 }
-

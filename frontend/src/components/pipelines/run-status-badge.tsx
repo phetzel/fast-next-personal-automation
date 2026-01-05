@@ -3,13 +3,7 @@
 import { Badge } from "@/components/ui";
 import type { PipelineRunStatus } from "@/types";
 import { cn } from "@/lib/utils";
-import {
-  CheckCircle,
-  XCircle,
-  Clock,
-  Loader2,
-  Ban,
-} from "lucide-react";
+import { CheckCircle, XCircle, Clock, Loader2, Ban } from "lucide-react";
 
 interface RunStatusBadgeProps {
   status: PipelineRunStatus;
@@ -52,17 +46,9 @@ export function RunStatusBadge({ status, className }: RunStatusBadgeProps) {
   const { Icon } = config;
 
   return (
-    <Badge
-      variant="outline"
-      className={cn("gap-1.5 font-medium", config.className, className)}
-    >
-      <Icon
-        className={cn("h-3 w-3", status === "running" && "animate-spin")}
-      />
+    <Badge variant="outline" className={cn("gap-1.5 font-medium", config.className, className)}>
+      <Icon className={cn("h-3 w-3", status === "running" && "animate-spin")} />
       {config.label}
     </Badge>
   );
 }
-
-
-

@@ -23,58 +23,9 @@ from app.db.models.job_profile import JobProfile
 from app.db.models.user import User
 from app.repositories import job_profile_repo, job_repo
 from app.schemas.job import JobFilters, JobUpdate
+from app.schemas.job_data import RawJob  # Unified job data model
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class RawJob:
-    """Common job data structure for ingestion from any source.
-
-    Can be created from ScrapedJob (scraper) or ExtractedJob (email parser).
-    """
-
-    title: str
-    company: str
-    job_url: str
-    location: str | None = None
-    description: str | None = None
-    salary_range: str | None = None
-    date_posted: datetime | None = None
-    source: str | None = None  # linkedin, indeed, etc.
-    is_remote: bool | None = None
-    job_type: str | None = None
-    company_url: str | None = None
-
-    @classmethod
-    def from_scraped(cls, job) -> "RawJob":
-        """Create from a ScrapedJob (job search pipeline)."""
-        return cls(
-            title=job.title,
-            company=job.company,
-            job_url=job.job_url,
-            location=job.location,
-            description=job.description,
-            salary_range=job.salary_range,
-            date_posted=job.date_posted,
-            source=job.source,
-            is_remote=getattr(job, "is_remote", None),
-            job_type=getattr(job, "job_type", None),
-            company_url=getattr(job, "company_url", None),
-        )
-
-    @classmethod
-    def from_extracted(cls, job, source_override: str | None = None) -> "RawJob":
-        """Create from an ExtractedJob (email parser)."""
-        return cls(
-            title=job.title,
-            company=job.company,
-            job_url=job.job_url,
-            location=job.location,
-            description=getattr(job, "description_snippet", None),
-            salary_range=job.salary_range,
-            source=source_override or job.source,
-        )
 
 
 @dataclass
@@ -254,24 +205,12 @@ class JobService:
                 JobAnalysis,
                 analyze_job,
             )
-            from app.pipelines.actions.job_search.scraper import ScrapedJob
 
             for raw_job in new_jobs:
-                # Convert RawJob to ScrapedJob for the analyzer
-                scraped = ScrapedJob(
-                    title=raw_job.title,
-                    company=raw_job.company,
-                    location=raw_job.location,
-                    description=raw_job.description,
-                    job_url=raw_job.job_url,
-                    salary_range=raw_job.salary_range,
-                    date_posted=raw_job.date_posted,
-                    source=raw_job.source,
-                )
-
                 try:
+                    # RawJob inherits from ScrapedJob, so it can be used directly
                     analysis: JobAnalysis = await analyze_job(
-                        scraped, resume_text, target_roles, preferences
+                        raw_job, resume_text, target_roles, preferences
                     )
                     analyzed_jobs.append(
                         (

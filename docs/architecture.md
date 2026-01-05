@@ -48,7 +48,7 @@ This document describes the system architecture and design patterns used in the 
 
 ### Layered Pattern
 
-The backend follows a clean **Repository + Service** pattern:
+The backend follows a clean **Repository + Service** pattern with base class inheritance:
 
 ```
 API Routes → Services → Repositories → Database
@@ -61,6 +61,25 @@ API Routes → Services → Repositories → Database
 | **Routes** | HTTP handling, request validation, authentication |
 | **Services** | Business logic, orchestration, domain rules |
 | **Repositories** | Data access, SQL queries, database operations |
+
+### Base Class Hierarchy
+
+**Repositories** extend from a hierarchy of base classes:
+
+```
+BaseRepository[ModelType]           # Generic CRUD (get, create, update, delete)
+    └── UserOwnedRepository         # + get_by_user_id, ownership scoping
+        └── PrimaryEntityRepository # + set_primary, get_primary_for_user
+```
+
+**Services** extend from corresponding base classes:
+
+```
+BaseService[ModelType, RepoType]     # get_by_id_for_user (ownership check)
+    └── PrimaryEntityService         # + set_primary, delete_with_reassignment
+```
+
+This eliminates boilerplate while preserving type safety.
 
 ### Example Flow: User Registration
 
@@ -184,8 +203,27 @@ App (layout.tsx)
 | `useWebSocket` | Generic WebSocket connection |
 | `useConversations` | Fetch/manage conversation history |
 | `useJobProfiles` | Job profile CRUD operations |
-| `useResumes` | Resume upload and management |
+| `useResumes` | Resume upload and management (via `useCrud`) |
+| `useStories` | Career story management (via `useCrud`) |
+| `useProjects` | Project management (via `useCrud`) |
 | `usePipelines` | Pipeline list with area filtering |
+| `useCrud` | Generic CRUD hook factory |
+
+### Hook Factories
+
+The frontend uses factory functions to reduce duplication:
+
+```
+useCrud<T, TSummary, TCreate, TUpdate>()      // Basic CRUD operations
+usePrimaryCrud<T, TSummary, TCreate, TUpdate>() // + primary/default management
+```
+
+Example usage:
+```typescript
+const { items, createItem, updateItem, deleteItem, setPrimary } = usePrimaryCrud({
+  basePath: "/resumes",
+  itemName: "resume",
+});
 
 ## AI Agent Architecture
 

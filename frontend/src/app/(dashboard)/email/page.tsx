@@ -21,16 +21,8 @@ import {
 } from "lucide-react";
 
 export default function EmailOverviewPage() {
-  const {
-    syncs,
-    sources,
-    stats,
-    isLoading,
-    isSyncing,
-    fetchSyncs,
-    calculateStats,
-    triggerSync,
-  } = useEmailSyncs();
+  const { syncs, sources, stats, isLoading, isSyncing, fetchSyncs, calculateStats, triggerSync } =
+    useEmailSyncs();
 
   // Fetch data on mount
   useEffect(() => {
@@ -65,7 +57,7 @@ export default function EmailOverviewPage() {
       case "failed":
         return <XCircle className="h-4 w-4 text-red-500" />;
       case "running":
-        return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />;
+        return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
       default:
         return <Clock className="h-4 w-4 text-amber-500" />;
     }
@@ -77,14 +69,9 @@ export default function EmailOverviewPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Email Overview</h1>
-          <p className="text-muted-foreground">
-            Monitor email syncs and processing status
-          </p>
+          <p className="text-muted-foreground">Monitor email syncs and processing status</p>
         </div>
-        <Button
-          onClick={handleTriggerSync}
-          disabled={isSyncing || sources.length === 0}
-        >
+        <Button onClick={handleTriggerSync} disabled={isSyncing || sources.length === 0}>
           {isSyncing ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -102,35 +89,31 @@ export default function EmailOverviewPage() {
       {/* Quick Actions */}
       <div className="grid gap-4 sm:grid-cols-2">
         <Link href={ROUTES.EMAIL_SYNCS} className="block">
-          <Card className="h-full transition-all hover:shadow-md hover:ring-2 hover:ring-primary/20">
+          <Card className="hover:ring-primary/20 h-full transition-all hover:shadow-md hover:ring-2">
             <CardContent className="flex items-center gap-4 p-6">
               <div className="rounded-lg bg-blue-500/10 p-3">
                 <RefreshCw className="h-6 w-6 text-blue-600" />
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold">Sync History</h3>
-                <p className="text-sm text-muted-foreground">
-                  View past sync operations
-                </p>
+                <p className="text-muted-foreground text-sm">View past sync operations</p>
               </div>
-              <ArrowRight className="h-5 w-5 text-muted-foreground" />
+              <ArrowRight className="text-muted-foreground h-5 w-5" />
             </CardContent>
           </Card>
         </Link>
 
         <Link href={ROUTES.EMAIL_MESSAGES} className="block">
-          <Card className="h-full transition-all hover:shadow-md hover:ring-2 hover:ring-primary/20">
+          <Card className="hover:ring-primary/20 h-full transition-all hover:shadow-md hover:ring-2">
             <CardContent className="flex items-center gap-4 p-6">
               <div className="rounded-lg bg-green-500/10 p-3">
                 <Inbox className="h-6 w-6 text-green-600" />
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold">Browse Messages</h3>
-                <p className="text-sm text-muted-foreground">
-                  View processed emails
-                </p>
+                <p className="text-muted-foreground text-sm">View processed emails</p>
               </div>
-              <ArrowRight className="h-5 w-5 text-muted-foreground" />
+              <ArrowRight className="text-muted-foreground h-5 w-5" />
             </CardContent>
           </Card>
         </Link>
@@ -142,7 +125,7 @@ export default function EmailOverviewPage() {
           <CardContent className="p-6">
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-20 animate-pulse rounded-lg bg-muted" />
+                <div key={i} className="bg-muted h-20 animate-pulse rounded-lg" />
               ))}
             </div>
           </CardContent>
@@ -187,7 +170,7 @@ export default function EmailOverviewPage() {
       ) : (
         <Card>
           <CardContent className="py-12 text-center">
-            <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <AlertCircle className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
             <p className="text-muted-foreground">No statistics available</p>
             {sources.length === 0 && (
               <Button className="mt-4" asChild>
@@ -219,13 +202,13 @@ export default function EmailOverviewPage() {
           {isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-16 animate-pulse rounded-lg bg-muted" />
+                <div key={i} className="bg-muted h-16 animate-pulse rounded-lg" />
               ))}
             </div>
           ) : syncs.length === 0 ? (
             <div className="py-12 text-center">
               <p className="text-muted-foreground">No syncs yet</p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-muted-foreground mt-1 text-sm">
                 {sources.length === 0
                   ? "Connect an email account to start syncing"
                   : "Click 'Sync Now' to fetch new emails"}
@@ -236,20 +219,26 @@ export default function EmailOverviewPage() {
               {syncs.slice(0, 5).map((sync) => (
                 <div
                   key={sync.id}
-                  className="flex items-center justify-between p-4 rounded-lg border bg-card"
+                  className="bg-card flex items-center justify-between rounded-lg border p-4"
                 >
                   <div className="flex items-center gap-3">
                     {getStatusIcon(sync.status)}
                     <div>
                       <p className="font-medium">
-                        {sync.status === "completed" ? "Completed" : sync.status === "failed" ? "Failed" : sync.status === "running" ? "Running" : "Pending"}
+                        {sync.status === "completed"
+                          ? "Completed"
+                          : sync.status === "failed"
+                            ? "Failed"
+                            : sync.status === "running"
+                              ? "Running"
+                              : "Pending"}
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-muted-foreground text-sm">
                         {getRelativeTime(sync.started_at)}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                  <div className="text-muted-foreground flex items-center gap-6 text-sm">
                     <span>{sync.sources_synced} sources</span>
                     <span>{sync.emails_processed} emails</span>
                     <span>{sync.sync_metadata?.jobs_saved || 0} jobs</span>
@@ -285,7 +274,7 @@ function StatCard({ label, value, icon: Icon, color }: StatCardProps) {
         <Icon className="h-5 w-5" />
         <span className="text-2xl font-bold">{value}</span>
       </div>
-      <p className="text-sm mt-2 opacity-80">{label}</p>
+      <p className="mt-2 text-sm opacity-80">{label}</p>
     </div>
   );
 }

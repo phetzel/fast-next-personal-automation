@@ -468,4 +468,3 @@ export interface ProfileRequiredError {
   available_profiles: JobProfileSummary[];
   create_profile_url: string;
 }
-

@@ -5,10 +5,7 @@ import type { PipelineRun } from "@/types";
 /**
  * GET /api/pipelines/runs/[id] - Get a single pipeline run by ID.
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const accessToken = request.cookies.get("access_token")?.value;
 
@@ -35,6 +32,3 @@ export async function GET(
     return NextResponse.json({ detail: "Internal server error" }, { status: 500 });
   }
 }
-
-
-

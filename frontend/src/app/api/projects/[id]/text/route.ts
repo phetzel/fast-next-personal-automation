@@ -6,10 +6,7 @@ const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 /**
  * GET /api/projects/[id]/text - Get project text content
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const accessToken = request.cookies.get("access_token")?.value;
 
@@ -42,4 +39,3 @@ export async function GET(
     return NextResponse.json({ detail: "Internal server error" }, { status: 500 });
   }
 }
-

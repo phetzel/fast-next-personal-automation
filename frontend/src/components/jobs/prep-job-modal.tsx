@@ -42,12 +42,7 @@ interface PrepFormData {
  * Modal for running the job prep pipeline directly from the listings page.
  * Generates cover letter and prep notes for a specific job.
  */
-export function PrepJobModal({
-  job,
-  isOpen,
-  onClose,
-  onComplete,
-}: PrepJobModalProps) {
+export function PrepJobModal({ job, isOpen, onClose, onComplete }: PrepJobModalProps) {
   const { executePipeline, getExecutionState, resetExecution } = usePipelines();
   const [formData, setFormData] = useState<PrepFormData>({
     job_id: "",
@@ -105,10 +100,10 @@ export function PrepJobModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+            <Sparkles className="text-primary h-5 w-5" />
             Prepare Application Materials
           </DialogTitle>
           <DialogDescription asChild>
@@ -125,9 +120,7 @@ export function PrepJobModal({
           <ProfileSelectField
             id="prep-profile"
             value={formData.profile_id}
-            onChange={(value) =>
-              setFormData((prev) => ({ ...prev, profile_id: value }))
-            }
+            onChange={(value) => setFormData((prev) => ({ ...prev, profile_id: value }))}
             description="Uses resume, story, and projects from your profile"
           />
 
@@ -147,8 +140,8 @@ export function PrepJobModal({
                 disabled={isRunning}
                 className={cn(
                   "border-input bg-background ring-offset-background",
-                  "focus-visible:ring-ring flex h-10 w-full appearance-none rounded-md border pl-3 pr-10 py-2",
-                  "text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+                  "focus-visible:ring-ring flex h-10 w-full appearance-none rounded-md border py-2 pr-10 pl-3",
+                  "text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
                   "disabled:cursor-not-allowed disabled:opacity-50"
                 )}
               >
@@ -156,9 +149,9 @@ export function PrepJobModal({
                 <option value="conversational">Conversational</option>
                 <option value="enthusiastic">Enthusiastic</option>
               </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <ChevronDown className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2" />
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               Sets the overall tone of the generated cover letter
             </p>
           </div>
@@ -172,7 +165,7 @@ export function PrepJobModal({
                   <p className="font-medium text-blue-600 dark:text-blue-400">
                     Generating materials...
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-muted-foreground text-sm">
                     AI is crafting your cover letter and prep notes.
                   </p>
                 </div>
@@ -185,11 +178,9 @@ export function PrepJobModal({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-5 w-5 text-green-500" />
-                  <p className="font-medium text-green-600 dark:text-green-400">
-                    Materials Ready!
-                  </p>
+                  <p className="font-medium text-green-600 dark:text-green-400">Materials Ready!</p>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="text-muted-foreground flex items-center gap-2 text-xs">
                   <span>Profile: {output.profile_used}</span>
                   {output.included_story && (
                     <span className="rounded bg-purple-500/10 px-1.5 py-0.5 text-purple-600">
@@ -207,14 +198,12 @@ export function PrepJobModal({
               {/* Cover letter preview */}
               {output.cover_letter && (
                 <div className="space-y-2">
-                  <p className="text-sm font-medium flex items-center gap-2">
+                  <p className="flex items-center gap-2 text-sm font-medium">
                     <FileText className="h-4 w-4" />
                     Cover Letter Preview
                   </p>
-                  <div className="max-h-48 overflow-y-auto rounded-md bg-background/80 p-3 text-sm">
-                    <p className="whitespace-pre-wrap line-clamp-[10]">
-                      {output.cover_letter}
-                    </p>
+                  <div className="bg-background/80 max-h-48 overflow-y-auto rounded-md p-3 text-sm">
+                    <p className="line-clamp-[10] whitespace-pre-wrap">{output.cover_letter}</p>
                   </div>
                 </div>
               )}
@@ -223,15 +212,13 @@ export function PrepJobModal({
               {output.prep_notes && (
                 <div className="space-y-2">
                   <p className="text-sm font-medium">Prep Notes Preview</p>
-                  <div className="max-h-32 overflow-y-auto rounded-md bg-background/80 p-3 text-sm">
-                    <p className="whitespace-pre-wrap line-clamp-6">
-                      {output.prep_notes}
-                    </p>
+                  <div className="bg-background/80 max-h-32 overflow-y-auto rounded-md p-3 text-sm">
+                    <p className="line-clamp-6 whitespace-pre-wrap">{output.prep_notes}</p>
                   </div>
                 </div>
               )}
 
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 Click the job in the list to view full materials and edit the cover letter.
               </p>
             </div>
@@ -242,10 +229,8 @@ export function PrepJobModal({
               <div className="flex items-start gap-2">
                 <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
                 <div>
-                  <p className="font-medium text-red-600 dark:text-red-400">
-                    Prep Failed
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="font-medium text-red-600 dark:text-red-400">Prep Failed</p>
+                  <p className="text-muted-foreground mt-1 text-sm">
                     {execState.result?.error || "An unexpected error occurred"}
                   </p>
                 </div>
@@ -267,12 +252,7 @@ export function PrepJobModal({
               </>
             ) : (
               <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleClose}
-                  disabled={isRunning}
-                >
+                <Button type="button" variant="outline" onClick={handleClose} disabled={isRunning}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isRunning}>
@@ -296,4 +276,3 @@ export function PrepJobModal({
     </Dialog>
   );
 }
-

@@ -5,4 +5,3 @@
 
 export { JobsAreaCard } from "./jobs-area-card";
 export { EmailAreaCard } from "./email-area-card";
-

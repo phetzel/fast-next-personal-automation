@@ -14,7 +14,11 @@ interface ChatContainerProps {
   showAreaBanner?: boolean;
 }
 
-export function ChatContainer({ useLocalStorage = false, area, showAreaBanner = false }: ChatContainerProps) {
+export function ChatContainer({
+  useLocalStorage = false,
+  area,
+  showAreaBanner = false,
+}: ChatContainerProps) {
   const { isAuthenticated } = useAuthStore();
 
   const shouldUseLocal = useLocalStorage || !isAuthenticated;
@@ -49,7 +53,11 @@ function AuthenticatedChatContainer({ area, showAreaBanner }: AuthenticatedChatC
         name: tc.tool_name,
         args: tc.args,
         result: tc.result,
-        status: (tc.status === "failed" ? "error" : tc.status) as "pending" | "running" | "completed" | "error",
+        status: (tc.status === "failed" ? "error" : tc.status) as
+          | "pending"
+          | "running"
+          | "completed"
+          | "error",
       })),
     }));
     setChatMessages(convertedMessages);
@@ -160,7 +168,7 @@ function ChatUI({
     <div className="mx-auto flex h-full w-full max-w-4xl flex-col">
       {/* Area banner */}
       {showAreaBanner && area && areaInfo && (
-        <div className="mx-2 mt-2 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950 sm:mx-4 sm:mt-4">
+        <div className="mx-2 mt-2 rounded-lg border border-blue-200 bg-blue-50 p-3 sm:mx-4 sm:mt-4 dark:border-blue-800 dark:bg-blue-950">
           <div className="flex items-center gap-2">
             <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900 dark:text-blue-300">
               {area.toUpperCase()}

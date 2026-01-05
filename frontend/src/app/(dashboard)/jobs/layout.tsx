@@ -50,17 +50,13 @@ export default function JobsLayout({ children }: { children: React.ReactNode }) 
       <nav className="flex items-center space-x-1 text-sm" aria-label="Breadcrumb">
         {breadcrumbs.map((crumb, index) => (
           <div key={crumb.href} className="flex items-center">
-            {index > 0 && (
-              <ChevronRight className="mx-1 h-4 w-4 text-muted-foreground/60" />
-            )}
+            {index > 0 && <ChevronRight className="text-muted-foreground/60 mx-1 h-4 w-4" />}
             {crumb.isActive ? (
-              <span className="font-medium text-foreground">{crumb.label}</span>
+              <span className="text-foreground font-medium">{crumb.label}</span>
             ) : (
               <Link
                 href={crumb.href}
-                className={cn(
-                  "text-muted-foreground hover:text-foreground transition-colors"
-                )}
+                className={cn("text-muted-foreground hover:text-foreground transition-colors")}
               >
                 {crumb.label}
               </Link>
@@ -74,4 +70,3 @@ export default function JobsLayout({ children }: { children: React.ReactNode }) 
     </div>
   );
 }
-

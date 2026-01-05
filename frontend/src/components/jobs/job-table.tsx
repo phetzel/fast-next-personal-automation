@@ -79,7 +79,7 @@ export function JobTable({
   const handleSortingChange = (updater: SortingState | ((old: SortingState) => SortingState)) => {
     const newSorting = typeof updater === "function" ? updater(sorting) : updater;
     setSorting(newSorting);
-    
+
     if (newSorting.length > 0 && onSort) {
       const { id, desc } = newSorting[0];
       // Map column IDs to API field names
@@ -102,14 +102,14 @@ export function JobTable({
         cell: ({ row }) => {
           const job = row.original;
           return (
-            <div className="min-w-[200px] max-w-[300px]">
+            <div className="max-w-[300px] min-w-[200px]">
               <button
                 onClick={() => onJobClick?.(job)}
                 className="text-left hover:underline focus:outline-none"
               >
                 <span className="line-clamp-1 font-medium">{job.title}</span>
               </button>
-              <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <div className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-xs">
                 <Building2 className="h-3 w-3 shrink-0" />
                 <span className="truncate">{job.company}</span>
               </div>
@@ -120,12 +120,8 @@ export function JobTable({
       },
       {
         accessorKey: "company",
-        header: ({ column }) => (
-          <SortableHeader column={column} label="Company" />
-        ),
-        cell: ({ row }) => (
-          <span className="text-sm">{row.original.company}</span>
-        ),
+        header: ({ column }) => <SortableHeader column={column} label="Company" />,
+        cell: ({ row }) => <span className="text-sm">{row.original.company}</span>,
         // Hidden by default, data shown in title column
         meta: { hidden: true },
       },
@@ -137,10 +133,8 @@ export function JobTable({
           return (
             <div className="flex flex-col gap-0.5">
               <div className="flex items-center gap-1.5 text-sm">
-                <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                <span className="truncate max-w-[150px]">
-                  {job.location || "—"}
-                </span>
+                <MapPin className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+                <span className="max-w-[150px] truncate">{job.location || "—"}</span>
               </div>
               <div className="flex items-center gap-1">
                 {job.is_remote && (
@@ -149,7 +143,7 @@ export function JobTable({
                   </span>
                 )}
                 {job.job_type && (
-                  <span className="inline-flex items-center rounded-full bg-gray-500/10 px-1.5 py-0.5 text-[10px] font-medium capitalize text-muted-foreground">
+                  <span className="text-muted-foreground inline-flex items-center rounded-full bg-gray-500/10 px-1.5 py-0.5 text-[10px] font-medium capitalize">
                     {job.job_type}
                   </span>
                 )}
@@ -161,12 +155,8 @@ export function JobTable({
       },
       {
         accessorKey: "relevance_score",
-        header: ({ column }) => (
-          <SortableHeader column={column} label="Score" />
-        ),
-        cell: ({ row }) => (
-          <ScoreBadge score={row.original.relevance_score} />
-        ),
+        header: ({ column }) => <SortableHeader column={column} label="Score" />,
+        cell: ({ row }) => <ScoreBadge score={row.original.relevance_score} />,
       },
       {
         accessorKey: "status",
@@ -181,25 +171,21 @@ export function JobTable({
           const salary = row.original.salary_range;
           if (!salary) return <span className="text-muted-foreground">—</span>;
           return (
-            <span className="text-sm font-medium text-green-600 dark:text-green-400">
-              {salary}
-            </span>
+            <span className="text-sm font-medium text-green-600 dark:text-green-400">{salary}</span>
           );
         },
         enableSorting: false,
       },
       {
         accessorKey: "date_posted",
-        header: ({ column }) => (
-          <SortableHeader column={column} label="Posted" />
-        ),
+        header: ({ column }) => <SortableHeader column={column} label="Posted" />,
         cell: ({ row }) => {
           const datePosted = row.original.date_posted;
           if (!datePosted) {
             return <span className="text-muted-foreground text-xs">—</span>;
           }
           return (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-muted-foreground text-xs">
               {formatDistanceToNow(new Date(datePosted), { addSuffix: true })}
             </span>
           );
@@ -219,7 +205,7 @@ export function JobTable({
                   href={job.job_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs capitalize text-muted-foreground transition-colors hover:text-foreground"
+                  className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs capitalize transition-colors"
                   onClick={(e) => e.stopPropagation()}
                   title="View original job posting"
                 >
@@ -258,7 +244,7 @@ export function JobTable({
                     e.stopPropagation();
                     onPrep(job);
                   }}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary/10 px-2 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+                  className="bg-primary/10 text-primary hover:bg-primary/20 inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors"
                   title="Prepare cover letter & notes"
                 >
                   <FileText className="h-3.5 w-3.5" />
@@ -270,7 +256,7 @@ export function JobTable({
                   e.stopPropagation();
                   onDelete?.(job.id);
                 }}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors"
                 title="Delete job"
               >
                 <Trash2 className="h-4 w-4" />
@@ -308,7 +294,7 @@ export function JobTable({
   if (isLoading) {
     return (
       <div className={cn("flex items-center justify-center py-12", className)}>
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
       </div>
     );
   }
@@ -317,7 +303,7 @@ export function JobTable({
     return (
       <div className={cn("py-12 text-center", className)}>
         <p className="text-muted-foreground">No jobs found</p>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="text-muted-foreground mt-1 text-sm">
           Try adjusting your filters or run a job search
         </p>
       </div>
@@ -327,7 +313,7 @@ export function JobTable({
   return (
     <div className={cn("space-y-4", className)}>
       {/* Table */}
-      <div className="rounded-lg border bg-card">
+      <div className="bg-card rounded-lg border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -336,10 +322,7 @@ export function JobTable({
                   <TableHead key={header.id}>
                     {header.isPlaceholder
                       ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                      : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>
@@ -371,9 +354,8 @@ export function JobTable({
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing {(page - 1) * pageSize + 1}–
-            {Math.min(page * pageSize, total)} of {total} jobs
+          <p className="text-muted-foreground text-sm">
+            Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} of {total} jobs
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -385,7 +367,7 @@ export function JobTable({
               <ChevronLeft className="mr-1 h-4 w-4" />
               Previous
             </Button>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-muted-foreground text-sm">
               Page {page} of {totalPages}
             </span>
             <Button
@@ -417,7 +399,7 @@ function SortableHeader({
   return (
     <button
       onClick={() => column.toggleSorting(sorted === "asc")}
-      className="inline-flex items-center gap-1 hover:text-foreground"
+      className="hover:text-foreground inline-flex items-center gap-1"
     >
       {label}
       {sorted === "asc" ? (
@@ -430,4 +412,3 @@ function SortableHeader({
     </button>
   );
 }
-

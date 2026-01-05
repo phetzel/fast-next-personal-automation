@@ -35,7 +35,7 @@ export function JobsAreaCard() {
       <Card
         className={cn(
           "relative overflow-hidden transition-all duration-300",
-          "hover:shadow-lg hover:ring-2 hover:ring-primary/20",
+          "hover:ring-primary/20 hover:shadow-lg hover:ring-2",
           "hover:-translate-y-0.5"
         )}
       >
@@ -50,7 +50,7 @@ export function JobsAreaCard() {
 
         <CardContent className="relative p-6">
           {/* Header */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div
                 className={cn(
@@ -63,15 +63,13 @@ export function JobsAreaCard() {
               </div>
               <div>
                 <h3 className="text-lg font-semibold tracking-tight">Jobs</h3>
-                <p className="text-sm text-muted-foreground">
-                  Job search & applications
-                </p>
+                <p className="text-muted-foreground text-sm">Job search & applications</p>
               </div>
             </div>
             <ArrowRight
               className={cn(
-                "h-5 w-5 text-muted-foreground transition-transform",
-                "group-hover:translate-x-1 group-hover:text-primary"
+                "text-muted-foreground h-5 w-5 transition-transform",
+                "group-hover:text-primary group-hover:translate-x-1"
               )}
             />
           </div>
@@ -80,10 +78,7 @@ export function JobsAreaCard() {
           {statsLoading ? (
             <div className="grid grid-cols-4 gap-3">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-14 animate-pulse rounded-lg bg-muted"
-                />
+                <div key={i} className="bg-muted h-14 animate-pulse rounded-lg" />
               ))}
             </div>
           ) : stats ? (
@@ -95,18 +90,8 @@ export function JobsAreaCard() {
                 color="blue"
                 highlight={stats.new > 0}
               />
-              <StatPill
-                icon={FileText}
-                label="Prepped"
-                value={stats.prepped}
-                color="cyan"
-              />
-              <StatPill
-                icon={Send}
-                label="Applied"
-                value={stats.applied}
-                color="green"
-              />
+              <StatPill icon={FileText} label="Prepped" value={stats.prepped} color="cyan" />
+              <StatPill icon={Send} label="Applied" value={stats.applied} color="green" />
               <StatPill
                 icon={PhoneCall}
                 label="Interview"
@@ -116,28 +101,22 @@ export function JobsAreaCard() {
               />
             </div>
           ) : (
-            <div className="text-center py-4">
-              <p className="text-sm text-muted-foreground">
-                No stats available
-              </p>
+            <div className="py-4 text-center">
+              <p className="text-muted-foreground text-sm">No stats available</p>
             </div>
           )}
 
           {/* Footer Summary */}
           {stats && (
-            <div className="mt-4 pt-4 border-t border-border/50 flex items-center justify-between text-sm">
+            <div className="border-border/50 mt-4 flex items-center justify-between border-t pt-4 text-sm">
               <div className="flex items-center gap-4">
                 <span className="text-muted-foreground">
-                  <span className="font-medium text-foreground">
-                    {stats.total}
-                  </span>{" "}
-                  total jobs
+                  <span className="text-foreground font-medium">{stats.total}</span> total jobs
                 </span>
                 {stats.high_scoring > 0 && (
                   <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                     <TrendingUp className="h-3.5 w-3.5" />
-                    <span className="font-medium">{stats.high_scoring}</span>{" "}
-                    high scoring
+                    <span className="font-medium">{stats.high_scoring}</span> high scoring
                   </span>
                 )}
               </div>
@@ -174,17 +153,14 @@ function StatPill({ icon: Icon, label, value, color, highlight }: StatPillProps)
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-1 rounded-lg py-2 px-1 transition-colors",
+        "flex flex-col items-center gap-1 rounded-lg px-1 py-2 transition-colors",
         colorStyles[color],
         highlight && "ring-1 ring-current/20"
       )}
     >
       <Icon className="h-4 w-4" />
-      <span className="text-lg font-bold leading-none">{value}</span>
-      <span className="text-[10px] uppercase tracking-wider opacity-80">
-        {label}
-      </span>
+      <span className="text-lg leading-none font-bold">{value}</span>
+      <span className="text-[10px] tracking-wider uppercase opacity-80">{label}</span>
     </div>
   );
 }
-

@@ -76,9 +76,7 @@ const settingsNavigation: NavArea[] = [
     id: "settings",
     name: "Settings",
     icon: Settings,
-    children: [
-      { name: "Email Integration", href: ROUTES.SETTINGS_EMAIL, icon: Mail },
-    ],
+    children: [{ name: "Email Integration", href: ROUTES.SETTINGS_EMAIL, icon: Mail }],
   },
 ];
 
@@ -112,20 +110,16 @@ function NavLink({
   );
 }
 
-function AreaSection({
-  area,
-  onNavigate,
-}: {
-  area: NavArea;
-  onNavigate?: () => void;
-}) {
+function AreaSection({ area, onNavigate }: { area: NavArea; onNavigate?: () => void }) {
   const pathname = usePathname();
   const { isAreaCollapsed, toggleArea } = useSidebarStore();
 
   const isCollapsed = isAreaCollapsed(area.id);
 
   // Check if we're in the area (for highlighting parent when on child route)
-  const isInArea = pathname.startsWith(area.children[0]?.href?.split("/").slice(0, 2).join("/") || "");
+  const isInArea = pathname.startsWith(
+    area.children[0]?.href?.split("/").slice(0, 2).join("/") || ""
+  );
 
   return (
     <div className="space-y-0.5">
@@ -145,9 +139,9 @@ function AreaSection({
           {area.name}
         </span>
         {isCollapsed ? (
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <ChevronRight className="text-muted-foreground h-4 w-4" />
         ) : (
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          <ChevronDown className="text-muted-foreground h-4 w-4" />
         )}
       </button>
 
@@ -170,7 +164,7 @@ function AreaSection({
 }
 
 function Separator() {
-  return <div className="mx-3 my-3 border-t border-border/60" />;
+  return <div className="border-border/60 mx-3 my-3 border-t" />;
 }
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
@@ -193,7 +187,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 
       {/* Area navigation */}
       <div className="space-y-1">
-        <span className="px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground/70">
+        <span className="text-muted-foreground/70 px-3 text-xs font-medium tracking-wider uppercase">
           Areas
         </span>
         {areaNavigation.map((area) => (

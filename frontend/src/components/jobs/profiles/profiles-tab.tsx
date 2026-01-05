@@ -109,7 +109,7 @@ export function ProfilesTab() {
     <div className="space-y-4">
       {/* Header with create button */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Configure your job search preferences and linked resumes
         </p>
         <Button onClick={() => setView("create")} size="sm">
@@ -134,8 +134,8 @@ export function ProfilesTab() {
             </div>
             <h2 className="mb-2 text-xl font-semibold">No Profiles Yet</h2>
             <p className="text-muted-foreground mb-4 max-w-md">
-              Create your first job search profile to get started. Link your resume and
-              set preferences to help the AI find the best job matches for you.
+              Create your first job search profile to get started. Link your resume and set
+              preferences to help the AI find the best job matches for you.
             </p>
             <Button onClick={() => setView("create")}>
               <Plus className="mr-2 h-4 w-4" />
@@ -153,7 +153,7 @@ export function ProfilesTab() {
               return (
                 <Card key={summary.id}>
                   <CardContent className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
                   </CardContent>
                 </Card>
               );
@@ -174,4 +174,3 @@ export function ProfilesTab() {
     </div>
   );
 }
-

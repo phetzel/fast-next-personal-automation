@@ -137,7 +137,7 @@ function FormField({ name, property, value, onChange, required }: FormFieldProps
           className={cn(
             "border-input bg-background ring-offset-background",
             "focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2",
-            "text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+            "text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
             "disabled:cursor-not-allowed disabled:opacity-50"
           )}
         >
@@ -165,7 +165,7 @@ function FormField({ name, property, value, onChange, required }: FormFieldProps
           className={cn(
             "border-primary ring-offset-background focus-visible:ring-ring",
             "h-4 w-4 shrink-0 rounded border",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+            "focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
             "disabled:cursor-not-allowed disabled:opacity-50",
             "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
           )}
@@ -255,4 +255,3 @@ function getInputType(property: JSONSchemaProperty): string {
   if (property.format === "uri") return "url";
   return "text";
 }
-

@@ -55,11 +55,7 @@ const STATUS_OPTIONS = JOB_STATUSES.map((status) => ({
   description: JOB_STATUS_CONFIG[status].description,
 }));
 
-export default function JobDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: jobId } = use(params);
   const router = useRouter();
   const { fetchJob, updateJobStatus, deleteJob } = useJobs();
@@ -251,7 +247,7 @@ export default function JobDetailPage({
   if (isLoading) {
     return (
       <div className="flex h-96 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
       </div>
     );
   }
@@ -278,12 +274,12 @@ export default function JobDetailPage({
   return (
     <div className="space-y-6">
       {/* Breadcrumb & Back */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="text-muted-foreground flex items-center gap-2 text-sm">
         <Link href="/jobs/list" className="hover:text-foreground transition-colors">
           Jobs
         </Link>
         <span>/</span>
-        <span className="text-foreground truncate max-w-[300px]">{job.title}</span>
+        <span className="text-foreground max-w-[300px] truncate">{job.title}</span>
       </div>
 
       {/* Header */}
@@ -294,7 +290,7 @@ export default function JobDetailPage({
             <StatusBadge status={job.status} />
             <ScoreBadge score={job.relevance_score} />
           </div>
-          <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
+          <div className="text-muted-foreground flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-1.5">
               <Building2 className="h-4 w-4" />
               <span className="font-medium">{job.company}</span>
@@ -319,7 +315,7 @@ export default function JobDetailPage({
             )}
           </div>
           {job.salary_range && (
-            <div className="flex items-center gap-1.5 text-green-600 font-semibold">
+            <div className="flex items-center gap-1.5 font-semibold text-green-600">
               <DollarSign className="h-4 w-4" />
               {job.salary_range}
             </div>
@@ -333,7 +329,11 @@ export default function JobDetailPage({
             </a>
           </Button>
           <Button variant="destructive" size="icon" onClick={handleDelete} disabled={isDeleting}>
-            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            {isDeleting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
           </Button>
         </div>
       </div>
@@ -342,7 +342,7 @@ export default function JobDetailPage({
       <Card>
         <CardContent className="py-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium mr-2">Status:</span>
+            <span className="mr-2 text-sm font-medium">Status:</span>
             {STATUS_OPTIONS.map((option) => {
               const isCurrentStatus = job.status === option.value;
               const canTransition = canTransitionTo(job.status, option.value);
@@ -355,12 +355,21 @@ export default function JobDetailPage({
                   variant={isCurrentStatus ? "default" : "outline"}
                   size="sm"
                   onClick={() => handleStatusChange(option.value)}
-                  disabled={isUpdating || isGeneratingPdf || isPrepping || (!isCurrentStatus && !canTransition)}
+                  disabled={
+                    isUpdating ||
+                    isGeneratingPdf ||
+                    isPrepping ||
+                    (!isCurrentStatus && !canTransition)
+                  }
                   title={option.description}
                   className={cn(
-                    !isCurrentStatus && !canTransition && "opacity-40 cursor-not-allowed",
-                    isPreppedTransition && canTransition && "border-cyan-500/50 hover:bg-cyan-500/10",
-                    isReviewedTransition && canTransition && "border-purple-500/50 hover:bg-purple-500/10"
+                    !isCurrentStatus && !canTransition && "cursor-not-allowed opacity-40",
+                    isPreppedTransition &&
+                      canTransition &&
+                      "border-cyan-500/50 hover:bg-cyan-500/10",
+                    isReviewedTransition &&
+                      canTransition &&
+                      "border-purple-500/50 hover:bg-purple-500/10"
                   )}
                 >
                   {isPrepping && option.value === "prepped" ? (
@@ -374,15 +383,15 @@ export default function JobDetailPage({
             })}
           </div>
           {job.status === "new" && (
-            <p className="mt-2 text-xs text-muted-foreground">
+            <p className="text-muted-foreground mt-2 text-xs">
               <span className="text-cyan-600 dark:text-cyan-400">Next step:</span> Click
               &quot;Prepped&quot; to generate a tailored cover letter and interview talking points.
             </p>
           )}
           {job.status === "prepped" && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              <span className="text-purple-600 dark:text-purple-400">Next step:</span> Review your materials, then click
-              &quot;Reviewed&quot; to generate a downloadable PDF.
+            <p className="text-muted-foreground mt-2 text-xs">
+              <span className="text-purple-600 dark:text-purple-400">Next step:</span> Review your
+              materials, then click &quot;Reviewed&quot; to generate a downloadable PDF.
             </p>
           )}
         </CardContent>
@@ -408,13 +417,16 @@ export default function JobDetailPage({
                   "flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors",
                   isActive
                     ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:border-muted-foreground/30 hover:text-foreground"
+                    : "text-muted-foreground hover:border-muted-foreground/30 hover:text-foreground border-transparent"
                 )}
               >
                 <Icon className="h-4 w-4" />
                 {tab.label}
                 {showBadge && (
-                  <span className="flex h-2 w-2 rounded-full bg-cyan-500" aria-label="Has prep materials" />
+                  <span
+                    className="flex h-2 w-2 rounded-full bg-cyan-500"
+                    aria-label="Has prep materials"
+                  />
                 )}
               </button>
             );
@@ -423,7 +435,12 @@ export default function JobDetailPage({
       </div>
 
       {/* Tab Content */}
-      <div className="min-h-[400px]" role="tabpanel" id={`tabpanel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
+      <div
+        className="min-h-[400px]"
+        role="tabpanel"
+        id={`tabpanel-${activeTab}`}
+        aria-labelledby={`tab-${activeTab}`}
+      >
         {activeTab === "overview" && (
           <OverviewTab
             job={job}
@@ -504,7 +521,7 @@ function OverviewTab({
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       {/* Main content */}
-      <div className="lg:col-span-2 space-y-6">
+      <div className="space-y-6 lg:col-span-2">
         {/* AI Match Analysis */}
         {job.reasoning && (
           <Card>
@@ -528,7 +545,7 @@ function OverviewTab({
             </CardHeader>
             <CardContent>
               <div className="prose prose-sm dark:prose-invert max-w-none">
-                <p className="whitespace-pre-wrap text-sm">{job.description}</p>
+                <p className="text-sm whitespace-pre-wrap">{job.description}</p>
               </div>
             </CardContent>
           </Card>
@@ -573,14 +590,14 @@ function OverviewTab({
       <div className="space-y-6">
         {/* Quick Actions */}
         {!hasPreppedMaterials && (
-          <Card className="border-2 border-dashed border-primary/30 bg-primary/5">
+          <Card className="border-primary/30 bg-primary/5 border-2 border-dashed">
             <CardContent className="py-6">
               <div className="flex flex-col items-center text-center">
-                <div className="rounded-full bg-primary/10 p-3 mb-3">
-                  <Sparkles className="h-6 w-6 text-primary" />
+                <div className="bg-primary/10 mb-3 rounded-full p-3">
+                  <Sparkles className="text-primary h-6 w-6" />
                 </div>
-                <h3 className="font-semibold mb-1">Ready to Prep?</h3>
-                <p className="text-sm text-muted-foreground mb-4">
+                <h3 className="mb-1 font-semibold">Ready to Prep?</h3>
+                <p className="text-muted-foreground mb-4 text-sm">
                   AI will generate a tailored cover letter and interview talking points.
                 </p>
                 <Button onClick={onPrep} disabled={isPrepping}>
@@ -617,7 +634,7 @@ function OverviewTab({
             {job.search_terms && (
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Search Terms</span>
-                <span className="truncate max-w-[150px]">{job.search_terms}</span>
+                <span className="max-w-[150px] truncate">{job.search_terms}</span>
               </div>
             )}
             <div className="flex items-center justify-between text-sm">
@@ -643,17 +660,9 @@ function OverviewTab({
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <TimelineItem
-                label="Job Added"
-                date={job.created_at}
-                isCompleted
-              />
+              <TimelineItem label="Job Added" date={job.created_at} isCompleted />
               {job.prepped_at && (
-                <TimelineItem
-                  label="Materials Generated"
-                  date={job.prepped_at}
-                  isCompleted
-                />
+                <TimelineItem label="Materials Generated" date={job.prepped_at} isCompleted />
               )}
               {job.cover_letter_generated_at && (
                 <TimelineItem
@@ -734,10 +743,10 @@ function PrepTab({
   if (!hasPreppedMaterials) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="rounded-full bg-muted p-4 mb-4">
-          <FileText className="h-8 w-8 text-muted-foreground" />
+        <div className="bg-muted mb-4 rounded-full p-4">
+          <FileText className="text-muted-foreground h-8 w-8" />
         </div>
-        <h3 className="text-lg font-semibold mb-2">No Materials Generated</h3>
+        <h3 className="mb-2 text-lg font-semibold">No Materials Generated</h3>
         <p className="text-muted-foreground mb-6 max-w-md">
           Run the prep pipeline to generate a tailored cover letter and interview talking points
           based on your resume and the job description.
@@ -757,7 +766,7 @@ function PrepTab({
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       {/* Main content */}
-      <div className="lg:col-span-2 space-y-4">
+      <div className="space-y-4 lg:col-span-2">
         {/* Cover Letter */}
         <Card>
           <CardHeader>
@@ -789,7 +798,7 @@ function PrepTab({
               }}
               placeholder="Your cover letter..."
               rows={16}
-              className="font-mono text-sm resize-none"
+              className="resize-none font-mono text-sm"
             />
           </CardContent>
         </Card>
@@ -804,7 +813,9 @@ function PrepTab({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <pre className="whitespace-pre-wrap text-sm font-sans leading-relaxed">{job.prep_notes}</pre>
+              <pre className="font-sans text-sm leading-relaxed whitespace-pre-wrap">
+                {job.prep_notes}
+              </pre>
             </CardContent>
           </Card>
         )}
@@ -853,7 +864,12 @@ function PrepTab({
                     <Eye className="mr-2 h-4 w-4" />
                     Preview PDF
                   </Button>
-                  <Button variant="outline" onClick={onDownload} disabled={isDownloading} className="justify-start">
+                  <Button
+                    variant="outline"
+                    onClick={onDownload}
+                    disabled={isDownloading}
+                    className="justify-start"
+                  >
                     {isDownloading ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
@@ -885,15 +901,11 @@ function PrepTab({
                 )}
               </>
             ) : (
-              <div className="text-center py-4">
-                <p className="text-sm text-muted-foreground mb-3">
+              <div className="py-4 text-center">
+                <p className="text-muted-foreground mb-3 text-sm">
                   No PDF generated yet. Mark as &quot;Reviewed&quot; to generate.
                 </p>
-                <Button
-                  variant="outline"
-                  onClick={onRegenerate}
-                  disabled={isGeneratingPdf}
-                >
+                <Button variant="outline" onClick={onRegenerate} disabled={isGeneratingPdf}>
                   {isGeneratingPdf ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
@@ -912,7 +924,7 @@ function PrepTab({
             <CardTitle className="text-lg">Need Changes?</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground mb-3">
+            <p className="text-muted-foreground mb-3 text-sm">
               Want to start fresh? Re-run the AI prep to generate new materials.
             </p>
             <Button variant="outline" onClick={onPrep} disabled={isPrepping} className="w-full">
@@ -946,20 +958,15 @@ function TimelineItem({
       <div
         className={cn(
           "h-2 w-2 rounded-full",
-          isRejected
-            ? "bg-red-500"
-            : isCompleted
-            ? "bg-green-500"
-            : "bg-muted-foreground/30"
+          isRejected ? "bg-red-500" : isCompleted ? "bg-green-500" : "bg-muted-foreground/30"
         )}
       />
-      <div className="flex-1 flex items-center justify-between">
+      <div className="flex flex-1 items-center justify-between">
         <span className="text-sm">{label}</span>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-muted-foreground text-xs">
           {format(new Date(date), "MMM d, h:mm a")}
         </span>
       </div>
     </div>
   );
 }
-

@@ -94,14 +94,12 @@ describe("Chat Store", () => {
     it("should not duplicate messages when switching conversations", () => {
       // This test verifies the fix for the bug where switching conversations
       // caused message duplication because the useEffect was adding instead of replacing
-      
+
       const convAMessages = [
         createMockMessage({ id: "a1", content: "Conv A msg 1" }),
         createMockMessage({ id: "a2", content: "Conv A msg 2" }),
       ];
-      const convBMessages = [
-        createMockMessage({ id: "b1", content: "Conv B msg 1" }),
-      ];
+      const convBMessages = [createMockMessage({ id: "b1", content: "Conv B msg 1" })];
 
       // Load conversation A
       useChatStore.getState().setMessages(convAMessages);
@@ -109,12 +107,12 @@ describe("Chat Store", () => {
 
       // Switch to conversation B - should REPLACE, not ADD
       useChatStore.getState().setMessages(convBMessages);
-      
+
       const state = useChatStore.getState();
       expect(state.messages).toHaveLength(1);
       expect(state.messages[0].content).toBe("Conv B msg 1");
       // Should NOT contain conv A messages
-      expect(state.messages.some(m => m.content.includes("Conv A"))).toBe(false);
+      expect(state.messages.some((m) => m.content.includes("Conv A"))).toBe(false);
     });
   });
 
@@ -122,9 +120,9 @@ describe("Chat Store", () => {
     it("should remove all messages", () => {
       useChatStore.getState().addMessage(createMockMessage());
       useChatStore.getState().addMessage(createMockMessage());
-      
+
       useChatStore.getState().clearMessages();
-      
+
       expect(useChatStore.getState().messages).toHaveLength(0);
     });
   });
@@ -243,6 +241,3 @@ describe("Conversation Switching Bug Prevention", () => {
     expect(useChatStore.getState().messages).toHaveLength(1);
   });
 });
-
-
-

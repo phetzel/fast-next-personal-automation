@@ -75,25 +75,28 @@ export function useEmailSyncs() {
   /**
    * Trigger a new email sync.
    */
-  const triggerSync = useCallback(async (forceFullSync = false) => {
-    setIsSyncing(true);
-    setError(null);
+  const triggerSync = useCallback(
+    async (forceFullSync = false) => {
+      setIsSyncing(true);
+      setError(null);
 
-    try {
-      const response = await apiClient.post<{ sync_id: string; status: string; message: string }>(
-        "/email/syncs",
-        { force_full_sync: forceFullSync }
-      );
-      // Refresh syncs list after triggering
-      await fetchSyncs();
-      return response;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to trigger sync");
-      return null;
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [fetchSyncs]);
+      try {
+        const response = await apiClient.post<{ sync_id: string; status: string; message: string }>(
+          "/email/syncs",
+          { force_full_sync: forceFullSync }
+        );
+        // Refresh syncs list after triggering
+        await fetchSyncs();
+        return response;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to trigger sync");
+        return null;
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [fetchSyncs]
+  );
 
   /**
    * Calculate stats from sync history.
@@ -109,10 +112,7 @@ export function useEmailSyncs() {
       const successfulSyncs = allSyncs.filter((s) => s.status === "completed");
       const failedSyncs = allSyncs.filter((s) => s.status === "failed");
 
-      const totalEmailsProcessed = allSyncs.reduce(
-        (sum, s) => sum + s.emails_processed,
-        0
-      );
+      const totalEmailsProcessed = allSyncs.reduce((sum, s) => sum + s.emails_processed, 0);
       const totalJobsExtracted = allSyncs.reduce(
         (sum, s) => sum + (s.sync_metadata?.jobs_extracted || 0),
         0

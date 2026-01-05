@@ -82,7 +82,9 @@ export function useConversations() {
       setError(null);
       try {
         // Backend returns array directly, not wrapped in { items: [...] }
-        const response = await apiClient.get<ConversationMessage[]>(`/conversations/${id}/messages`);
+        const response = await apiClient.get<ConversationMessage[]>(
+          `/conversations/${id}/messages`
+        );
         // Setting currentMessages triggers useEffect in ChatContainer that syncs to chat store
         setCurrentMessages(response);
       } catch (err) {

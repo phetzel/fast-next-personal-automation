@@ -4,10 +4,7 @@ import { backendFetch, BackendApiError } from "@/lib/server-api";
 /**
  * POST /api/resumes/[id]/set-primary - Set a resume as primary
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const accessToken = request.cookies.get("access_token")?.value;
 
@@ -35,6 +32,3 @@ export async function POST(
     return NextResponse.json({ detail: "Internal server error" }, { status: 500 });
   }
 }
-
-
-

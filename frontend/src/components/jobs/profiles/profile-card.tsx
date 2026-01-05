@@ -30,7 +30,7 @@ export function ProfileCard({
   isLoading,
 }: ProfileCardProps) {
   return (
-    <Card className={profile.is_default ? "border-primary/50 ring-1 ring-primary/20" : ""}>
+    <Card className={profile.is_default ? "border-primary/50 ring-primary/20 ring-1" : ""}>
       <CardContent className="pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
@@ -79,7 +79,7 @@ export function ProfileCard({
                       <Badge
                         key={project.id}
                         variant="outline"
-                        className="text-xs text-blue-600 border-blue-300"
+                        className="border-blue-300 text-xs text-blue-600"
                       >
                         {project.name}
                       </Badge>
@@ -171,4 +171,3 @@ export function ProfileCard({
     </Card>
   );
 }
-

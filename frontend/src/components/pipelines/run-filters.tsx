@@ -34,12 +34,7 @@ const triggerOptions: { value: PipelineTriggerType; label: string }[] = [
   { value: "manual", label: "Manual" },
 ];
 
-export function RunFilters({
-  filters,
-  pipelines,
-  onFilterChange,
-  onReset,
-}: RunFiltersProps) {
+export function RunFilters({ filters, pipelines, onFilterChange, onReset }: RunFiltersProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const hasActiveFilters =
@@ -140,8 +135,7 @@ export function RunFilters({
               value={filters.trigger_type || ""}
               onChange={(e) =>
                 onFilterChange({
-                  trigger_type:
-                    (e.target.value as PipelineTriggerType) || undefined,
+                  trigger_type: (e.target.value as PipelineTriggerType) || undefined,
                 })
               }
               className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus:ring-ring flex h-9 w-full rounded-md border px-3 py-1 text-sm focus:ring-2 focus:ring-offset-2 focus:outline-none"
@@ -163,9 +157,7 @@ export function RunFilters({
                 variant={filters.my_runs_only ? "default" : "outline"}
                 size="sm"
                 className="h-8 text-xs"
-                onClick={() =>
-                  onFilterChange({ my_runs_only: !filters.my_runs_only })
-                }
+                onClick={() => onFilterChange({ my_runs_only: !filters.my_runs_only })}
               >
                 My Runs
               </Button>
@@ -206,10 +198,7 @@ export function RunFilters({
             />
           )}
           {filters.my_runs_only && (
-            <FilterChip
-              label="My Runs"
-              onRemove={() => onFilterChange({ my_runs_only: false })}
-            />
+            <FilterChip label="My Runs" onRemove={() => onFilterChange({ my_runs_only: false })} />
           )}
           {filters.error_only && (
             <FilterChip
@@ -223,25 +212,13 @@ export function RunFilters({
   );
 }
 
-function FilterChip({
-  label,
-  onRemove,
-}: {
-  label: string;
-  onRemove: () => void;
-}) {
+function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
     <span className="bg-secondary text-secondary-foreground inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium">
       {label}
-      <button
-        onClick={onRemove}
-        className="hover:bg-secondary-foreground/20 rounded-full p-0.5"
-      >
+      <button onClick={onRemove} className="hover:bg-secondary-foreground/20 rounded-full p-0.5">
         <X className="h-3 w-3" />
       </button>
     </span>
   );
 }
-
-
-

@@ -61,4 +61,3 @@ export function ScoreBadge({ score, className, showIcon = true }: ScoreBadgeProp
     </Badge>
   );
 }
-

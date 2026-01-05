@@ -6,10 +6,7 @@ const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 /**
  * GET /api/stories/[id] - Get a specific story
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const accessToken = request.cookies.get("access_token")?.value;
 
@@ -46,10 +43,7 @@ export async function GET(
 /**
  * PATCH /api/stories/[id] - Update a story
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const accessToken = request.cookies.get("access_token")?.value;
 
@@ -127,4 +121,3 @@ export async function DELETE(
     return NextResponse.json({ detail: "Internal server error" }, { status: 500 });
   }
 }
-

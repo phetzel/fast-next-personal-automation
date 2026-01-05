@@ -53,11 +53,7 @@ const RECENCY_OPTIONS = [
  * Modal for running the batch job search pipeline.
  * Searches for jobs across all of the user's job profiles.
  */
-export function SearchAllJobsModal({
-  isOpen,
-  onClose,
-  onComplete,
-}: SearchAllJobsModalProps) {
+export function SearchAllJobsModal({ isOpen, onClose, onComplete }: SearchAllJobsModalProps) {
   const { executePipeline, getExecutionState, resetExecution } = usePipelines();
   const [hasStarted, setHasStarted] = useState(false);
   const [formData, setFormData] = useState<BatchSearchFormData>({
@@ -106,15 +102,15 @@ export function SearchAllJobsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Globe className="h-5 w-5 text-primary" />
+            <Globe className="text-primary h-5 w-5" />
             Search All Profiles
           </DialogTitle>
           <DialogDescription>
-            Run job search for all of your profiles at once. Each profile with a 
-            resume will be searched.
+            Run job search for all of your profiles at once. Each profile with a resume will be
+            searched.
           </DialogDescription>
         </DialogHeader>
 
@@ -122,10 +118,10 @@ export function SearchAllJobsModal({
           {/* Pre-run form */}
           {!hasStarted && (
             <div className="space-y-4">
-              <div className="rounded-lg border border-muted bg-muted/30 p-4 text-sm">
+              <div className="border-muted bg-muted/30 rounded-lg border p-4 text-sm">
                 <p className="text-muted-foreground">
-                  This will search for jobs using all your profiles that have resumes attached.
-                  Each profile&apos;s target roles and locations will be used for its search.
+                  This will search for jobs using all your profiles that have resumes attached. Each
+                  profile&apos;s target roles and locations will be used for its search.
                 </p>
               </div>
 
@@ -144,8 +140,8 @@ export function SearchAllJobsModal({
                     }
                     className={cn(
                       "border-input bg-background ring-offset-background",
-                      "focus-visible:ring-ring flex h-10 w-full appearance-none rounded-md border pl-3 pr-10 py-2",
-                      "text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                      "focus-visible:ring-ring flex h-10 w-full appearance-none rounded-md border py-2 pr-10 pl-3",
+                      "text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
                     )}
                   >
                     {RECENCY_OPTIONS.map((option) => (
@@ -154,9 +150,9 @@ export function SearchAllJobsModal({
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <ChevronDown className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2" />
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Only scrape jobs posted within this time frame
                 </p>
               </div>
@@ -172,7 +168,7 @@ export function SearchAllJobsModal({
                   <p className="font-medium text-blue-600 dark:text-blue-400">
                     Searching across profiles...
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-muted-foreground text-sm">
                     This may take a few minutes depending on how many profiles you have.
                   </p>
                 </div>
@@ -184,24 +180,24 @@ export function SearchAllJobsModal({
             <div className="space-y-3 rounded-lg border border-green-500/20 bg-green-500/5 p-4">
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-green-500" />
-                <p className="font-medium text-green-600 dark:text-green-400">
-                  Search Complete!
-                </p>
+                <p className="font-medium text-green-600 dark:text-green-400">Search Complete!</p>
               </div>
 
               {/* Stats grid */}
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-md bg-background/50 p-2">
+                <div className="bg-background/50 rounded-md p-2">
                   <p className="text-xl font-bold">{output.total_profiles || 0}</p>
-                  <p className="text-xs text-muted-foreground">Profiles</p>
+                  <p className="text-muted-foreground text-xs">Profiles</p>
                 </div>
-                <div className="rounded-md bg-background/50 p-2">
+                <div className="bg-background/50 rounded-md p-2">
                   <p className="text-xl font-bold text-green-600">{output.total_jobs_saved || 0}</p>
-                  <p className="text-xs text-muted-foreground">Jobs Saved</p>
+                  <p className="text-muted-foreground text-xs">Jobs Saved</p>
                 </div>
-                <div className="rounded-md bg-background/50 p-2">
-                  <p className="text-xl font-bold text-amber-600">{output.total_high_scoring || 0}</p>
-                  <p className="text-xs text-muted-foreground">High Score</p>
+                <div className="bg-background/50 rounded-md p-2">
+                  <p className="text-xl font-bold text-amber-600">
+                    {output.total_high_scoring || 0}
+                  </p>
+                  <p className="text-muted-foreground text-xs">High Score</p>
                 </div>
               </div>
 
@@ -209,11 +205,11 @@ export function SearchAllJobsModal({
               {output.results && output.results.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-sm font-medium">Profile Results:</p>
-                  <div className="max-h-40 overflow-y-auto space-y-1">
+                  <div className="max-h-40 space-y-1 overflow-y-auto">
                     {output.results.map((result) => (
                       <div
                         key={result.profile_id}
-                        className="text-xs bg-background/50 rounded px-2 py-1.5 flex justify-between items-center"
+                        className="bg-background/50 flex items-center justify-between rounded px-2 py-1.5 text-xs"
                       >
                         <span className="flex items-center gap-1.5">
                           {result.success ? (
@@ -228,9 +224,7 @@ export function SearchAllJobsModal({
                             {result.jobs_saved} jobs ({result.high_scoring} high)
                           </span>
                         ) : (
-                          <span className="text-red-500 text-[10px]">
-                            {result.error}
-                          </span>
+                          <span className="text-[10px] text-red-500">{result.error}</span>
                         )}
                       </div>
                     ))}
@@ -245,10 +239,8 @@ export function SearchAllJobsModal({
               <div className="flex items-start gap-2">
                 <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
                 <div>
-                  <p className="font-medium text-red-600 dark:text-red-400">
-                    Search Failed
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="font-medium text-red-600 dark:text-red-400">Search Failed</p>
+                  <p className="text-muted-foreground mt-1 text-sm">
                     {execState.result?.error || "An unexpected error occurred"}
                   </p>
                 </div>
@@ -270,12 +262,7 @@ export function SearchAllJobsModal({
               </>
             ) : (
               <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleClose}
-                  disabled={isRunning}
-                >
+                <Button type="button" variant="outline" onClick={handleClose} disabled={isRunning}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isRunning}>
@@ -299,4 +286,3 @@ export function SearchAllJobsModal({
     </Dialog>
   );
 }
-

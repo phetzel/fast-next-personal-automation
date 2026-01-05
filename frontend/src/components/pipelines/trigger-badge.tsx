@@ -3,13 +3,7 @@
 import { Badge } from "@/components/ui";
 import type { PipelineTriggerType } from "@/types";
 import { cn } from "@/lib/utils";
-import {
-  Globe,
-  Webhook,
-  Bot,
-  Timer,
-  Hand,
-} from "lucide-react";
+import { Globe, Webhook, Bot, Timer, Hand } from "lucide-react";
 
 interface TriggerBadgeProps {
   trigger: PipelineTriggerType;
@@ -52,15 +46,9 @@ export function TriggerBadge({ trigger, className }: TriggerBadgeProps) {
   const { Icon } = config;
 
   return (
-    <Badge
-      variant="outline"
-      className={cn("gap-1.5 font-medium", config.className, className)}
-    >
+    <Badge variant="outline" className={cn("gap-1.5 font-medium", config.className, className)}>
       <Icon className="h-3 w-3" />
       {config.label}
     </Badge>
   );
 }
-
-
-

@@ -40,12 +40,7 @@ export function PipelineRunHistory() {
       <div className="flex flex-col items-center justify-center py-12">
         <AlertCircle className="h-8 w-8 text-red-500" />
         <p className="mt-4 text-sm text-red-500">{error}</p>
-        <Button
-          variant="outline"
-          size="sm"
-          className="mt-4"
-          onClick={() => fetchRuns()}
-        >
+        <Button variant="outline" size="sm" className="mt-4" onClick={() => fetchRuns()}>
           Retry
         </Button>
       </div>
@@ -92,15 +87,7 @@ export function PipelineRunHistory() {
       />
 
       {/* Runs table */}
-      <RunHistoryTable
-        runs={runs}
-        isLoading={isLoading}
-        hasMore={hasMore}
-        onLoadMore={loadMore}
-      />
+      <RunHistoryTable runs={runs} isLoading={isLoading} hasMore={hasMore} onLoadMore={loadMore} />
     </div>
   );
 }
-
-
-

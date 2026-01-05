@@ -157,4 +157,3 @@ export interface PipelineFilters {
   /** Filter by tags (must have ALL specified tags) */
   tags?: string[];
 }
-

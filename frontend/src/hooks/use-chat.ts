@@ -175,14 +175,17 @@ export function useChat(options: UseChatOptions = {}) {
       params.append("area", area);
     }
     const queryString = params.toString();
-    return queryString
-      ? `${WS_URL}/api/v1/ws/agent?${queryString}`
-      : `${WS_URL}/api/v1/ws/agent`;
+    return queryString ? `${WS_URL}/api/v1/ws/agent?${queryString}` : `${WS_URL}/api/v1/ws/agent`;
   };
 
   const wsUrl = buildWsUrl();
 
-  const { isConnected, connect: wsConnect, disconnect, sendMessage } = useWebSocket({
+  const {
+    isConnected,
+    connect: wsConnect,
+    disconnect,
+    sendMessage,
+  } = useWebSocket({
     url: wsUrl,
     onMessage: handleWebSocketMessage,
   });

@@ -36,9 +36,7 @@ export function JobCard({ job, onClick, className }: JobCardProps) {
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <CardTitle className="line-clamp-1 text-base font-semibold">
-              {job.title}
-            </CardTitle>
+            <CardTitle className="line-clamp-1 text-base font-semibold">{job.title}</CardTitle>
             <div className="text-muted-foreground mt-1 flex items-center gap-1.5 text-sm">
               <Building2 className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">{job.company}</span>
@@ -77,9 +75,7 @@ export function JobCard({ job, onClick, className }: JobCardProps) {
             {/* Ingestion source indicator */}
             <IngestionSourceBadge source={job.ingestion_source} />
             {job.source && (
-              <span className="text-muted-foreground text-xs capitalize">
-                {job.source}
-              </span>
+              <span className="text-muted-foreground text-xs capitalize">{job.source}</span>
             )}
             <a
               href={job.job_url}
@@ -96,4 +92,3 @@ export function JobCard({ job, onClick, className }: JobCardProps) {
     </Card>
   );
 }
-

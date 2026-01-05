@@ -12,14 +12,7 @@ import {
 } from "@/components/ui";
 import { useJobs } from "@/hooks";
 import { cn } from "@/lib/utils";
-import {
-  Trash2,
-  Loader2,
-  CheckCircle,
-  ChevronDown,
-  AlertTriangle,
-  XCircle,
-} from "lucide-react";
+import { Trash2, Loader2, CheckCircle, ChevronDown, AlertTriangle, XCircle } from "lucide-react";
 import type { JobStatus, JobStats } from "@/types";
 
 interface DeleteByStatusModalProps {
@@ -91,12 +84,12 @@ export function DeleteByStatusModal({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Trash2 className="h-5 w-5 text-destructive" />
+            <Trash2 className="text-destructive h-5 w-5" />
             Delete Jobs by Status
           </DialogTitle>
           <DialogDescription>
-            Quickly remove all jobs with a specific status that you&apos;re not
-            interested in pursuing.
+            Quickly remove all jobs with a specific status that you&apos;re not interested in
+            pursuing.
           </DialogDescription>
         </DialogHeader>
 
@@ -112,8 +105,8 @@ export function DeleteByStatusModal({
                 disabled={isSubmitting || result !== null}
                 className={cn(
                   "border-input bg-background ring-offset-background",
-                  "focus-visible:ring-ring flex h-10 w-full appearance-none rounded-md border pl-3 pr-10 py-2",
-                  "text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+                  "focus-visible:ring-ring flex h-10 w-full appearance-none rounded-md border py-2 pr-10 pl-3",
+                  "text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
                   "disabled:cursor-not-allowed disabled:opacity-50"
                 )}
               >
@@ -123,9 +116,9 @@ export function DeleteByStatusModal({
                   </option>
                 ))}
               </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <ChevronDown className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2" />
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               {STATUS_OPTIONS.find((o) => o.value === selectedStatus)?.description}
             </p>
           </div>
@@ -139,9 +132,9 @@ export function DeleteByStatusModal({
                   <p className="font-medium text-amber-600 dark:text-amber-400">
                     This will delete {selectedCount} job{selectedCount !== 1 ? "s" : ""}
                   </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Jobs will be removed from your list but preserved to prevent
-                    re-scraping the same jobs in future searches.
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    Jobs will be removed from your list but preserved to prevent re-scraping the
+                    same jobs in future searches.
                   </p>
                 </div>
               </div>
@@ -150,8 +143,8 @@ export function DeleteByStatusModal({
 
           {/* No jobs message */}
           {selectedCount === 0 && !result && (
-            <div className="rounded-lg border border-muted bg-muted/30 p-4 text-center">
-              <p className="text-sm text-muted-foreground">
+            <div className="border-muted bg-muted/30 rounded-lg border p-4 text-center">
+              <p className="text-muted-foreground text-sm">
                 No jobs with &quot;{selectedStatus}&quot; status to delete.
               </p>
             </div>
@@ -220,4 +213,3 @@ export function DeleteByStatusModal({
     </Dialog>
   );
 }
-

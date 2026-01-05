@@ -28,7 +28,7 @@ function formatDate(dateStr: string): string {
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
-  
+
   return date.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -44,12 +44,7 @@ function formatDuration(ms: number | null): string {
   return `${(ms / 60000).toFixed(1)}m`;
 }
 
-export function RunHistoryTable({
-  runs,
-  isLoading,
-  hasMore,
-  onLoadMore,
-}: RunHistoryTableProps) {
+export function RunHistoryTable({ runs, isLoading, hasMore, onLoadMore }: RunHistoryTableProps) {
   const [selectedRun, setSelectedRun] = useState<PipelineRun | null>(null);
 
   if (runs.length === 0 && !isLoading) {
@@ -74,22 +69,22 @@ export function RunHistoryTable({
           <table className="w-full">
             <thead className="bg-muted/50 border-b">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
                   Pipeline
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
                   Status
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
                   Trigger
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
                   Duration
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
                   Time
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider">
+                <th className="px-4 py-3 text-right text-xs font-medium tracking-wider uppercase">
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
@@ -104,9 +99,7 @@ export function RunHistoryTable({
                   <td className="px-4 py-3">
                     <div>
                       <p className="font-medium">{run.pipeline_name}</p>
-                      <p className="text-muted-foreground text-xs">
-                        {run.id.slice(0, 8)}...
-                      </p>
+                      <p className="text-muted-foreground text-xs">{run.id.slice(0, 8)}...</p>
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -141,9 +134,7 @@ export function RunHistoryTable({
               <div className="flex items-start justify-between">
                 <div>
                   <p className="font-medium">{run.pipeline_name}</p>
-                  <p className="text-muted-foreground text-xs">
-                    {formatDate(run.created_at)}
-                  </p>
+                  <p className="text-muted-foreground text-xs">{formatDate(run.created_at)}</p>
                 </div>
                 <ChevronRight className="text-muted-foreground h-5 w-5" />
               </div>
@@ -163,12 +154,7 @@ export function RunHistoryTable({
         {/* Load more */}
         {(hasMore || isLoading) && (
           <div className="border-t p-4">
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={onLoadMore}
-              disabled={isLoading}
-            >
+            <Button variant="outline" className="w-full" onClick={onLoadMore} disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -183,15 +169,7 @@ export function RunHistoryTable({
       </Card>
 
       {/* Detail modal */}
-      {selectedRun && (
-        <RunDetailModal
-          run={selectedRun}
-          onClose={() => setSelectedRun(null)}
-        />
-      )}
+      {selectedRun && <RunDetailModal run={selectedRun} onClose={() => setSelectedRun(null)} />}
     </>
   );
 }
-
-
-

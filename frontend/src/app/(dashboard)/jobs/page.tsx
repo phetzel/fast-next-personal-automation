@@ -7,13 +7,7 @@ import { JobStatsCard, JobCard, JobDetailModal } from "@/components/jobs";
 import { Button, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
 import { ROUTES } from "@/lib/constants";
 import type { Job } from "@/types";
-import {
-  LayoutList,
-  Workflow,
-  UserCircle,
-  ArrowRight,
-  Sparkles,
-} from "lucide-react";
+import { LayoutList, Workflow, UserCircle, ArrowRight, Sparkles } from "lucide-react";
 
 export default function JobsOverviewPage() {
   const {
@@ -61,52 +55,46 @@ export default function JobsOverviewPage() {
       {/* Quick Actions */}
       <div className="grid gap-4 sm:grid-cols-3">
         <Link href={ROUTES.JOBS_LIST} className="block">
-          <Card className="h-full transition-all hover:shadow-md hover:ring-2 hover:ring-primary/20">
+          <Card className="hover:ring-primary/20 h-full transition-all hover:shadow-md hover:ring-2">
             <CardContent className="flex items-center gap-4 p-6">
               <div className="rounded-lg bg-blue-500/10 p-3">
                 <LayoutList className="h-6 w-6 text-blue-600" />
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold">View All Jobs</h3>
-                <p className="text-sm text-muted-foreground">
-                  Browse and filter job listings
-                </p>
+                <p className="text-muted-foreground text-sm">Browse and filter job listings</p>
               </div>
-              <ArrowRight className="h-5 w-5 text-muted-foreground" />
+              <ArrowRight className="text-muted-foreground h-5 w-5" />
             </CardContent>
           </Card>
         </Link>
 
         <Link href={ROUTES.JOBS_PIPELINES} className="block">
-          <Card className="h-full transition-all hover:shadow-md hover:ring-2 hover:ring-primary/20">
+          <Card className="hover:ring-primary/20 h-full transition-all hover:shadow-md hover:ring-2">
             <CardContent className="flex items-center gap-4 p-6">
               <div className="rounded-lg bg-green-500/10 p-3">
                 <Workflow className="h-6 w-6 text-green-600" />
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold">Run Pipelines</h3>
-                <p className="text-sm text-muted-foreground">
-                  Search for jobs and more
-                </p>
+                <p className="text-muted-foreground text-sm">Search for jobs and more</p>
               </div>
-              <ArrowRight className="h-5 w-5 text-muted-foreground" />
+              <ArrowRight className="text-muted-foreground h-5 w-5" />
             </CardContent>
           </Card>
         </Link>
 
         <Link href={ROUTES.JOBS_PROFILES} className="block">
-          <Card className="h-full transition-all hover:shadow-md hover:ring-2 hover:ring-primary/20">
+          <Card className="hover:ring-primary/20 h-full transition-all hover:shadow-md hover:ring-2">
             <CardContent className="flex items-center gap-4 p-6">
               <div className="rounded-lg bg-purple-500/10 p-3">
                 <UserCircle className="h-6 w-6 text-purple-600" />
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold">Manage Profiles</h3>
-                <p className="text-sm text-muted-foreground">
-                  Configure search profiles
-                </p>
+                <p className="text-muted-foreground text-sm">Configure search profiles</p>
               </div>
-              <ArrowRight className="h-5 w-5 text-muted-foreground" />
+              <ArrowRight className="text-muted-foreground h-5 w-5" />
             </CardContent>
           </Card>
         </Link>
@@ -133,16 +121,13 @@ export default function JobsOverviewPage() {
           {isLoading ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-48 animate-pulse rounded-lg bg-muted"
-                />
+                <div key={i} className="bg-muted h-48 animate-pulse rounded-lg" />
               ))}
             </div>
           ) : jobs.slice(0, 6).length === 0 ? (
             <div className="py-12 text-center">
               <p className="text-muted-foreground">No jobs found yet</p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-muted-foreground mt-1 text-sm">
                 Run a job search to find matching positions
               </p>
               <Button className="mt-4" asChild>
@@ -155,11 +140,7 @@ export default function JobsOverviewPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {jobs.slice(0, 6).map((job) => (
-                <JobCard
-                  key={job.id}
-                  job={job}
-                  onClick={() => handleJobClick(job)}
-                />
+                <JobCard key={job.id} job={job} onClick={() => handleJobClick(job)} />
               ))}
             </div>
           )}
