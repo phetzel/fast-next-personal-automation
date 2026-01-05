@@ -48,4 +48,3 @@ def downgrade() -> None:
     op.drop_column("jobs", "job_type")
     op.drop_column("jobs", "is_remote")
     op.drop_column("jobs", "deleted_at")
-

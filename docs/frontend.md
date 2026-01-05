@@ -207,19 +207,96 @@ const {
 
 ### useResumes
 
-Manages resume uploads:
+Manages resume uploads (uses `useCrud` factory):
 
 ```typescript
 import { useResumes } from "@/hooks";
 
 const {
-  resumes,
+  items: resumes,
+  primaryItem,
   isLoading,
-  uploadResume,
-  deleteResume,
+  fetchItems,
+  createItem,
+  deleteItem,
   setPrimary,
-  fetchResumes,
+  uploadFile,
 } = useResumes();
+```
+
+### useStories
+
+Manages career stories (uses `useCrud` factory):
+
+```typescript
+import { useStories } from "@/hooks";
+
+const {
+  items: stories,
+  primaryItem,
+  isLoading,
+  fetchItems,
+  createItem,
+  updateItem,
+  deleteItem,
+  setPrimary,
+} = useStories();
+```
+
+### useProjects
+
+Manages projects (uses `useCrud` factory):
+
+```typescript
+import { useProjects } from "@/hooks";
+
+const {
+  items: projects,
+  isLoading,
+  fetchItems,
+  createItem,
+  updateItem,
+  deleteItem,
+} = useProjects();
+```
+
+### useCrud (Hook Factory)
+
+Generic CRUD hook factory for consistent data management:
+
+```typescript
+import { useCrud, usePrimaryCrud } from "@/hooks";
+
+// Basic CRUD
+const crud = useCrud<Item, ItemSummary, CreateItem, UpdateItem>({
+  basePath: "/items",
+  itemName: "item",
+});
+
+// With primary/default support
+const primaryCrud = usePrimaryCrud<Resume, ResumeSummary, CreateResume, UpdateResume>({
+  basePath: "/resumes",
+  itemName: "resume",
+});
+
+// Returns
+{
+  items,           // T[] - list of items
+  currentItem,     // T | null - selected item
+  primaryItem,     // T | null - primary/default item (usePrimaryCrud only)
+  isLoading,       // boolean
+  error,           // string | null
+  hasItems,        // boolean
+  fetchItems,      // () => Promise<T[]>
+  getItem,         // (id: string) => Promise<T | null>
+  createItem,      // (data: CreateT) => Promise<T | null>
+  updateItem,      // (id: string, data: UpdateT) => Promise<T | null>
+  deleteItem,      // (id: string) => Promise<boolean>
+  setPrimary,      // (id: string) => Promise<T | null> (usePrimaryCrud only)
+  uploadFile,      // (file: File, name: string) => Promise<T | null>
+  setCurrentItem,  // (item: T | null) => void
+  setError,        // (error: string | null) => void
+}
 ```
 
 ### usePipelines

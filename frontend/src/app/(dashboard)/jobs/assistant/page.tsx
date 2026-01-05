@@ -24,7 +24,7 @@ export default function JobsAssistantPage() {
         </div>
         <Link
           href={ROUTES.LOGIN}
-          className="mt-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 mt-2 rounded-lg px-4 py-2 text-sm font-medium"
         >
           Log In
         </Link>
@@ -57,4 +57,3 @@ export default function JobsAssistantPage() {
     </div>
   );
 }
-

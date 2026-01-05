@@ -27,10 +27,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ url: connectUrl });
   } catch (error) {
     console.error("Error initiating Gmail connection:", error);
-    return NextResponse.json(
-      { error: "Failed to initiate connection" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to initiate connection" }, { status: 500 });
   }
 }
-

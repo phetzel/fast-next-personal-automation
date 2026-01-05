@@ -73,13 +73,8 @@ export const useJobStore = create<JobStore>((set) => ({
 
   updateJob: (updatedJob) =>
     set((state) => ({
-      jobs: state.jobs.map((job) =>
-        job.id === updatedJob.id ? updatedJob : job
-      ),
-      selectedJob:
-        state.selectedJob?.id === updatedJob.id
-          ? updatedJob
-          : state.selectedJob,
+      jobs: state.jobs.map((job) => (job.id === updatedJob.id ? updatedJob : job)),
+      selectedJob: state.selectedJob?.id === updatedJob.id ? updatedJob : state.selectedJob,
     })),
 
   removeJob: (jobId) =>
@@ -89,4 +84,3 @@ export const useJobStore = create<JobStore>((set) => ({
       selectedJob: state.selectedJob?.id === jobId ? null : state.selectedJob,
     })),
 }));
-

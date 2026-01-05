@@ -6,38 +6,86 @@ should be handled by ResumeService in app/services/resume.py.
 
 from uuid import UUID
 
-from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.resume import Resume
+from app.repositories.base import PrimaryEntityRepository
+from app.schemas.resume import ResumeCreate, ResumeUpdate
 
 
+class ResumeRepository(PrimaryEntityRepository[Resume, ResumeCreate, ResumeUpdate]):
+    """Repository for Resume entity operations."""
+
+    def __init__(self):
+        super().__init__(Resume)
+
+    async def get_by_user_id(self, db: AsyncSession, user_id: UUID) -> list[Resume]:
+        """Get all resumes for a user, ordered by primary status and creation date."""
+        return await self.get_by_user_ordered(db, user_id)
+
+    async def create(
+        self,
+        db: AsyncSession,
+        *,
+        user_id: UUID,
+        name: str,
+        original_filename: str,
+        file_path: str,
+        file_size: int,
+        mime_type: str,
+        text_content: str | None = None,
+        is_primary: bool = False,
+    ) -> Resume:
+        """Create a new resume."""
+        return await self.create_with_kwargs(
+            db,
+            user_id=user_id,
+            name=name,
+            original_filename=original_filename,
+            file_path=file_path,
+            file_size=file_size,
+            mime_type=mime_type,
+            text_content=text_content,
+            is_primary=is_primary,
+        )
+
+    async def update(
+        self,
+        db: AsyncSession,
+        *,
+        db_resume: Resume,
+        update_data: dict,
+    ) -> Resume:
+        """Update a resume."""
+        return await super().update(db, db_obj=db_resume, obj_in=update_data)
+
+    async def delete(self, db: AsyncSession, resume_id: UUID) -> Resume | None:
+        """Delete a resume by ID."""
+        return await super().delete(db, id=resume_id)
+
+    async def delete_by_user_id(self, db: AsyncSession, user_id: UUID) -> int:
+        """Delete all resumes for a user. Returns count of deleted resumes."""
+        return await self.delete_by_user(db, user_id)
+
+
+# Module-level singleton for backward compatibility
+_repository = ResumeRepository()
+
+
+# Expose module-level functions for backward compatibility
 async def get_by_id(db: AsyncSession, resume_id: UUID) -> Resume | None:
     """Get resume by ID."""
-    return await db.get(Resume, resume_id)
+    return await _repository.get(db, resume_id)
 
 
 async def get_by_user_id(db: AsyncSession, user_id: UUID) -> list[Resume]:
     """Get all resumes for a user, ordered by primary status and creation date."""
-    result = await db.execute(
-        select(Resume)
-        .where(Resume.user_id == user_id)
-        .order_by(Resume.is_primary.desc(), Resume.created_at.desc())
-    )
-    return list(result.scalars().all())
+    return await _repository.get_by_user_id(db, user_id)
 
 
 async def get_primary_for_user(db: AsyncSession, user_id: UUID) -> Resume | None:
     """Get the primary resume for a user."""
-    result = await db.execute(
-        select(Resume).where(
-            and_(
-                Resume.user_id == user_id,
-                Resume.is_primary == True,  # noqa: E712
-            )
-        )
-    )
-    return result.scalar_one_or_none()
+    return await _repository.get_primary_for_user(db, user_id)
 
 
 async def create(
@@ -53,7 +101,8 @@ async def create(
     is_primary: bool = False,
 ) -> Resume:
     """Create a new resume."""
-    resume = Resume(
+    return await _repository.create(
+        db,
         user_id=user_id,
         name=name,
         original_filename=original_filename,
@@ -63,10 +112,6 @@ async def create(
         text_content=text_content,
         is_primary=is_primary,
     )
-    db.add(resume)
-    await db.flush()
-    await db.refresh(resume)
-    return resume
 
 
 async def update(
@@ -76,13 +121,7 @@ async def update(
     update_data: dict,
 ) -> Resume:
     """Update a resume."""
-    for field, value in update_data.items():
-        setattr(db_resume, field, value)
-
-    db.add(db_resume)
-    await db.flush()
-    await db.refresh(db_resume)
-    return db_resume
+    return await _repository.update(db, db_resume=db_resume, update_data=update_data)
 
 
 async def set_primary(
@@ -90,43 +129,15 @@ async def set_primary(
     user_id: UUID,
     resume_id: UUID,
 ) -> Resume | None:
-    """Set a resume as primary, unsetting any other primary.
-
-    Returns the updated resume, or None if not found.
-    """
-    # First, unset all primary for this user
-    resumes = await get_by_user_id(db, user_id)
-    for resume in resumes:
-        if resume.is_primary and resume.id != resume_id:
-            resume.is_primary = False
-            db.add(resume)
-
-    # Set the new primary
-    target_resume = await get_by_id(db, resume_id)
-    if target_resume and target_resume.user_id == user_id:
-        target_resume.is_primary = True
-        db.add(target_resume)
-        await db.flush()
-        await db.refresh(target_resume)
-        return target_resume
-
-    return None
+    """Set a resume as primary, unsetting any other primary."""
+    return await _repository.set_primary(db, user_id, resume_id)
 
 
 async def delete(db: AsyncSession, resume_id: UUID) -> Resume | None:
     """Delete a resume by ID."""
-    resume = await get_by_id(db, resume_id)
-    if resume:
-        await db.delete(resume)
-        await db.flush()
-    return resume
+    return await _repository.delete(db, resume_id)
 
 
 async def delete_by_user_id(db: AsyncSession, user_id: UUID) -> int:
     """Delete all resumes for a user. Returns count of deleted resumes."""
-    resumes = await get_by_user_id(db, user_id)
-    count = len(resumes)
-    for resume in resumes:
-        await db.delete(resume)
-    await db.flush()
-    return count
+    return await _repository.delete_by_user_id(db, user_id)

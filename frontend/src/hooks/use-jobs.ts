@@ -33,41 +33,40 @@ export function useJobs() {
   /**
    * Fetch jobs with current filters.
    */
-  const fetchJobs = useCallback(async (customFilters?: Partial<JobFilters>) => {
-    setLoading(true);
-    setError(null);
+  const fetchJobs = useCallback(
+    async (customFilters?: Partial<JobFilters>) => {
+      setLoading(true);
+      setError(null);
 
-    try {
-      const appliedFilters = { ...filters, ...customFilters };
-      const params = new URLSearchParams();
+      try {
+        const appliedFilters = { ...filters, ...customFilters };
+        const params = new URLSearchParams();
 
-      if (appliedFilters.status) params.set("status", appliedFilters.status);
-      if (appliedFilters.source) params.set("source", appliedFilters.source);
-      if (appliedFilters.min_score !== undefined)
-        params.set("min_score", String(appliedFilters.min_score));
-      if (appliedFilters.max_score !== undefined)
-        params.set("max_score", String(appliedFilters.max_score));
-      if (appliedFilters.search) params.set("search", appliedFilters.search);
-      if (appliedFilters.posted_within_hours !== undefined)
-        params.set("posted_within_hours", String(appliedFilters.posted_within_hours));
-      if (appliedFilters.page) params.set("page", String(appliedFilters.page));
-      if (appliedFilters.page_size)
-        params.set("page_size", String(appliedFilters.page_size));
-      if (appliedFilters.sort_by) params.set("sort_by", appliedFilters.sort_by);
-      if (appliedFilters.sort_order)
-        params.set("sort_order", appliedFilters.sort_order);
+        if (appliedFilters.status) params.set("status", appliedFilters.status);
+        if (appliedFilters.source) params.set("source", appliedFilters.source);
+        if (appliedFilters.min_score !== undefined)
+          params.set("min_score", String(appliedFilters.min_score));
+        if (appliedFilters.max_score !== undefined)
+          params.set("max_score", String(appliedFilters.max_score));
+        if (appliedFilters.search) params.set("search", appliedFilters.search);
+        if (appliedFilters.posted_within_hours !== undefined)
+          params.set("posted_within_hours", String(appliedFilters.posted_within_hours));
+        if (appliedFilters.page) params.set("page", String(appliedFilters.page));
+        if (appliedFilters.page_size) params.set("page_size", String(appliedFilters.page_size));
+        if (appliedFilters.sort_by) params.set("sort_by", appliedFilters.sort_by);
+        if (appliedFilters.sort_order) params.set("sort_order", appliedFilters.sort_order);
 
-      const response = await apiClient.get<JobListResponse>(
-        `/jobs?${params.toString()}`
-      );
+        const response = await apiClient.get<JobListResponse>(`/jobs?${params.toString()}`);
 
-      setJobs(response.jobs, response.total);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch jobs");
-    } finally {
-      setLoading(false);
-    }
-  }, [filters, setJobs, setLoading, setError]);
+        setJobs(response.jobs, response.total);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch jobs");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [filters, setJobs, setLoading, setError]
+  );
 
   /**
    * Fetch job statistics.
@@ -89,15 +88,18 @@ export function useJobs() {
   /**
    * Fetch a single job by ID.
    */
-  const fetchJob = useCallback(async (jobId: string): Promise<Job | null> => {
-    try {
-      const job = await apiClient.get<Job>(`/jobs/${jobId}`);
-      setSelectedJob(job);
-      return job;
-    } catch {
-      return null;
-    }
-  }, [setSelectedJob]);
+  const fetchJob = useCallback(
+    async (jobId: string): Promise<Job | null> => {
+      try {
+        const job = await apiClient.get<Job>(`/jobs/${jobId}`);
+        setSelectedJob(job);
+        return job;
+      } catch {
+        return null;
+      }
+    },
+    [setSelectedJob]
+  );
 
   /**
    * Update a job's status or notes.
@@ -136,16 +138,13 @@ export function useJobs() {
   /**
    * Delete all jobs with a specific status (soft delete).
    */
-  const deleteByStatus = useCallback(
-    async (status: JobStatus): Promise<number> => {
-      const response = await apiClient.post<{ deleted_count: number; status: string }>(
-        "/jobs/batch/delete",
-        { status }
-      );
-      return response.deleted_count;
-    },
-    []
-  );
+  const deleteByStatus = useCallback(async (status: JobStatus): Promise<number> => {
+    const response = await apiClient.post<{ deleted_count: number; status: string }>(
+      "/jobs/batch/delete",
+      { status }
+    );
+    return response.deleted_count;
+  }, []);
 
   /**
    * Change page.
@@ -187,4 +186,3 @@ export function useJobs() {
     goToPage,
   };
 }
-

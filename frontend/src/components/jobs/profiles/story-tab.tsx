@@ -94,7 +94,7 @@ export function StoryTab() {
     <div className="space-y-4">
       {/* Header with create button */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Write personal narratives to emphasize during job applications
         </p>
         <Button onClick={() => setView("create")} size="sm">
@@ -119,8 +119,8 @@ export function StoryTab() {
             </div>
             <h2 className="mb-2 text-xl font-semibold">No Stories Yet</h2>
             <p className="text-muted-foreground mb-4 max-w-md">
-              Write your first story to share what makes you unique. This helps
-              personalize your job applications.
+              Write your first story to share what makes you unique. This helps personalize your job
+              applications.
             </p>
             <Button onClick={() => setView("create")}>
               <Plus className="mr-2 h-4 w-4" />
@@ -147,4 +147,3 @@ export function StoryTab() {
     </div>
   );
 }
-

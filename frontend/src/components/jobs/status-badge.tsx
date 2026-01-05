@@ -4,14 +4,7 @@ import { Badge } from "@/components/ui";
 import type { JobStatus } from "@/types";
 import { JOB_STATUS_CONFIG } from "@/types";
 import { cn } from "@/lib/utils";
-import {
-  Sparkles,
-  Eye,
-  Send,
-  ThumbsDown,
-  PhoneCall,
-  FileText,
-} from "lucide-react";
+import { Sparkles, Eye, Send, ThumbsDown, PhoneCall, FileText } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 interface StatusBadgeProps {
@@ -19,10 +12,7 @@ interface StatusBadgeProps {
   className?: string;
 }
 
-const statusStyles: Record<
-  JobStatus,
-  { className: string; Icon: LucideIcon }
-> = {
+const statusStyles: Record<JobStatus, { className: string; Icon: LucideIcon }> = {
   new: {
     className: "bg-blue-500/10 text-blue-600 border-blue-500/20",
     Icon: Sparkles,
@@ -55,13 +45,9 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
   const { Icon } = style;
 
   return (
-    <Badge
-      variant="outline"
-      className={cn("gap-1.5 font-medium", style.className, className)}
-    >
+    <Badge variant="outline" className={cn("gap-1.5 font-medium", style.className, className)}>
       <Icon className="h-3 w-3" />
       {config.label}
     </Badge>
   );
 }
-

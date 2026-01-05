@@ -94,4 +94,3 @@ def downgrade() -> None:
     op.drop_table("email_messages")
     op.drop_index("email_sources_user_id_idx", table_name="email_sources")
     op.drop_table("email_sources")
-

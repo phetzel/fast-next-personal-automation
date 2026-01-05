@@ -13,7 +13,9 @@ from app.core.exceptions import NotFoundError, ValidationError
 from app.core.storage import get_storage_instance
 from app.db.models.project import Project
 from app.repositories import project_repo
+from app.repositories.project import ProjectRepository
 from app.schemas.project import ProjectUpdate
+from app.services.base import BaseService
 
 logger = logging.getLogger(__name__)
 
@@ -30,25 +32,13 @@ def is_supported_project_mime_type(mime_type: str) -> bool:
     return mime_type in SUPPORTED_PROJECT_MIME_TYPES
 
 
-class ProjectService:
+class ProjectService(BaseService[Project, ProjectRepository]):
     """Service for project business logic."""
 
+    entity_name = "Project"
+
     def __init__(self, db: AsyncSession):
-        self.db = db
-
-    async def get_by_id(self, project_id: UUID, user_id: UUID) -> Project:
-        """Get project by ID, ensuring it belongs to the user.
-
-        Raises:
-            NotFoundError: If project does not exist or doesn't belong to user.
-        """
-        project = await project_repo.get_by_id(self.db, project_id)
-        if not project or project.user_id != user_id:
-            raise NotFoundError(
-                message="Project not found",
-                details={"project_id": str(project_id)},
-            )
-        return project
+        super().__init__(db, project_repo._repository)
 
     async def list_for_user(self, user_id: UUID) -> list[Project]:
         """Get all projects for a user, ordered by creation date."""

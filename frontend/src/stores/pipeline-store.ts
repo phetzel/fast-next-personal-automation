@@ -111,4 +111,3 @@ export const usePipelineStore = create<PipelineStore>((set, get) => ({
     return state.executions[pipelineName] || defaultExecutionState;
   },
 }));
-

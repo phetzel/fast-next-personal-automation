@@ -13,7 +13,20 @@ import {
 } from "@/components/ui";
 import { ResumeSelector } from "@/components/jobs";
 import type { JobProfile } from "@/types";
-import { Loader2, Plus, X, Save, CheckCircle2, User, Phone, Mail, MapPin, Globe, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  X,
+  Save,
+  CheckCircle2,
+  User,
+  Phone,
+  Mail,
+  MapPin,
+  Globe,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 
 export interface ProfileFormData {
   name: string;
@@ -38,24 +51,17 @@ interface ProfileFormProps {
   isLoading?: boolean;
 }
 
-export function ProfileForm({
-  profile,
-  onSave,
-  onCancel,
-  isLoading,
-}: ProfileFormProps) {
+export function ProfileForm({ profile, onSave, onCancel, isLoading }: ProfileFormProps) {
   const [name, setName] = useState(profile?.name || "");
   const [resumeId, setResumeId] = useState<string | null>(profile?.resume_id || null);
   const [storyId, setStoryId] = useState<string | null>(profile?.story_id || null);
   const [projectIds, setProjectIds] = useState<string[]>(profile?.project_ids || []);
   const [targetRoles, setTargetRoles] = useState<string[]>(profile?.target_roles || []);
-  const [targetLocations, setTargetLocations] = useState<string[]>(
-    profile?.target_locations || []
-  );
+  const [targetLocations, setTargetLocations] = useState<string[]>(profile?.target_locations || []);
   const [minScore, setMinScore] = useState(profile?.min_score_threshold || 7.0);
   const [newRole, setNewRole] = useState("");
   const [newLocation, setNewLocation] = useState("");
-  
+
   // Contact info for cover letters
   const [contactFullName, setContactFullName] = useState(profile?.contact_full_name || "");
   const [contactPhone, setContactPhone] = useState(profile?.contact_phone || "");
@@ -63,7 +69,13 @@ export function ProfileForm({
   const [contactLocation, setContactLocation] = useState(profile?.contact_location || "");
   const [contactWebsite, setContactWebsite] = useState(profile?.contact_website || "");
   const [showContactInfo, setShowContactInfo] = useState(
-    !!(profile?.contact_full_name || profile?.contact_phone || profile?.contact_email || profile?.contact_location || profile?.contact_website)
+    !!(
+      profile?.contact_full_name ||
+      profile?.contact_phone ||
+      profile?.contact_email ||
+      profile?.contact_location ||
+      profile?.contact_website
+    )
   );
 
   // Fetch stories and projects for selectors
@@ -151,9 +163,7 @@ export function ProfileForm({
               required
               maxLength={100}
             />
-            <p className="text-muted-foreground mt-1 text-xs">
-              Give this profile a memorable name
-            </p>
+            <p className="text-muted-foreground mt-1 text-xs">Give this profile a memorable name</p>
           </div>
 
           {/* Resume Selector */}
@@ -175,7 +185,7 @@ export function ProfileForm({
             <select
               value={storyId || ""}
               onChange={(e) => setStoryId(e.target.value || null)}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
             >
               <option value="">No story selected</option>
               {stories.map((story) => (
@@ -197,7 +207,7 @@ export function ProfileForm({
                 {projects.map((project) => (
                   <label
                     key={project.id}
-                    className="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-muted/50"
+                    className="hover:bg-muted/50 flex cursor-pointer items-center gap-3 rounded p-2"
                   >
                     <input
                       type="checkbox"
@@ -207,13 +217,11 @@ export function ProfileForm({
                     />
                     <div className="flex-1">
                       <span className="font-medium">{project.name}</span>
-                      <span className="ml-2 text-xs text-muted-foreground">
+                      <span className="text-muted-foreground ml-2 text-xs">
                         {project.original_filename}
                       </span>
                     </div>
-                    {project.has_text && (
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    )}
+                    {project.has_text && <CheckCircle2 className="h-4 w-4 text-green-500" />}
                   </label>
                 ))}
               </div>
@@ -305,9 +313,7 @@ export function ProfileForm({
 
           {/* Min Score */}
           <div>
-            <label className="mb-2 block text-sm font-medium">
-              Minimum Score Threshold
-            </label>
+            <label className="mb-2 block text-sm font-medium">Minimum Score Threshold</label>
             <div className="flex items-center gap-4">
               <Input
                 type="number"
@@ -329,13 +335,13 @@ export function ProfileForm({
             <button
               type="button"
               onClick={() => setShowContactInfo(!showContactInfo)}
-              className="flex w-full items-center justify-between text-sm font-medium hover:text-primary"
+              className="hover:text-primary flex w-full items-center justify-between text-sm font-medium"
             >
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4" />
                 <span>Cover Letter Contact Info</span>
                 {(contactFullName || contactPhone || contactEmail) && (
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                  <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs">
                     Configured
                   </span>
                 )}
@@ -346,17 +352,17 @@ export function ProfileForm({
                 <ChevronDown className="h-4 w-4" />
               )}
             </button>
-            
+
             {showContactInfo && (
               <div className="mt-4 space-y-4">
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   This information appears in the header of your generated cover letter PDFs.
                 </p>
-                
+
                 {/* Full Name */}
                 <div>
                   <label className="mb-1.5 flex items-center gap-2 text-sm font-medium">
-                    <User className="h-3.5 w-3.5 text-muted-foreground" />
+                    <User className="text-muted-foreground h-3.5 w-3.5" />
                     Full Name
                   </label>
                   <Input
@@ -370,7 +376,7 @@ export function ProfileForm({
                 {/* Phone */}
                 <div>
                   <label className="mb-1.5 flex items-center gap-2 text-sm font-medium">
-                    <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Phone className="text-muted-foreground h-3.5 w-3.5" />
                     Phone Number
                   </label>
                   <Input
@@ -384,7 +390,7 @@ export function ProfileForm({
                 {/* Email */}
                 <div>
                   <label className="mb-1.5 flex items-center gap-2 text-sm font-medium">
-                    <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Mail className="text-muted-foreground h-3.5 w-3.5" />
                     Email Address
                   </label>
                   <Input
@@ -394,7 +400,7 @@ export function ProfileForm({
                     placeholder="e.g., phetzel89@gmail.com"
                     maxLength={255}
                   />
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="text-muted-foreground mt-1 text-xs">
                     Falls back to your account email if not set
                   </p>
                 </div>
@@ -402,7 +408,7 @@ export function ProfileForm({
                 {/* Location */}
                 <div>
                   <label className="mb-1.5 flex items-center gap-2 text-sm font-medium">
-                    <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                    <MapPin className="text-muted-foreground h-3.5 w-3.5" />
                     Location
                   </label>
                   <Input
@@ -416,7 +422,7 @@ export function ProfileForm({
                 {/* Website */}
                 <div>
                   <label className="mb-1.5 flex items-center gap-2 text-sm font-medium">
-                    <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Globe className="text-muted-foreground h-3.5 w-3.5" />
                     Website
                   </label>
                   <Input
@@ -449,4 +455,3 @@ export function ProfileForm({
     </Card>
   );
 }
-

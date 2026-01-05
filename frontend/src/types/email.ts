@@ -92,4 +92,3 @@ export interface EmailSyncStats {
   total_jobs_saved: number;
   last_sync: EmailSync | null;
 }
-

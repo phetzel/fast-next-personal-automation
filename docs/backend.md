@@ -227,6 +227,68 @@ await resume_service.set_primary(resume_id, user_id) -> Resume
 await resume_service.get_text_content(resume_id) -> str | None
 ```
 
+## Base Classes
+
+### Repository Base Classes
+
+The backend uses a hierarchy of base repository classes to reduce boilerplate:
+
+```python
+from app.repositories.base import BaseRepository, UserOwnedRepository, PrimaryEntityRepository
+
+# BaseRepository - Generic CRUD operations
+class BaseRepository(Generic[ModelType]):
+    model: type[ModelType]
+    
+    async def get(db, id) -> ModelType | None
+    async def create(db, **data) -> ModelType
+    async def update(db, db_obj, update_data) -> ModelType
+    async def delete(db, id) -> ModelType | None
+
+# UserOwnedRepository - Adds user-scoped queries
+class UserOwnedRepository(BaseRepository[ModelType]):
+    async def get_by_user_id(db, user_id) -> list[ModelType]
+
+# PrimaryEntityRepository - Adds primary/default management
+class PrimaryEntityRepository(UserOwnedRepository[ModelType]):
+    primary_field: str = "is_primary"  # or "is_default"
+    
+    async def get_primary_for_user(db, user_id) -> ModelType | None
+    async def set_primary(db, item_id, user_id) -> ModelType
+```
+
+### Service Base Classes
+
+Services have corresponding base classes:
+
+```python
+from app.services.base import BaseService, PrimaryEntityService
+
+# BaseService - Common patterns
+class BaseService(Generic[ModelType, RepoType]):
+    async def get_by_id_for_user(item_id, user_id) -> ModelType  # Raises NotFoundError
+
+# PrimaryEntityService - Primary/default entity management
+class PrimaryEntityService(BaseService[ModelType, RepoType]):
+    async def set_primary(item_id, user_id) -> ModelType
+    async def delete_with_reassignment(item_id, user_id) -> ModelType
+```
+
+Example creating a new service:
+
+```python
+from app.services.base import PrimaryEntityService
+from app.repositories.resume import ResumeRepository
+
+class ResumeService(PrimaryEntityService[Resume, ResumeRepository]):
+    def __init__(self, db: AsyncSession):
+        super().__init__(db, ResumeRepository())
+    
+    # Add custom methods as needed
+    async def create_from_upload(self, user_id, file, name) -> Resume:
+        ...
+```
+
 ## Configuration
 
 Configuration is managed via environment variables in `app/core/config.py`:

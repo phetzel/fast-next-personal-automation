@@ -10,11 +10,7 @@ interface ProjectListItemProps {
   isLoading?: boolean;
 }
 
-export function ProjectListItem({
-  project,
-  onDelete,
-  isLoading,
-}: ProjectListItemProps) {
+export function ProjectListItem({ project, onDelete, isLoading }: ProjectListItemProps) {
   return (
     <Card>
       <CardContent className="flex items-center gap-4 py-4">
@@ -24,9 +20,7 @@ export function ProjectListItem({
           <div className="flex items-center gap-2">
             <p className="truncate font-medium">{project.name}</p>
           </div>
-          <p className="truncate text-sm text-muted-foreground">
-            {project.original_filename}
-          </p>
+          <p className="text-muted-foreground truncate text-sm">{project.original_filename}</p>
           <div className="mt-1 flex items-center gap-2 text-xs">
             {project.has_text ? (
               <span className="flex items-center gap-1 text-green-600">
@@ -58,4 +52,3 @@ export function ProjectListItem({
     </Card>
   );
 }
-

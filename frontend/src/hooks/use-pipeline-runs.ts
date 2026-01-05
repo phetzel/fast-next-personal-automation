@@ -65,9 +65,7 @@ export function usePipelineRuns() {
 
       try {
         const queryString = buildQueryString(filters);
-        const data = await apiClient.get<PipelineRunListResponse>(
-          `/pipelines/runs?${queryString}`
-        );
+        const data = await apiClient.get<PipelineRunListResponse>(`/pipelines/runs?${queryString}`);
 
         if (append) {
           appendRuns(data.runs, data.total, data.has_more);
@@ -169,6 +167,3 @@ export function usePipelineRuns() {
     setPageSize,
   };
 }
-
-
-

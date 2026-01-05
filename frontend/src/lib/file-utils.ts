@@ -15,27 +15,27 @@ export function formatFileSize(bytes: number): string {
  */
 export function getFileIcon(filenameOrMimeType: string): React.ReactNode {
   const value = filenameOrMimeType.toLowerCase();
-  
+
   // Check for PDF
   if (value.endsWith(".pdf") || value === "application/pdf") {
     return React.createElement(FileText, { className: "h-5 w-5 text-red-500" });
   }
-  
+
   // Check for Word docs
   if (value.endsWith(".docx") || value.includes("wordprocessingml")) {
     return React.createElement(FileText, { className: "h-5 w-5 text-blue-500" });
   }
-  
+
   // Check for Markdown
   if (value.endsWith(".md") || value === "text/markdown") {
     return React.createElement(FileText, { className: "h-5 w-5 text-purple-500" });
   }
-  
+
   // Check for text files
   if (value.endsWith(".txt") || value === "text/plain") {
     return React.createElement(FileText, { className: "h-5 w-5 text-gray-500" });
   }
-  
+
   // Default
   return React.createElement(File, { className: "h-5 w-5 text-gray-500" });
 }
@@ -56,4 +56,3 @@ export const RESUME_ACCEPTED_EXTENSIONS = ".pdf,.docx,.txt";
  */
 export const PROJECT_ACCEPTED_TYPES = ["text/markdown", "text/plain"];
 export const PROJECT_ACCEPTED_EXTENSIONS = ".md,.txt";
-

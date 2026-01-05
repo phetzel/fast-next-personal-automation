@@ -25,9 +25,7 @@ function formatDuration(ms: number | null): string {
 
 function JsonViewer({ data, label }: { data: Record<string, unknown> | null; label: string }) {
   if (!data || Object.keys(data).length === 0) {
-    return (
-      <div className="text-muted-foreground text-sm italic">No {label.toLowerCase()}</div>
-    );
+    return <div className="text-muted-foreground text-sm italic">No {label.toLowerCase()}</div>;
   }
 
   return (
@@ -41,10 +39,7 @@ export function RunDetailModal({ run, onClose }: RunDetailModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
       <div className="bg-background scrollbar-thin relative z-10 max-h-[90vh] w-full max-w-2xl overflow-auto rounded-xl border shadow-2xl">
@@ -52,9 +47,7 @@ export function RunDetailModal({ run, onClose }: RunDetailModalProps) {
         <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-inherit px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold">{run.pipeline_name}</h2>
-            <p className="text-muted-foreground text-sm">
-              Run ID: {run.id.slice(0, 8)}...
-            </p>
+            <p className="text-muted-foreground text-sm">Run ID: {run.id.slice(0, 8)}...</p>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="h-5 w-5" />
@@ -104,7 +97,7 @@ export function RunDetailModal({ run, onClose }: RunDetailModalProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <pre className="whitespace-pre-wrap break-words text-sm text-red-600">
+                <pre className="text-sm break-words whitespace-pre-wrap text-red-600">
                   {run.error_message}
                 </pre>
               </CardContent>
@@ -153,4 +146,3 @@ export function RunDetailModal({ run, onClose }: RunDetailModalProps) {
     </div>
   );
 }
-

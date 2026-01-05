@@ -2,12 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { apiClient } from "@/lib/api-client";
-import type {
-  JobProfile,
-  JobProfileSummary,
-  JobProfileCreate,
-  JobProfileUpdate,
-} from "@/types";
+import type { JobProfile, JobProfileSummary, JobProfileCreate, JobProfileUpdate } from "@/types";
 
 /**
  * Hook for managing job profiles.
@@ -162,9 +157,7 @@ export function useJobProfiles() {
       setError(null);
 
       try {
-        const updated = await apiClient.post<JobProfile>(
-          `/job-profiles/${id}/set-default`
-        );
+        const updated = await apiClient.post<JobProfile>(`/job-profiles/${id}/set-default`);
         // Refresh profiles list to update default status
         await fetchProfiles();
         return updated;
@@ -212,4 +205,3 @@ export function useJobProfiles() {
     setError,
   };
 }
-

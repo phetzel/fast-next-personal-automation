@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { backendFetch, BackendApiError } from "@/lib/server-api";
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const accessToken = request.cookies.get("access_token")?.value;
     const { id } = await params;
@@ -35,4 +32,3 @@ export async function POST(
     return NextResponse.json({ detail: "Internal server error" }, { status: 500 });
   }
 }
-

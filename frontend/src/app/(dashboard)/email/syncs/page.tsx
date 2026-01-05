@@ -91,9 +91,7 @@ export default function EmailSyncsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Sync History</h1>
-          <p className="text-muted-foreground">
-            View all email sync operations
-          </p>
+          <p className="text-muted-foreground">View all email sync operations</p>
         </div>
         <Button onClick={handleTriggerSync} disabled={isSyncing}>
           {isSyncing ? (
@@ -119,14 +117,14 @@ export default function EmailSyncsPage() {
           {isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-20 animate-pulse rounded-lg bg-muted" />
+                <div key={i} className="bg-muted h-20 animate-pulse rounded-lg" />
               ))}
             </div>
           ) : syncs.length === 0 ? (
             <div className="py-12 text-center">
-              <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <AlertCircle className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
               <p className="text-muted-foreground">No syncs found</p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-muted-foreground mt-1 text-sm">
                 Click &apos;Sync Now&apos; to start syncing emails
               </p>
             </div>
@@ -137,9 +135,9 @@ export default function EmailSyncsPage() {
                   key={sync.id}
                   onClick={() => setSelectedSync(selectedSync?.id === sync.id ? null : sync)}
                   className={cn(
-                    "p-4 rounded-lg border bg-card cursor-pointer transition-all",
-                    "hover:shadow-md hover:ring-2 hover:ring-primary/20",
-                    selectedSync?.id === sync.id && "ring-2 ring-primary"
+                    "bg-card cursor-pointer rounded-lg border p-4 transition-all",
+                    "hover:ring-primary/20 hover:shadow-md hover:ring-2",
+                    selectedSync?.id === sync.id && "ring-primary ring-2"
                   )}
                 >
                   <div className="flex items-center justify-between">
@@ -147,7 +145,7 @@ export default function EmailSyncsPage() {
                       {getStatusBadge(sync.status)}
                       <div>
                         <p className="font-medium">{formatDate(sync.started_at)}</p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-muted-foreground text-sm">
                           Duration: {formatDuration(sync)}
                         </p>
                       </div>
@@ -174,11 +172,11 @@ export default function EmailSyncsPage() {
 
                   {/* Expanded details */}
                   {selectedSync?.id === sync.id && (
-                    <div className="mt-4 pt-4 border-t">
+                    <div className="mt-4 border-t pt-4">
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div>
-                          <p className="text-sm font-medium mb-2">Sync Details</p>
-                          <dl className="text-sm space-y-1">
+                          <p className="mb-2 text-sm font-medium">Sync Details</p>
+                          <dl className="space-y-1 text-sm">
                             <div className="flex justify-between">
                               <dt className="text-muted-foreground">ID:</dt>
                               <dd className="font-mono text-xs">{sync.id}</dd>
@@ -194,8 +192,8 @@ export default function EmailSyncsPage() {
                           </dl>
                         </div>
                         <div>
-                          <p className="text-sm font-medium mb-2">Job Statistics</p>
-                          <dl className="text-sm space-y-1">
+                          <p className="mb-2 text-sm font-medium">Job Statistics</p>
+                          <dl className="space-y-1 text-sm">
                             <div className="flex justify-between">
                               <dt className="text-muted-foreground">Extracted:</dt>
                               <dd>{sync.sync_metadata?.jobs_extracted || 0}</dd>
@@ -216,7 +214,7 @@ export default function EmailSyncsPage() {
                         </div>
                       </div>
                       {sync.error_message && (
-                        <div className="mt-4 p-3 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 text-sm">
+                        <div className="mt-4 rounded-lg bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">
                           <p className="font-medium">Error:</p>
                           <p className="mt-1">{sync.error_message}</p>
                         </div>
@@ -230,8 +228,8 @@ export default function EmailSyncsPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-6 pt-4 border-t">
-              <p className="text-sm text-muted-foreground">
+            <div className="mt-6 flex items-center justify-between border-t pt-4">
+              <p className="text-muted-foreground text-sm">
                 Page {page} of {totalPages}
               </p>
               <div className="flex gap-2">

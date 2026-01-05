@@ -19,7 +19,7 @@ const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
 
 export function TabNav({ activeTab, onTabChange }: TabNavProps) {
   return (
-    <div className="flex gap-1 rounded-lg border bg-muted/30 p-1">
+    <div className="bg-muted/30 flex gap-1 rounded-lg border p-1">
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -37,4 +37,3 @@ export function TabNav({ activeTab, onTabChange }: TabNavProps) {
     </div>
   );
 }
-

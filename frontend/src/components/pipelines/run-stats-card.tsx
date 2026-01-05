@@ -75,9 +75,7 @@ export function RunStatsCard({ stats, isLoading }: RunStatsCardProps) {
                 <item.icon className={`h-5 w-5 ${item.color}`} />
               </div>
               <div>
-                <p className="text-muted-foreground text-sm font-medium">
-                  {item.label}
-                </p>
+                <p className="text-muted-foreground text-sm font-medium">{item.label}</p>
                 <p className="text-2xl font-bold">{item.value}</p>
               </div>
             </div>
@@ -100,6 +98,3 @@ export function RunStatsCard({ stats, isLoading }: RunStatsCardProps) {
     </div>
   );
 }
-
-
-

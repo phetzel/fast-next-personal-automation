@@ -1,11 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import type {
-  PipelineRun,
-  PipelineRunStats,
-  PipelineRunFilters,
-} from "@/types";
+import type { PipelineRun, PipelineRunStats, PipelineRunFilters } from "@/types";
 
 interface PipelineRunStore {
   // Run list state
@@ -61,8 +57,7 @@ export const usePipelineRunStore = create<PipelineRunStore>((set, get) => ({
   selectedRun: null,
 
   // Actions
-  setRuns: (runs, total, page, hasMore) =>
-    set({ runs, total, page, hasMore, error: null }),
+  setRuns: (runs, total, page, hasMore) => set({ runs, total, page, hasMore, error: null }),
 
   appendRuns: (newRuns, total, hasMore) =>
     set((state) => ({
@@ -107,6 +102,3 @@ export const usePipelineRunStore = create<PipelineRunStore>((set, get) => ({
       filters: { ...state.filters, page_size: pageSize, page: 1 },
     })),
 }));
-
-
-

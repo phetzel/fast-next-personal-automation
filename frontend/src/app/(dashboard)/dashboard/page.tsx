@@ -59,8 +59,8 @@ export default function DashboardPage() {
 
       {/* Areas Section */}
       <section>
-        <div className="flex items-center gap-2 mb-4">
-          <Layers className="h-5 w-5 text-muted-foreground" />
+        <div className="mb-4 flex items-center gap-2">
+          <Layers className="text-muted-foreground h-5 w-5" />
           <h2 className="text-lg font-semibold">Areas</h2>
         </div>
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
@@ -71,7 +71,7 @@ export default function DashboardPage() {
 
       {/* System Status Section */}
       <section>
-        <h2 className="text-lg font-semibold mb-4">System Status</h2>
+        <h2 className="mb-4 text-lg font-semibold">System Status</h2>
         <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
           <Card>
             <CardHeader className="pb-2 sm:pb-4">
@@ -80,7 +80,7 @@ export default function DashboardPage() {
             <CardContent>
               {healthLoading ? (
                 <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
                   <p className="text-muted-foreground text-sm">Checking...</p>
                 </div>
               ) : healthError ? (
@@ -97,7 +97,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
                   {health?.version && (
-                    <p className="text-muted-foreground text-xs sm:text-sm pl-6">
+                    <p className="text-muted-foreground pl-6 text-xs sm:text-sm">
                       Version: {health.version}
                     </p>
                   )}
@@ -121,17 +121,18 @@ export default function DashboardPage() {
                       Name: <span className="font-medium">{user.name}</span>
                     </p>
                   )}
-                  <div className="pt-2 border-t">
+                  <div className="border-t pt-2">
                     <Link
                       href={ROUTES.SETTINGS_EMAIL}
-                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-sm transition-colors"
                     >
                       <Mail className="h-4 w-4" />
                       {emailLoading ? (
                         <span>Loading...</span>
                       ) : hasConnectedEmail ? (
                         <span>
-                          {emailSources.length} email{emailSources.length !== 1 ? "s" : ""} connected
+                          {emailSources.length} email{emailSources.length !== 1 ? "s" : ""}{" "}
+                          connected
                         </span>
                       ) : (
                         <span>Connect email</span>

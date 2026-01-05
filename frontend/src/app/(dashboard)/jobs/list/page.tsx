@@ -58,7 +58,14 @@ export default function JobsListPage() {
   // Fetch jobs on mount and when filters change
   useEffect(() => {
     fetchJobs();
-  }, [filters.page, filters.status, filters.sort_by, filters.sort_order, filters.search, filters.posted_within_hours]);
+  }, [
+    filters.page,
+    filters.status,
+    filters.sort_by,
+    filters.sort_order,
+    filters.search,
+    filters.posted_within_hours,
+  ]);
 
   // Fetch stats on mount
   useEffect(() => {
@@ -144,9 +151,7 @@ export default function JobsListPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Job Listings</h1>
-          <p className="text-muted-foreground">
-            View and manage jobs from your searches
-          </p>
+          <p className="text-muted-foreground">View and manage jobs from your searches</p>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -190,11 +195,7 @@ export default function JobsListPage() {
       <JobStatsCard stats={stats} isLoading={statsLoading} />
 
       {/* Filters */}
-      <JobFilters
-        filters={filters}
-        onFiltersChange={setFilters}
-        onReset={resetFilters}
-      />
+      <JobFilters filters={filters} onFiltersChange={setFilters} onReset={resetFilters} />
 
       {/* Job Table */}
       <JobTable

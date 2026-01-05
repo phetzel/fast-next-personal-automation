@@ -13,7 +13,7 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from app.core.config import settings
-from app.pipelines.actions.job_search.scraper import ScrapedJob
+from app.schemas.job_data import ScrapedJob
 
 logger = logging.getLogger(__name__)
 

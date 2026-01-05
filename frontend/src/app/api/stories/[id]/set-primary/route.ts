@@ -6,10 +6,7 @@ const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 /**
  * POST /api/stories/[id]/set-primary - Set story as primary
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const accessToken = request.cookies.get("access_token")?.value;
 
@@ -43,4 +40,3 @@ export async function POST(
     return NextResponse.json({ detail: "Internal server error" }, { status: 500 });
   }
 }
-

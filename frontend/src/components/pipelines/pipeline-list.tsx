@@ -22,9 +22,9 @@ interface PipelineListProps {
 /**
  * Displays a grid of available pipelines with optional filtering.
  */
-export function PipelineList({ 
-  area: initialArea, 
-  tags: initialTags, 
+export function PipelineList({
+  area: initialArea,
+  tags: initialTags,
   showFilters = true,
   expandedPipeline,
   initialValues,
@@ -53,9 +53,7 @@ export function PipelineList({
     }
 
     if (selectedTags.length > 0) {
-      result = result.filter((p) =>
-        selectedTags.every((tag) => p.tags.includes(tag))
-      );
+      result = result.filter((p) => selectedTags.every((tag) => p.tags.includes(tag)));
     }
 
     return result;
@@ -113,19 +111,14 @@ export function PipelineList({
     <div className="space-y-4">
       {/* Filters */}
       {showFilters && (availableAreas.length > 0 || availableTags.length > 0) && (
-        <div className="space-y-3 rounded-lg border bg-card p-4">
+        <div className="bg-card space-y-3 rounded-lg border p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm font-medium">
               <Filter className="h-4 w-4" />
               Filters
             </div>
             {hasActiveFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={clearFilters}
-              >
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={clearFilters}>
                 <X className="mr-1 h-3 w-3" />
                 Clear all
               </Button>
@@ -135,7 +128,7 @@ export function PipelineList({
           {/* Area filter */}
           {availableAreas.length > 0 && (
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Area</label>
+              <label className="text-muted-foreground text-xs">Area</label>
               <div className="flex flex-wrap gap-2">
                 <Badge
                   variant={selectedArea === null ? "default" : "outline"}
@@ -161,7 +154,7 @@ export function PipelineList({
           {/* Tags filter */}
           {availableTags.length > 0 && (
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Tags</label>
+              <label className="text-muted-foreground text-xs">Tags</label>
               <div className="flex flex-wrap gap-2">
                 {availableTags.map((tag) => (
                   <Badge
@@ -181,7 +174,7 @@ export function PipelineList({
 
       {/* Pipeline count */}
       {hasActiveFilters && (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Showing {filteredPipelines.length} of {pipelines.length} pipelines
         </p>
       )}
@@ -227,4 +220,3 @@ export function PipelineList({
     </div>
   );
 }
-

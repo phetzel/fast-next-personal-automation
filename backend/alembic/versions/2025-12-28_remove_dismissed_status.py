@@ -45,4 +45,3 @@ def downgrade() -> None:
     # dismissed and deleted within the migration window
     # For safety, we won't automatically restore them - manual intervention required
     pass
-

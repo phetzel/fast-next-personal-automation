@@ -27,12 +27,7 @@ interface StoryFormProps {
   isLoading?: boolean;
 }
 
-export function StoryForm({
-  story,
-  onSave,
-  onCancel,
-  isLoading,
-}: StoryFormProps) {
+export function StoryForm({ story, onSave, onCancel, isLoading }: StoryFormProps) {
   const [name, setName] = useState(story?.name || "");
   const [content, setContent] = useState(story?.content || "");
   const isPrimary = story?.is_primary || false;
@@ -66,9 +61,7 @@ export function StoryForm({
               required
               maxLength={100}
             />
-            <p className="text-muted-foreground mt-1 text-xs">
-              Give this story a memorable name
-            </p>
+            <p className="text-muted-foreground mt-1 text-xs">Give this story a memorable name</p>
           </div>
 
           {/* Story Content */}
@@ -82,8 +75,7 @@ export function StoryForm({
               className="min-h-[300px]"
             />
             <p className="text-muted-foreground mt-1 text-xs">
-              Markdown is supported. This content will be used to help personalize job
-              applications.
+              Markdown is supported. This content will be used to help personalize job applications.
             </p>
           </div>
 
@@ -106,4 +98,3 @@ export function StoryForm({
     </Card>
   );
 }
-

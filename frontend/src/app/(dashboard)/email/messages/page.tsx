@@ -55,9 +55,7 @@ export default function EmailMessagesPage() {
       {/* Page header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Messages</h1>
-        <p className="text-muted-foreground">
-          Browse processed email messages
-        </p>
+        <p className="text-muted-foreground">Browse processed email messages</p>
       </div>
 
       {/* Source selector */}
@@ -89,60 +87,53 @@ export default function EmailMessagesPage() {
           {isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-20 animate-pulse rounded-lg bg-muted" />
+                <div key={i} className="bg-muted h-20 animate-pulse rounded-lg" />
               ))}
             </div>
           ) : sources.length === 0 ? (
             <div className="py-12 text-center">
-              <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <AlertCircle className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
               <p className="text-muted-foreground">No email sources connected</p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-muted-foreground mt-1 text-sm">
                 Connect your Gmail account to start syncing emails
               </p>
             </div>
           ) : messages.length === 0 ? (
             <div className="py-12 text-center">
-              <Inbox className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <Inbox className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
               <p className="text-muted-foreground">No messages found</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Run a sync to fetch new emails
-              </p>
+              <p className="text-muted-foreground mt-1 text-sm">Run a sync to fetch new emails</p>
             </div>
           ) : (
             <div className="space-y-3">
               {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={cn(
-                    "p-4 rounded-lg border bg-card transition-all",
-                    "hover:shadow-md"
-                  )}
+                  className={cn("bg-card rounded-lg border p-4 transition-all", "hover:shadow-md")}
                 >
                   <div
-                    className="flex items-start justify-between cursor-pointer"
-                    onClick={() => setExpandedMessage(
-                      expandedMessage === message.id ? null : message.id
-                    )}
+                    className="flex cursor-pointer items-start justify-between"
+                    onClick={() =>
+                      setExpandedMessage(expandedMessage === message.id ? null : message.id)
+                    }
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex items-center gap-2">
                         {message.processing_error ? (
-                          <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                          <XCircle className="h-4 w-4 flex-shrink-0 text-red-500" />
                         ) : (
-                          <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                          <CheckCircle className="h-4 w-4 flex-shrink-0 text-green-500" />
                         )}
-                        <p className="font-medium truncate">{message.subject || "(No subject)"}</p>
+                        <p className="truncate font-medium">{message.subject || "(No subject)"}</p>
                       </div>
-                      <p className="text-sm text-muted-foreground truncate">
+                      <p className="text-muted-foreground truncate text-sm">
                         From: {message.from_address}
                       </p>
                     </div>
-                    <div className="flex items-center gap-4 ml-4 flex-shrink-0">
+                    <div className="ml-4 flex flex-shrink-0 items-center gap-4">
                       <div className="text-right text-sm">
-                        <p className="text-muted-foreground">
-                          {formatDate(message.received_at)}
-                        </p>
-                        <div className="flex items-center gap-2 justify-end mt-1">
+                        <p className="text-muted-foreground">{formatDate(message.received_at)}</p>
+                        <div className="mt-1 flex items-center justify-end gap-2">
                           {getParserBadge(message.parser_used)}
                           <span className="text-muted-foreground">
                             {message.jobs_extracted} job{message.jobs_extracted !== 1 ? "s" : ""}
@@ -151,7 +142,7 @@ export default function EmailMessagesPage() {
                       </div>
                       <ChevronDown
                         className={cn(
-                          "h-5 w-5 text-muted-foreground transition-transform",
+                          "text-muted-foreground h-5 w-5 transition-transform",
                           expandedMessage === message.id && "rotate-180"
                         )}
                       />
@@ -160,8 +151,8 @@ export default function EmailMessagesPage() {
 
                   {/* Expanded details */}
                   {expandedMessage === message.id && (
-                    <div className="mt-4 pt-4 border-t">
-                      <dl className="text-sm space-y-2">
+                    <div className="mt-4 border-t pt-4">
+                      <dl className="space-y-2 text-sm">
                         <div className="flex justify-between">
                           <dt className="text-muted-foreground">Message ID:</dt>
                           <dd className="font-mono text-xs">{message.gmail_message_id}</dd>
@@ -180,7 +171,7 @@ export default function EmailMessagesPage() {
                         </div>
                       </dl>
                       {message.processing_error && (
-                        <div className="mt-4 p-3 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 text-sm">
+                        <div className="mt-4 rounded-lg bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">
                           <p className="font-medium">Processing Error:</p>
                           <p className="mt-1">{message.processing_error}</p>
                         </div>

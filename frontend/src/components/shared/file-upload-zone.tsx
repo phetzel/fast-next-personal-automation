@@ -137,10 +137,7 @@ export function FileUploadZone({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
-        className={`
-          cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors
-          ${isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"}
-        `}
+        className={`cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors ${isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"} `}
       >
         <input
           ref={fileInputRef}
@@ -149,9 +146,9 @@ export function FileUploadZone({
           onChange={handleFileSelect}
           className="hidden"
         />
-        <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
+        <Upload className="text-muted-foreground mx-auto h-8 w-8" />
         <p className="mt-2 text-sm font-medium">Drop a file here or click to browse</p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           {displayTypesLabel} ({maxSizeLabel})
         </p>
       </div>
@@ -164,9 +161,7 @@ export function FileUploadZone({
               {getFileIcon(selectedFile.name)}
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{selectedFile.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatFileSize(selectedFile.size)}
-                </p>
+                <p className="text-muted-foreground text-xs">{formatFileSize(selectedFile.size)}</p>
               </div>
             </div>
 
@@ -210,4 +205,3 @@ export function FileUploadZone({
     </div>
   );
 }
-

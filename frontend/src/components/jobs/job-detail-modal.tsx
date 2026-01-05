@@ -122,23 +122,19 @@ export function JobDetailModal({
     // Generate PDF
     setIsGeneratingPdf(true);
     setPdfError(null);
-    
+
     try {
-      const updatedJob = await apiClient.post<Job>(
-        `/jobs/${job.id}/cover-letter/generate-pdf`
-      );
-      
+      const updatedJob = await apiClient.post<Job>(`/jobs/${job.id}/cover-letter/generate-pdf`);
+
       // Update status to reviewed
       await onUpdate(job.id, { status: "reviewed" });
-      
+
       // Refresh the job in state with the new PDF path
       if (updatedJob) {
         await onUpdate(job.id, {}); // Trigger a refresh
       }
     } catch (error) {
-      setPdfError(
-        error instanceof Error ? error.message : "Failed to generate PDF"
-      );
+      setPdfError(error instanceof Error ? error.message : "Failed to generate PDF");
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -151,11 +147,12 @@ export function JobDetailModal({
       if (!response.ok) {
         throw new Error("Failed to download PDF");
       }
-      
+
       const blob = await response.blob();
-      const filename = response.headers.get("Content-Disposition")
-        ?.match(/filename="(.+)"/)?.[1] || "cover-letter.pdf";
-      
+      const filename =
+        response.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] ||
+        "cover-letter.pdf";
+
       // Create download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -188,18 +185,14 @@ export function JobDetailModal({
     setPdfError(null);
 
     try {
-      const updatedJob = await apiClient.post<Job>(
-        `/jobs/${job.id}/cover-letter/generate-pdf`
-      );
+      const updatedJob = await apiClient.post<Job>(`/jobs/${job.id}/cover-letter/generate-pdf`);
 
       // Refresh the job in state with the new PDF path
       if (updatedJob) {
         await onUpdate(job.id, {}); // Trigger a refresh
       }
     } catch (error) {
-      setPdfError(
-        error instanceof Error ? error.message : "Failed to regenerate PDF"
-      );
+      setPdfError(error instanceof Error ? error.message : "Failed to regenerate PDF");
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -215,9 +208,7 @@ export function JobDetailModal({
     }
   };
 
-  const postedDate = job.date_posted
-    ? format(new Date(job.date_posted), "MMM d, yyyy")
-    : null;
+  const postedDate = job.date_posted ? format(new Date(job.date_posted), "MMM d, yyyy") : null;
 
   const hasPreppedMaterials = !!job.cover_letter || !!job.prep_notes;
   const hasPdf = !!job.cover_letter_file_path;
@@ -262,9 +253,7 @@ export function JobDetailModal({
                 Posted {postedDate}
               </div>
             )}
-            {job.source && (
-              <span className="capitalize">Source: {job.source}</span>
-            )}
+            {job.source && <span className="capitalize">Source: {job.source}</span>}
             {job.prepped_at && (
               <span className="text-cyan-600 dark:text-cyan-400">
                 Prepped {format(new Date(job.prepped_at), "MMM d")}
@@ -274,9 +263,7 @@ export function JobDetailModal({
 
           {/* Salary */}
           {job.salary_range && (
-            <p className="text-lg font-semibold text-green-600">
-              {job.salary_range}
-            </p>
+            <p className="text-lg font-semibold text-green-600">{job.salary_range}</p>
           )}
 
           {/* Status selector */}
@@ -286,10 +273,9 @@ export function JobDetailModal({
               {STATUS_OPTIONS.map((option) => {
                 const isCurrentStatus = job.status === option.value;
                 const canTransition = canTransitionTo(job.status, option.value);
-                const isReviewedTransition = 
-                  option.value === "reviewed" && 
-                  job.status === "prepped";
-                
+                const isReviewedTransition =
+                  option.value === "reviewed" && job.status === "prepped";
+
                 return (
                   <Button
                     key={option.value}
@@ -299,8 +285,10 @@ export function JobDetailModal({
                     disabled={isUpdating || isGeneratingPdf || (!isCurrentStatus && !canTransition)}
                     title={option.description}
                     className={cn(
-                      !isCurrentStatus && !canTransition && "opacity-40 cursor-not-allowed",
-                      isReviewedTransition && canTransition && "border-purple-500/50 hover:bg-purple-500/10"
+                      !isCurrentStatus && !canTransition && "cursor-not-allowed opacity-40",
+                      isReviewedTransition &&
+                        canTransition &&
+                        "border-purple-500/50 hover:bg-purple-500/10"
                     )}
                   >
                     {isGeneratingPdf && option.value === "reviewed" ? (
@@ -312,8 +300,9 @@ export function JobDetailModal({
               })}
             </div>
             {job.status === "prepped" && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                <span className="text-purple-600 dark:text-purple-400">Tip:</span> Clicking &quot;Reviewed&quot; will generate a PDF of your cover letter.
+              <p className="text-muted-foreground mt-2 text-xs">
+                <span className="text-purple-600 dark:text-purple-400">Tip:</span> Clicking
+                &quot;Reviewed&quot; will generate a PDF of your cover letter.
               </p>
             )}
           </div>
@@ -417,10 +406,8 @@ export function JobDetailModal({
                     )}
                   </button>
                   {showPrepNotes && (
-                    <div className="rounded-md bg-background/80 p-3 text-sm">
-                      <pre className="whitespace-pre-wrap font-sans">
-                        {job.prep_notes}
-                      </pre>
+                    <div className="bg-background/80 rounded-md p-3 text-sm">
+                      <pre className="font-sans whitespace-pre-wrap">{job.prep_notes}</pre>
                     </div>
                   )}
                 </div>
@@ -431,7 +418,12 @@ export function JobDetailModal({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
                     <CheckCircle className="h-4 w-4" />
-                    <span>PDF generated {job.cover_letter_generated_at ? format(new Date(job.cover_letter_generated_at), "MMM d, h:mm a") : ""}</span>
+                    <span>
+                      PDF generated{" "}
+                      {job.cover_letter_generated_at
+                        ? format(new Date(job.cover_letter_generated_at), "MMM d, h:mm a")
+                        : ""}
+                    </span>
                   </div>
                   {coverLetterDirty && (
                     <Button
@@ -439,7 +431,7 @@ export function JobDetailModal({
                       variant="outline"
                       onClick={handleRegeneratePdf}
                       disabled={isGeneratingPdf}
-                      className="h-7 text-xs border-amber-500/30 hover:bg-amber-500/10"
+                      className="h-7 border-amber-500/30 text-xs hover:bg-amber-500/10"
                     >
                       {isGeneratingPdf ? (
                         <Loader2 className="mr-1 h-3 w-3 animate-spin" />
@@ -451,7 +443,7 @@ export function JobDetailModal({
                   )}
                 </div>
               )}
-              
+
               {/* Show regenerate prompt if cover letter edited */}
               {hasPdf && coverLetterDirty && (
                 <p className="text-xs text-amber-600 dark:text-amber-400">
@@ -463,14 +455,14 @@ export function JobDetailModal({
 
           {/* Show prompt to prep if job is new and no materials */}
           {job.status === "new" && !hasPreppedMaterials && onPrep && (
-            <div className="rounded-lg border-2 border-dashed border-primary/30 bg-primary/5 p-4">
+            <div className="border-primary/30 bg-primary/5 rounded-lg border-2 border-dashed p-4">
               <div className="flex items-start gap-3">
-                <div className="rounded-full bg-primary/10 p-2">
-                  <Sparkles className="h-5 w-5 text-primary" />
+                <div className="bg-primary/10 rounded-full p-2">
+                  <Sparkles className="text-primary h-5 w-5" />
                 </div>
                 <div className="flex-1">
                   <p className="font-medium">Ready to Prepare?</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="text-muted-foreground mt-1 text-sm">
                     Generate a tailored cover letter and prep notes for this job.
                   </p>
                   <Button
@@ -502,14 +494,14 @@ export function JobDetailModal({
             <div>
               <p className="mb-2 text-sm font-medium">Description</p>
               <div className="bg-muted max-h-60 overflow-y-auto rounded-lg p-3">
-                <p className="whitespace-pre-wrap text-sm">{job.description}</p>
+                <p className="text-sm whitespace-pre-wrap">{job.description}</p>
               </div>
             </div>
           )}
 
           {/* Notes */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="mb-2 flex items-center justify-between">
               <p className="text-sm font-medium">Your Notes</p>
               {notesDirty && (
                 <Button
@@ -542,12 +534,7 @@ export function JobDetailModal({
           {/* Actions */}
           <div className="flex items-center justify-between border-t pt-4">
             <div className="flex items-center gap-2">
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleDelete}
-                disabled={isDeleting}
-              >
+              <Button variant="destructive" size="sm" onClick={handleDelete} disabled={isDeleting}>
                 {isDeleting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -563,11 +550,7 @@ export function JobDetailModal({
               </Button>
             </div>
             <Button asChild>
-              <a
-                href={job.job_url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <a href={job.job_url} target="_blank" rel="noopener noreferrer">
                 View Job Posting
                 <ExternalLink className="ml-2 h-4 w-4" />
               </a>

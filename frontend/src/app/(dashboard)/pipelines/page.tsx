@@ -30,7 +30,7 @@ export default function PipelinesPage() {
               "flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors",
               activeTab === "pipelines"
                 ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/50"
+                : "text-muted-foreground hover:text-foreground hover:border-muted-foreground/50 border-transparent"
             )}
           >
             <Workflow className="h-4 w-4" />
@@ -42,7 +42,7 @@ export default function PipelinesPage() {
               "flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors",
               activeTab === "history"
                 ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/50"
+                : "text-muted-foreground hover:text-foreground hover:border-muted-foreground/50 border-transparent"
             )}
           >
             <History className="h-4 w-4" />
@@ -52,12 +52,7 @@ export default function PipelinesPage() {
       </div>
 
       {/* Tab content */}
-      {activeTab === "pipelines" ? (
-        <PipelineList />
-      ) : (
-        <PipelineRunHistory />
-      )}
+      {activeTab === "pipelines" ? <PipelineList /> : <PipelineRunHistory />}
     </div>
   );
 }
-

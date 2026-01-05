@@ -63,14 +63,7 @@ class LinkedInParser(EmailParser):
                     logger.debug(f"Error parsing LinkedIn job section: {e}")
                     continue
 
-            # Deduplicate by URL
-            seen_urls = set()
-            unique_jobs = []
-            for job in jobs:
-                if job.job_url not in seen_urls:
-                    seen_urls.add(job.job_url)
-                    unique_jobs.append(job)
-
+            unique_jobs = self._deduplicate_jobs(jobs)
             logger.info(f"Extracted {len(unique_jobs)} jobs from LinkedIn email")
             return unique_jobs
 

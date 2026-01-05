@@ -9,7 +9,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundError, ValidationError
+from app.core.exceptions import ValidationError
 from app.core.storage import get_storage_instance
 from app.core.text_extraction import (
     extract_text_from_file,
@@ -18,38 +18,20 @@ from app.core.text_extraction import (
 )
 from app.db.models.resume import Resume
 from app.repositories import resume_repo
+from app.repositories.resume import ResumeRepository
 from app.schemas.resume import ResumeUpdate
+from app.services.base import PrimaryEntityService
 
 logger = logging.getLogger(__name__)
 
 
-class ResumeService:
+class ResumeService(PrimaryEntityService[Resume, ResumeRepository]):
     """Service for resume business logic."""
 
+    entity_name = "Resume"
+
     def __init__(self, db: AsyncSession):
-        self.db = db
-
-    async def get_by_id(self, resume_id: UUID, user_id: UUID) -> Resume:
-        """Get resume by ID, ensuring it belongs to the user.
-
-        Raises:
-            NotFoundError: If resume does not exist or doesn't belong to user.
-        """
-        resume = await resume_repo.get_by_id(self.db, resume_id)
-        if not resume or resume.user_id != user_id:
-            raise NotFoundError(
-                message="Resume not found",
-                details={"resume_id": str(resume_id)},
-            )
-        return resume
-
-    async def list_for_user(self, user_id: UUID) -> list[Resume]:
-        """Get all resumes for a user, ordered by primary status and creation date."""
-        return await resume_repo.get_by_user_id(self.db, user_id)
-
-    async def get_primary_for_user(self, user_id: UUID) -> Resume | None:
-        """Get the primary resume for a user, or None if none exists."""
-        return await resume_repo.get_primary_for_user(self.db, user_id)
+        super().__init__(db, resume_repo._repository)
 
     async def create_from_upload(
         self,
@@ -102,32 +84,24 @@ class ResumeService:
         storage = await get_storage_instance()
         file_path = await storage.save(file_data, user_id, filename)
 
-        # Check if this should be the primary resume
-        is_primary = set_primary
-        if not is_primary:
-            existing_resumes = await resume_repo.get_by_user_id(self.db, user_id)
-            if not existing_resumes:
-                # First resume is always primary
-                is_primary = True
+        async def create_resume(is_primary: bool) -> Resume:
+            return await resume_repo.create(
+                self.db,
+                user_id=user_id,
+                name=name,
+                original_filename=filename,
+                file_path=file_path,
+                file_size=len(file_data),
+                mime_type=mime_type,
+                text_content=text_content,
+                is_primary=is_primary,
+            )
 
-        # Create database record
-        resume = await resume_repo.create(
-            self.db,
-            user_id=user_id,
-            name=name,
-            original_filename=filename,
-            file_path=file_path,
-            file_size=len(file_data),
-            mime_type=mime_type,
-            text_content=text_content,
-            is_primary=is_primary,
+        return await self._create_with_primary_check(
+            user_id,
+            set_primary,
+            create_resume,
         )
-
-        # If marked as primary, unset other primary
-        if is_primary:
-            await self._ensure_single_primary(user_id, resume.id)
-
-        return resume
 
     async def get_text_content(self, resume_id: UUID, user_id: UUID) -> str | None:
         """Get the text content for a resume.
@@ -167,23 +141,6 @@ class ResumeService:
 
         return updated
 
-    async def set_primary(self, user_id: UUID, resume_id: UUID) -> Resume:
-        """Set a resume as the primary.
-
-        Raises:
-            NotFoundError: If resume does not exist or doesn't belong to user.
-        """
-        # Verify ownership
-        await self.get_by_id(resume_id, user_id)
-
-        result = await resume_repo.set_primary(self.db, user_id, resume_id)
-        if not result:
-            raise NotFoundError(
-                message="Resume not found",
-                details={"resume_id": str(resume_id)},
-            )
-        return result
-
     async def delete(self, resume_id: UUID, user_id: UUID) -> Resume:
         """Delete a resume.
 
@@ -194,15 +151,10 @@ class ResumeService:
             NotFoundError: If resume does not exist.
         """
         resume = await self.get_by_id(resume_id, user_id)
-        was_primary = resume.is_primary
         file_path = resume.file_path
 
-        deleted = await resume_repo.delete(self.db, resume_id)
-        if not deleted:
-            raise NotFoundError(
-                message="Resume not found",
-                details={"resume_id": str(resume_id)},
-            )
+        # Use parent's delete logic for primary handling
+        deleted = await super().delete(resume_id, user_id)
 
         # Delete the stored file
         try:
@@ -210,12 +162,6 @@ class ResumeService:
             await storage.delete(file_path)
         except Exception as e:
             logger.warning(f"Failed to delete stored file {file_path}: {e}")
-
-        # If we deleted the primary, set another resume as primary
-        if was_primary:
-            remaining = await resume_repo.get_by_user_id(self.db, user_id)
-            if remaining:
-                await resume_repo.set_primary(self.db, user_id, remaining[0].id)
 
         return deleted
 
@@ -255,12 +201,3 @@ class ResumeService:
             db_resume=resume,
             update_data={"text_content": text_content},
         )
-
-    async def _ensure_single_primary(self, user_id: UUID, primary_resume_id: UUID) -> None:
-        """Ensure only one resume is marked as primary."""
-        resumes = await resume_repo.get_by_user_id(self.db, user_id)
-        for resume in resumes:
-            if resume.id != primary_resume_id and resume.is_primary:
-                await resume_repo.update(
-                    self.db, db_resume=resume, update_data={"is_primary": False}
-                )

@@ -4,10 +4,7 @@ import { backendFetch, BackendApiError } from "@/lib/server-api";
 /**
  * GET /api/resumes/[id] - Get a specific resume
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const accessToken = request.cookies.get("access_token")?.value;
 
@@ -38,10 +35,7 @@ export async function GET(
 /**
  * PATCH /api/resumes/[id] - Update a resume
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const accessToken = request.cookies.get("access_token")?.value;
 
@@ -107,6 +101,3 @@ export async function DELETE(
     return NextResponse.json({ detail: "Internal server error" }, { status: 500 });
   }
 }
-
-
-

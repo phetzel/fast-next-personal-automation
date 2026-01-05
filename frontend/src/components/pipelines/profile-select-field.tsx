@@ -50,7 +50,7 @@ export function ProfileSelectField({
               <p className="font-medium text-amber-600 dark:text-amber-400">
                 No Job Profiles Found
               </p>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="text-muted-foreground mt-1 text-sm">
                 Create a job profile with your resume to start searching for jobs.
               </p>
               <Link
@@ -79,8 +79,8 @@ export function ProfileSelectField({
           Profile
           {required && <span className="text-destructive">*</span>}
         </Label>
-        <div className="flex h-10 w-full animate-pulse items-center rounded-md border bg-muted/50 px-3">
-          <span className="text-sm text-muted-foreground">Loading profiles...</span>
+        <div className="bg-muted/50 flex h-10 w-full animate-pulse items-center rounded-md border px-3">
+          <span className="text-muted-foreground text-sm">Loading profiles...</span>
         </div>
       </div>
     );
@@ -94,9 +94,9 @@ export function ProfileSelectField({
           Profile
           {required && <span className="text-destructive">*</span>}
         </Label>
-        <div className="flex h-10 w-full items-center gap-2 rounded-md border border-destructive/50 bg-destructive/5 px-3">
-          <AlertTriangle className="h-4 w-4 text-destructive" />
-          <span className="text-sm text-destructive">{error}</span>
+        <div className="border-destructive/50 bg-destructive/5 flex h-10 w-full items-center gap-2 rounded-md border px-3">
+          <AlertTriangle className="text-destructive h-4 w-4" />
+          <span className="text-destructive text-sm">{error}</span>
         </div>
       </div>
     );
@@ -119,15 +119,13 @@ export function ProfileSelectField({
           required={required}
           className={cn(
             "border-input bg-background ring-offset-background",
-            "focus-visible:ring-ring flex h-10 w-full appearance-none rounded-md border pl-3 pr-10 py-2",
-            "text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+            "focus-visible:ring-ring flex h-10 w-full appearance-none rounded-md border py-2 pr-10 pl-3",
+            "text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
             "disabled:cursor-not-allowed disabled:opacity-50"
           )}
         >
           <option value="">
-            {defaultProfile 
-              ? `Use default (${defaultProfile.name})`
-              : "Select a profile..."}
+            {defaultProfile ? `Use default (${defaultProfile.name})` : "Select a profile..."}
           </option>
           {profiles.map((profile) => (
             <option key={profile.id} value={profile.id}>
@@ -137,25 +135,21 @@ export function ProfileSelectField({
             </option>
           ))}
         </select>
-        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <ChevronDown className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2" />
       </div>
 
       {/* Show selected profile info */}
       {typeof value === "string" && value && (
-        <SelectedProfileInfo
-          profile={profiles.find((p) => p.id === value)}
-        />
+        <SelectedProfileInfo profile={profiles.find((p) => p.id === value)} />
       )}
 
       {/* Description */}
-      {description && (
-        <p className="text-xs text-muted-foreground">{description}</p>
-      )}
+      {description && <p className="text-muted-foreground text-xs">{description}</p>}
 
       {/* Link to manage profiles */}
       <Link
         href="/jobs/profiles"
-        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs"
       >
         <User className="h-3 w-3" />
         Manage profiles
@@ -167,20 +161,24 @@ export function ProfileSelectField({
 /**
  * Shows details about the selected profile.
  */
-function SelectedProfileInfo({ profile }: { profile?: { name: string; has_resume: boolean; resume_name: string | null } }) {
+function SelectedProfileInfo({
+  profile,
+}: {
+  profile?: { name: string; has_resume: boolean; resume_name: string | null };
+}) {
   if (!profile) return null;
 
   return (
-    <div className={cn(
-      "rounded-md border px-3 py-2 text-sm",
-      profile.has_resume 
-        ? "border-green-500/20 bg-green-500/5" 
-        : "border-amber-500/30 bg-amber-500/5"
-    )}>
+    <div
+      className={cn(
+        "rounded-md border px-3 py-2 text-sm",
+        profile.has_resume
+          ? "border-green-500/20 bg-green-500/5"
+          : "border-amber-500/30 bg-amber-500/5"
+      )}
+    >
       {profile.has_resume ? (
-        <p className="text-green-600 dark:text-green-400">
-          ✓ Resume: {profile.resume_name}
-        </p>
+        <p className="text-green-600 dark:text-green-400">✓ Resume: {profile.resume_name}</p>
       ) : (
         <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
           <AlertTriangle className="h-4 w-4" />
@@ -190,4 +188,3 @@ function SelectedProfileInfo({ profile }: { profile?: { name: string; has_resume
     </div>
   );
 }
-
