@@ -455,15 +455,25 @@ The email integration automatically syncs job alert emails from connected Gmail 
 - **Supported Job Boards**: Indeed, LinkedIn, HiringCafe, Glassdoor, Dice, ZipRecruiter
 - **Sync Frequency**: Every hour via scheduled task
 - **Parsers**: Template-based (BeautifulSoup) for known formats, AI fallback (GPT-4o-mini) for unknown
+- **Description Enrichment**: Optionally scrapes full job descriptions from URLs using Playwright
+- **Score Filtering**: Optionally filters jobs by AI relevance score before saving
 
 ### Architecture
 
 ```
-Gmail API → GmailClient → Email Parsers → Job Records
-                ↑                ↓
-          EmailSource      EmailMessage
+Gmail API → GmailClient → Email Parsers → Description Scraper → AI Scoring → Job Records
+                ↑                ↓                                    ↓
+          EmailSource      EmailMessage                        (filtered by score)
           (OAuth tokens)   (processed tracking)
 ```
+
+### Pipeline Options
+
+The `email_sync_jobs` pipeline accepts:
+- `source_id` - Specific email source to sync (optional, syncs all if not provided)
+- `force_full_sync` - Ignore last sync time and sync all matching emails
+- `enrich_descriptions` - Scrape full job descriptions from URLs (default: true)
+- `save_all` - Save all jobs regardless of score (default: false, uses profile's min_score_threshold)
 
 ### Future Enhancements (Phase 3)
 

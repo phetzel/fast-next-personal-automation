@@ -65,6 +65,7 @@ export default function JobsListPage() {
     filters.sort_order,
     filters.search,
     filters.posted_within_hours,
+    filters.ingestion_source,
   ]);
 
   // Fetch stats on mount

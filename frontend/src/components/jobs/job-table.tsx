@@ -13,6 +13,7 @@ import {
 import type { Job, JobStatus } from "@/types";
 import { StatusBadge } from "./status-badge";
 import { ScoreBadge } from "./score-badge";
+import { IngestionSourceBadge } from "./ingestion-source";
 import { Button } from "@/components/ui";
 import {
   Table,
@@ -195,19 +196,28 @@ export function JobTable({
         header: "Source",
         cell: ({ row }) => {
           const job = row.original;
-          if (!job.source) return <span className="text-muted-foreground">—</span>;
+
           return (
-            <a
-              href={job.job_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs capitalize transition-colors"
-              onClick={(e) => e.stopPropagation()}
-              title="View original job posting"
-            >
-              {job.source}
-              <ExternalLink className="h-3 w-3" />
-            </a>
+            <div className="flex flex-col gap-0.5">
+              {/* Platform source with link */}
+              {job.source ? (
+                <a
+                  href={job.job_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs capitalize transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                  title="View original job posting"
+                >
+                  {job.source}
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              ) : (
+                <span className="text-muted-foreground text-xs">—</span>
+              )}
+              {/* Ingestion source indicator */}
+              <IngestionSourceBadge source={job.ingestion_source} showLabel />
+            </div>
           );
         },
         enableSorting: false,

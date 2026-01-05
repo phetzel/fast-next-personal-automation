@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Input } from "@/components/ui";
-import type { JobFilters, JobStatus } from "@/types";
+import type { JobFilters, JobStatus, IngestionSource } from "@/types";
 import { JOB_STATUSES, JOB_STATUS_CONFIG } from "@/types";
 import { cn } from "@/lib/utils";
 import { Search, X, Filter } from "lucide-react";
@@ -40,6 +40,13 @@ const RECENCY_OPTIONS: { value: string; label: string }[] = [
   { value: "168", label: "Last Week" },
 ];
 
+const INGESTION_SOURCE_OPTIONS: { value: IngestionSource | "all"; label: string }[] = [
+  { value: "all", label: "All Sources" },
+  { value: "scrape", label: "Scraped" },
+  { value: "email", label: "From Email" },
+  { value: "manual", label: "Manual" },
+];
+
 export function JobFilters({ filters, onFiltersChange, onReset, className }: JobFiltersProps) {
   const [searchValue, setSearchValue] = useState(filters.search || "");
 
@@ -72,12 +79,21 @@ export function JobFilters({ filters, onFiltersChange, onReset, className }: Job
     });
   };
 
+  const handleIngestionSourceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value as IngestionSource | "all";
+    onFiltersChange({
+      ingestion_source: value === "all" ? undefined : value,
+      page: 1,
+    });
+  };
+
   const hasActiveFilters =
     filters.status ||
     filters.search ||
     filters.min_score !== undefined ||
     filters.max_score !== undefined ||
-    filters.posted_within_hours !== undefined;
+    filters.posted_within_hours !== undefined ||
+    filters.ingestion_source !== undefined;
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -126,6 +142,19 @@ export function JobFilters({ filters, onFiltersChange, onReset, className }: Job
           className="border-input bg-background ring-offset-background focus:ring-ring h-10 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:ring-offset-2 focus:outline-none"
         >
           {RECENCY_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+
+        {/* Ingestion source filter */}
+        <select
+          value={filters.ingestion_source || "all"}
+          onChange={handleIngestionSourceChange}
+          className="border-input bg-background ring-offset-background focus:ring-ring h-10 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:ring-offset-2 focus:outline-none"
+        >
+          {INGESTION_SOURCE_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
