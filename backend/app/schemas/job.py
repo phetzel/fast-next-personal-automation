@@ -11,7 +11,6 @@ from app.schemas.base import BaseSchema, TimestampSchema
 
 # Application type literals
 ApplicationType = Literal["easy_apply", "ats", "direct", "email", "unknown"]
-ApplicationMethod = Literal["manual", "assisted", "automated"]
 
 
 class JobBase(BaseSchema):
@@ -95,10 +94,6 @@ class JobResponse(JobBase, TimestampSchema):
     detected_fields: dict[str, Any] | None = None
     screening_questions: list[dict[str, Any]] | None = None
     analyzed_at: datetime | None = None
-    # Application tracking
-    applied_at: datetime | None = None
-    application_method: ApplicationMethod | None = None
-    confirmation_code: str | None = None
 
 
 class JobSummary(BaseSchema):

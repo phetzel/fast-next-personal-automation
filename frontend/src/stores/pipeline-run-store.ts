@@ -42,7 +42,7 @@ const defaultFilters: PipelineRunFilters = {
   page_size: 20,
 };
 
-export const usePipelineRunStore = create<PipelineRunStore>((set, get) => ({
+export const usePipelineRunStore = create<PipelineRunStore>((set) => ({
   // Initial state
   runs: [],
   total: 0,

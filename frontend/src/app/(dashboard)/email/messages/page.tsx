@@ -13,7 +13,7 @@ import {
   ChevronDown,
   ExternalLink,
 } from "lucide-react";
-import type { EmailMessage, EmailSource } from "@/types";
+import type { EmailSource } from "@/types";
 
 export default function EmailMessagesPage() {
   const { sources, messages, isLoading, fetchSources, fetchMessages } = useEmailSyncs();
@@ -22,20 +22,20 @@ export default function EmailMessagesPage() {
 
   useEffect(() => {
     fetchSources();
-  }, []);
+  }, [fetchSources]);
 
   useEffect(() => {
     if (selectedSource) {
       fetchMessages(selectedSource.id);
     }
-  }, [selectedSource]);
+  }, [selectedSource, fetchMessages]);
 
   // Auto-select first source
   useEffect(() => {
     if (sources.length > 0 && !selectedSource) {
       setSelectedSource(sources[0]);
     }
-  }, [sources]);
+  }, [sources, selectedSource]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();

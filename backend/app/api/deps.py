@@ -40,6 +40,7 @@ from app.services.resume import ResumeService
 from app.services.story import StoryService
 from app.services.project import ProjectService
 from app.services.email import EmailService
+from app.services.scheduled_task import ScheduledTaskService
 
 
 def get_user_service(db: DBSession) -> UserService:
@@ -126,6 +127,14 @@ def get_email_service(db: DBSession) -> EmailService:
 
 
 EmailSvc = Annotated[EmailService, Depends(get_email_service)]
+
+
+def get_scheduled_task_service(db: DBSession) -> ScheduledTaskService:
+    """Create ScheduledTaskService instance with database session."""
+    return ScheduledTaskService(db)
+
+
+ScheduledTaskSvc = Annotated[ScheduledTaskService, Depends(get_scheduled_task_service)]
 
 # === Authentication Dependencies ===
 

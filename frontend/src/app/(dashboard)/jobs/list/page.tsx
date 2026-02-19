@@ -59,6 +59,7 @@ export default function JobsListPage() {
   useEffect(() => {
     fetchJobs();
   }, [
+    fetchJobs,
     filters.page,
     filters.status,
     filters.sort_by,
@@ -71,7 +72,7 @@ export default function JobsListPage() {
   // Fetch stats on mount
   useEffect(() => {
     fetchStats();
-  }, []);
+  }, [fetchStats]);
 
   const handleJobClick = (job: Job) => {
     setSelectedJob(job);

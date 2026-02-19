@@ -25,7 +25,7 @@ export function JobsAreaCard() {
 
   useEffect(() => {
     fetchStats();
-  }, []);
+  }, [fetchStats]);
 
   // Calculate "action needed" count - jobs that need attention
   const actionNeeded = (stats?.new ?? 0) + (stats?.prepped ?? 0);

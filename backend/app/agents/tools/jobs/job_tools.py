@@ -3,7 +3,7 @@
 This module provides FunctionToolset tools for managing job listings
 through the AI assistant, enabling list, get, delete, and stats operations.
 
-Note: Status updates are handled by pipelines (job_prep, job_apply), not directly
+Note: Status updates are handled by pipelines (job_prep), not directly
 by the agent. The agent can delete jobs (soft delete) but cannot arbitrarily
 change status.
 """

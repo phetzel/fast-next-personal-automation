@@ -28,7 +28,7 @@ export default function EmailOverviewPage() {
   useEffect(() => {
     calculateStats();
     fetchSyncs(5);
-  }, []);
+  }, [calculateStats, fetchSyncs]);
 
   const handleTriggerSync = async () => {
     await triggerSync();

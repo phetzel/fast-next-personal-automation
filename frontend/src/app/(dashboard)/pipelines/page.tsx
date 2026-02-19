@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { PipelineList, PipelineRunHistory } from "@/components/pipelines";
-import { Button } from "@/components/ui";
 import { Workflow, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 

@@ -30,7 +30,7 @@ export default function JobsOverviewPage() {
     // Fetch only recent jobs (limit to 6 for the overview)
     fetchJobs({ page: 1, page_size: 6, sort_by: "created_at", sort_order: "desc" });
     fetchStats();
-  }, []);
+  }, [fetchJobs, fetchStats]);
 
   const handleJobClick = (job: Job) => {
     setSelectedJob(job);

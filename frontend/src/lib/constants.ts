@@ -42,6 +42,8 @@ export const ROUTES = {
   EMAIL: "/email",
   EMAIL_SYNCS: "/email/syncs",
   EMAIL_MESSAGES: "/email/messages",
+  // Schedules route
+  SCHEDULES: "/schedules",
   // Settings routes
   SETTINGS: "/settings",
   SETTINGS_EMAIL: "/settings/email",

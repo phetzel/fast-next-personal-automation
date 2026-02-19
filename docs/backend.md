@@ -144,10 +144,21 @@ Job profiles include contact info fields for cover letter generation:
 |----------|-------------|
 | `job_search` | Search job boards and analyze fit against resume |
 | `job_prep` | Auto-analyzes application page, then generates cover letter (if needed) and prep notes |
-| `job_apply` | Assist with or automate application submission |
 | `email_sync_jobs` | Sync job listings from connected email accounts |
 
-> **Note:** `job_analyze` exists as an internal module used by `job_prep` (via `auto_analyze=True`) and `job_apply`, but is not exposed as a standalone pipeline.
+> **Note:** `job_analyze` exists as an internal module used by `job_prep` (via `auto_analyze=True`), but is not exposed as a standalone pipeline.
+
+### Schedules
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/schedules` | List scheduled tasks (paginated) |
+| POST | `/schedules` | Create a scheduled pipeline task |
+| GET | `/schedules/{id}` | Get a scheduled task |
+| PUT | `/schedules/{id}` | Update a scheduled task |
+| DELETE | `/schedules/{id}` | Delete a scheduled task |
+| POST | `/schedules/{id}/toggle` | Enable/disable task (or invert when `enabled` is omitted) |
+| GET | `/schedules/occurrences` | Expand cron schedules into calendar occurrences for a date range |
 
 ### Area Agents
 
@@ -537,4 +548,3 @@ class EmailRule:
 - Top senders/domains
 - Response time analytics
 - Unsubscribe recommendations for newsletters
-

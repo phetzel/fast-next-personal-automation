@@ -16,7 +16,7 @@ export interface CrudState<T, TSummary = T> {
 /**
  * Options for creating a CRUD hook.
  */
-export interface CrudHookOptions<T, TSummary = T, TCreate = Partial<T>, TUpdate = Partial<T>> {
+export interface CrudHookOptions<T, TSummary = T> {
   /** Base API endpoint (e.g., "/stories", "/resumes") */
   endpoint: string;
   /** Entity name for error messages (e.g., "story", "resume") */
@@ -50,12 +50,7 @@ export interface CrudHookResult<T, TSummary = T, TCreate = Partial<T>, TUpdate =
 /**
  * Extended options for entities with primary/default flag.
  */
-export interface PrimaryCrudHookOptions<
-  T,
-  TSummary = T,
-  TCreate = Partial<T>,
-  TUpdate = Partial<T>,
-> extends CrudHookOptions<T, TSummary, TCreate, TUpdate> {
+export interface PrimaryCrudHookOptions<T, TSummary = T> extends CrudHookOptions<T, TSummary> {
   /** Field name for the primary flag (default: "is_primary") */
   primaryField?: keyof TSummary & string;
 }
@@ -88,7 +83,7 @@ export interface PrimaryCrudHookResult<
  * ```
  */
 export function useCrud<T, TSummary = T, TCreate = Partial<T>, TUpdate = Partial<T>>(
-  options: CrudHookOptions<T, TSummary, TCreate, TUpdate>
+  options: CrudHookOptions<T, TSummary>
 ): CrudHookResult<T, TSummary, TCreate, TUpdate> {
   const { endpoint, entityName, transformItem, transformSummary } = options;
 
@@ -230,7 +225,7 @@ export function useCrud<T, TSummary = T, TCreate = Partial<T>, TUpdate = Partial
  * ```
  */
 export function usePrimaryCrud<T, TSummary = T, TCreate = Partial<T>, TUpdate = Partial<T>>(
-  options: PrimaryCrudHookOptions<T, TSummary, TCreate, TUpdate>
+  options: PrimaryCrudHookOptions<T, TSummary>
 ): PrimaryCrudHookResult<T, TSummary, TCreate, TUpdate> {
   const { primaryField = "is_primary" } = options;
   const crud = useCrud<T, TSummary, TCreate, TUpdate>(options);
