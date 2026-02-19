@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -11,7 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, TimestampMixin
 
 
-class PipelineRunStatus(str, Enum):
+class PipelineRunStatus(StrEnum):
     """Status of a pipeline run."""
 
     PENDING = "pending"
@@ -21,7 +21,7 @@ class PipelineRunStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class PipelineTriggerType(str, Enum):
+class PipelineTriggerType(StrEnum):
     """How the pipeline was triggered."""
 
     API = "api"  # Direct API call from frontend

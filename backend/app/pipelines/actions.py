@@ -8,14 +8,14 @@ Action pipelines are reusable automation units that can be invoked from:
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Generic, TypeVar, get_args, get_origin
 from uuid import UUID
 
 from pydantic import BaseModel
 
 
-class PipelineSource(str, Enum):
+class PipelineSource(StrEnum):
     """Source of pipeline invocation."""
 
     API = "api"

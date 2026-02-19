@@ -7,14 +7,14 @@ and identify common ATS system patterns.
 import logging
 import re
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 from playwright.async_api import Page
 
 logger = logging.getLogger(__name__)
 
 
-class ApplicationType(str, Enum):
+class ApplicationType(StrEnum):
     """Type of job application."""
 
     EASY_APPLY = "easy_apply"  # LinkedIn Easy Apply, Indeed Easy Apply
@@ -24,7 +24,7 @@ class ApplicationType(str, Enum):
     UNKNOWN = "unknown"
 
 
-class FieldType(str, Enum):
+class FieldType(StrEnum):
     """Type of form field."""
 
     TEXT = "text"

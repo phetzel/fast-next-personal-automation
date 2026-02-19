@@ -1,6 +1,6 @@
 """User schemas."""
 
-from enum import Enum
+from enum import StrEnum
 from uuid import UUID
 
 from pydantic import EmailStr, Field
@@ -8,7 +8,7 @@ from pydantic import EmailStr, Field
 from app.schemas.base import BaseSchema, TimestampSchema
 
 
-class UserRole(str, Enum):
+class UserRole(StrEnum):
     """User role enumeration for API schemas."""
 
     ADMIN = "admin"

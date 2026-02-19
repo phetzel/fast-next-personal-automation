@@ -145,6 +145,7 @@ class ScheduledTaskService(BaseService[ScheduledTask, ScheduledTaskRepository]):
     async def create_task(self, user_id: UUID, task_data: ScheduledTaskCreate) -> ScheduledTask:
         """Create a new scheduled task."""
         _validate_cron_expression(task_data.cron_expression)
+        _resolve_timezone(task_data.timezone)
 
         pipeline_info = get_pipeline_info(task_data.pipeline_name)
         if not pipeline_info:

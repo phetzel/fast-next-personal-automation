@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text, UniqueConstraint
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from app.db.models.user import User
 
 
-class JobStatus(str, Enum):
+class JobStatus(StrEnum):
     """Status of a job in the user's pipeline.
 
     Flow: NEW → PREPPED → REVIEWED → APPLIED → INTERVIEWING
