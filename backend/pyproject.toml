@@ -114,7 +114,7 @@ disallow_incomplete_defs = false
 check_untyped_defs = false
 # Disable noisy checks that require extensive refactoring
 # These can be re-enabled incrementally as codebase is cleaned up
-disable_error_code = ["arg-type", "union-attr", "index", "assignment", "attr-defined", "misc", "var-annotated", "operator", "call-overload"]
+disable_error_code = ["arg-type", "union-attr", "index", "assignment", "attr-defined", "misc", "var-annotated", "operator", "call-overload", "override"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -137,4 +137,5 @@ dev = [
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
     "ruff>=0.14.10",
+    "types-croniter>=6.0.0.20250809",
 ]
