@@ -46,6 +46,9 @@ def mock_redis() -> MagicMock:
 async def mock_db_session() -> AsyncGenerator[AsyncMock, None]:
     """Create a mock database session for testing."""
     mock = AsyncMock()
+    # AsyncSession.add is synchronous (not awaited); keep this as MagicMock
+    # to avoid "coroutine was never awaited" warnings in tests.
+    mock.add = MagicMock()
     mock.execute = AsyncMock()
     mock.commit = AsyncMock()
     mock.rollback = AsyncMock()

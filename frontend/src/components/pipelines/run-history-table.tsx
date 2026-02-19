@@ -7,7 +7,6 @@ import { TriggerBadge } from "./trigger-badge";
 import { RunDetailModal } from "./run-detail-modal";
 import type { PipelineRun } from "@/types";
 import { ChevronRight, Loader2, History } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface RunHistoryTableProps {
   runs: PipelineRun[];

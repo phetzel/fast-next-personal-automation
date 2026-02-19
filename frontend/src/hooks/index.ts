@@ -23,3 +23,4 @@ export { useResumes } from "./use-resumes";
 export { useStories } from "./use-stories";
 export { useProjects } from "./use-projects";
 export { useEmailSyncs } from "./use-email-syncs";
+export { useSchedules } from "./use-schedules";

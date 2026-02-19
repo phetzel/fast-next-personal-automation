@@ -5,6 +5,8 @@ from taskiq.schedule_sources import LabelScheduleSource
 from taskiq_redis import ListQueueBroker, RedisAsyncResultBackend
 
 from app.core.config import settings
+from app.pipelines.actions import discover_pipelines
+from app.worker.schedule_source import DatabaseScheduleSource
 
 # Create Taskiq broker with Redis
 broker = ListQueueBroker(
@@ -16,12 +18,22 @@ broker = ListQueueBroker(
 )
 
 # Import scheduled tasks so decorators register with broker
+import app.worker.tasks.scheduled_pipeline  # noqa: E402
 import app.worker.tasks.schedules  # noqa: F401, E402
 
-# Create scheduler for periodic tasks
+# Register action pipelines in worker process so scheduled execution can resolve by name.
+# force_reload=True handles cases where modules are already imported in-process.
+discover_pipelines(force_reload=True)
+
+# Create scheduler for periodic tasks with both label-based and database sources
+# Label-based: Traditional decorator-based schedules (for built-in tasks)
+# Database: Dynamic schedules managed via the API/calendar UI
 scheduler = TaskiqScheduler(
     broker=broker,
-    sources=[LabelScheduleSource(broker)],
+    sources=[
+        LabelScheduleSource(broker),
+        DatabaseScheduleSource(),
+    ],
 )
 
 

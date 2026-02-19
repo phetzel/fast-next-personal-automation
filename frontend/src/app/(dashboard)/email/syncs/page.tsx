@@ -24,7 +24,7 @@ export default function EmailSyncsPage() {
 
   useEffect(() => {
     fetchSyncs(limit, (page - 1) * limit);
-  }, [page]);
+  }, [fetchSyncs, page]);
 
   const handleTriggerSync = async () => {
     await triggerSync();

@@ -26,7 +26,7 @@ export function EmailAreaCard() {
 
   useEffect(() => {
     calculateStats();
-  }, []);
+  }, [calculateStats]);
 
   // Format relative time
   const getRelativeTime = (dateString: string) => {

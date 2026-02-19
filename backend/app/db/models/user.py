@@ -1,7 +1,7 @@
 """User database model."""
 
 import uuid
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, String
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from app.db.models.session import Session
 
 
-class UserRole(str, Enum):
+class UserRole(StrEnum):
     """User role enumeration.
 
     Roles hierarchy (higher includes lower permissions):

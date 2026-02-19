@@ -64,7 +64,7 @@ function AuthenticatedChatContainer({ area, showAreaBanner }: AuthenticatedChatC
   }, [currentMessages, setChatMessages]);
 
   const handleConversationCreated = useCallback(
-    (_conversationId: string) => {
+    () => {
       // Refresh conversation list when a new conversation is created
       fetchConversations();
     },

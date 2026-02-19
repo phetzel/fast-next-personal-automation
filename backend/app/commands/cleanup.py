@@ -9,7 +9,7 @@ modified or deleted if not needed.
 """
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import click
 
@@ -32,7 +32,7 @@ def cleanup(days: int, dry_run: bool, force: bool) -> None:
         project cmd cleanup --days 30 --dry-run
         project cmd cleanup --days 7 --force
     """
-    cutoff_date = datetime.utcnow() - timedelta(days=days)
+    cutoff_date = datetime.now(UTC) - timedelta(days=days)
 
     if dry_run:
         info(f"[DRY RUN] Would delete records older than {cutoff_date}")

@@ -18,6 +18,7 @@ import {
   Mail,
   Inbox,
   RefreshCw,
+  CalendarDays,
   type LucideIcon,
 } from "lucide-react";
 import { useSidebarStore } from "@/stores";
@@ -42,6 +43,7 @@ const generalNavigation: NavItem[] = [
   { name: "Dashboard", href: ROUTES.DASHBOARD, icon: LayoutDashboard },
   { name: "Chat", href: ROUTES.CHAT, icon: MessageSquare },
   { name: "Pipelines", href: ROUTES.PIPELINES, icon: Workflow },
+  { name: "Schedules", href: ROUTES.SCHEDULES, icon: CalendarDays },
 ];
 
 // Area-based navigation with sub-routes

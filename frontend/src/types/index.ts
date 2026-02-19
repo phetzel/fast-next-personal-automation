@@ -9,3 +9,4 @@ export * from "./conversation";
 export * from "./pipeline";
 export * from "./job";
 export * from "./email";
+export * from "./schedule";

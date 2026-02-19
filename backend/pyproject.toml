@@ -33,6 +33,7 @@ dependencies = [
     "taskiq[reload]>=0.11.0",
     "taskiq-redis>=1.0.0",
     "taskiq-dependencies>=0.1.0",
+    "croniter>=2.0.0",
     "boto3>=1.35.0",
     "pydantic-ai>=0.0.39",
     "httpx>=0.27.0",
@@ -113,7 +114,7 @@ disallow_incomplete_defs = false
 check_untyped_defs = false
 # Disable noisy checks that require extensive refactoring
 # These can be re-enabled incrementally as codebase is cleaned up
-disable_error_code = ["arg-type", "union-attr", "index", "assignment", "attr-defined", "misc", "var-annotated", "operator", "call-overload"]
+disable_error_code = ["arg-type", "union-attr", "index", "assignment", "attr-defined", "misc", "var-annotated", "operator", "call-overload", "override"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -136,4 +137,5 @@ dev = [
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
     "ruff>=0.14.10",
+    "types-croniter>=6.0.0.20250809",
 ]

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input, Label } from "@/components/ui";
+import { Button, Label } from "@/components/ui";
 import type {
   PipelineRunFilters,
   PipelineRunStatus,
@@ -9,7 +9,6 @@ import type {
   PipelineInfo,
 } from "@/types";
 import { Filter, X, RotateCcw } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface RunFiltersProps {
   filters: PipelineRunFilters;

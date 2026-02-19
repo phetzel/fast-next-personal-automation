@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text, UniqueConstraint
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from app.db.models.user import User
 
 
-class JobStatus(str, Enum):
+class JobStatus(StrEnum):
     """Status of a job in the user's pipeline.
 
     Flow: NEW → PREPPED → REVIEWED → APPLIED → INTERVIEWING
@@ -121,13 +121,6 @@ class Job(Base, TimestampMixin):
         JSON, nullable=True
     )  # Detected screening questions
     analyzed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-    # Application tracking (from job_apply pipeline)
-    applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    application_method: Mapped[str | None] = mapped_column(
-        String(50), nullable=True
-    )  # manual, assisted, automated
-    confirmation_code: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Soft delete - prevents re-scraping deleted jobs
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

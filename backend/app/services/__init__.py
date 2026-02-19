@@ -27,6 +27,8 @@ from app.services.story import StoryService
 
 from app.services.project import ProjectService
 
+from app.services.scheduled_task import ScheduledTaskService
+
 __all__ = [
     "BaseService",
     "PrimaryEntityService",
@@ -40,4 +42,5 @@ __all__ = [
     "ResumeService",
     "StoryService",
     "ProjectService",
+    "ScheduledTaskService",
 ]

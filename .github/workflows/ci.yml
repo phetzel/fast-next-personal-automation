@@ -108,9 +108,21 @@ jobs:
         run: uv sync --directory backend --dev
 
       - name: Run pip-audit
-        # CVE-2025-46656: markdownify XSS - ignored because python-jobspy pins old version
-        # and we don't render untrusted markdown as raw HTML
-        run: uv run --directory backend pip-audit --progress-spinner off --ignore-vuln CVE-2025-46656
+        # CVE-2025-46656: markdownify XSS - python-jobspy pins old version, no untrusted markdown rendered
+        # CVE-2025-69223 through CVE-2025-69230: aiohttp - pinned by pydantic-ai-slim <3.13
+        # CVE-2026-25580: pydantic-ai - pinned by browser-use at <2.0
+        run: >
+          uv run --directory backend pip-audit --progress-spinner off
+          --ignore-vuln CVE-2025-46656
+          --ignore-vuln CVE-2025-69223
+          --ignore-vuln CVE-2025-69224
+          --ignore-vuln CVE-2025-69225
+          --ignore-vuln CVE-2025-69226
+          --ignore-vuln CVE-2025-69227
+          --ignore-vuln CVE-2025-69228
+          --ignore-vuln CVE-2025-69229
+          --ignore-vuln CVE-2025-69230
+          --ignore-vuln CVE-2026-25580
 
   docker:
     runs-on: ubuntu-latest

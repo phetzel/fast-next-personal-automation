@@ -45,3 +45,20 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from "./dropdown-menu";
+export { Calendar, CalendarDayButton } from "./calendar";
+export { Checkbox } from "./checkbox";
+export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor } from "./popover";
+export { RadioGroup, RadioGroupItem } from "./radio-group";
+export {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectScrollDownButton,
+  SelectScrollUpButton,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "./select";
+export { Switch } from "./switch";

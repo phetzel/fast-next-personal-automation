@@ -166,16 +166,6 @@ class TestJobPipelineRegistration:
         clear_registry()
         discover_pipelines(force_reload=True)
 
-    def test_job_apply_pipeline_registered(self):
-        """Test that job_apply pipeline is registered."""
-        from app.pipelines.registry import get_pipeline
-
-        pipeline = get_pipeline("job_apply")
-        assert pipeline is not None
-        assert pipeline.name == "job_apply"
-        assert pipeline.area == "jobs"
-        assert "automation" in pipeline.tags
-
     def test_job_prep_pipeline_registered(self):
         """Test that job_prep pipeline is registered."""
         from app.pipelines.registry import get_pipeline
@@ -184,17 +174,6 @@ class TestJobPipelineRegistration:
         assert pipeline is not None
         assert pipeline.name == "job_prep"
         assert pipeline.area == "jobs"
-
-    def test_job_apply_input_schema(self):
-        """Test job_apply pipeline has correct input schema."""
-        from app.pipelines.registry import get_pipeline_info
-
-        info = get_pipeline_info("job_apply")
-        assert info is not None
-        assert "properties" in info["input_schema"]
-        assert "job_id" in info["input_schema"]["properties"]
-        assert "mode" in info["input_schema"]["properties"]
-        assert "dry_run" in info["input_schema"]["properties"]
 
     def test_job_prep_has_new_inputs(self):
         """Test job_prep pipeline has expected inputs."""

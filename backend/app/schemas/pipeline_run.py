@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.db.models.pipeline_run import PipelineRunStatus, PipelineTriggerType
 
@@ -44,8 +44,7 @@ class PipelineRunResponse(BaseModel):
     duration_ms: int | None = Field(None, description="Execution duration in milliseconds")
     created_at: datetime = Field(..., description="When the run record was created")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PipelineRunListResponse(BaseModel):

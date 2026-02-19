@@ -16,6 +16,7 @@ from app.db.models.email_message import EmailMessage
 from app.db.models.email_sync import EmailSync
 from app.db.models.email_destination import EmailDestination
 from app.db.models.email_message_destination import EmailMessageDestination
+from app.db.models.scheduled_task import ScheduledTask
 
 __all__ = [
     "User",
@@ -39,4 +40,5 @@ __all__ = [
     "EmailSync",
     "EmailDestination",
     "EmailMessageDestination",
+    "ScheduledTask",
 ]

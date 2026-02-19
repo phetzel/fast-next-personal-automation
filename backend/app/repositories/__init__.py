@@ -29,6 +29,8 @@ from app.repositories import email_sync as email_sync_repo
 
 from app.repositories import email_destination as email_destination_repo
 
+from app.repositories import scheduled_task as scheduled_task_repo
+
 __all__ = [
     "BaseRepository",
     "user_repo",
@@ -44,4 +46,5 @@ __all__ = [
     "email_source_repo",
     "email_sync_repo",
     "email_destination_repo",
+    "scheduled_task_repo",
 ]

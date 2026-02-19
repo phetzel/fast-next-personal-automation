@@ -10,7 +10,7 @@ import {
   type SortingState,
   type RowSelectionState,
 } from "@tanstack/react-table";
-import type { Job, JobStatus } from "@/types";
+import type { Job } from "@/types";
 import { StatusBadge } from "./status-badge";
 import { ScoreBadge } from "./score-badge";
 import { IngestionSourceBadge } from "./ingestion-source";
