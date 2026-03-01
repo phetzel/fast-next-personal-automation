@@ -1,0 +1,1 @@
+"""Finance email sync pipeline."""

@@ -5,3 +5,4 @@
 
 export { JobsAreaCard } from "./jobs-area-card";
 export { EmailAreaCard } from "./email-area-card";
+export { FinancesAreaCard } from "./finances-area-card";

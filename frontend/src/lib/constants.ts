@@ -42,6 +42,13 @@ export const ROUTES = {
   EMAIL: "/email",
   EMAIL_SYNCS: "/email/syncs",
   EMAIL_MESSAGES: "/email/messages",
+  // Finances area routes
+  FINANCES: "/finances",
+  FINANCES_ACCOUNTS: "/finances/accounts",
+  FINANCES_TRANSACTIONS: "/finances/transactions",
+  FINANCES_BUDGETS: "/finances/budgets",
+  FINANCES_RECURRING: "/finances/recurring",
+  FINANCES_ASSISTANT: "/finances/assistant",
   // Schedules route
   SCHEDULES: "/schedules",
   // Settings routes

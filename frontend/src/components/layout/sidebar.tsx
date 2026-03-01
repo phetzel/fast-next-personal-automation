@@ -19,6 +19,10 @@ import {
   Inbox,
   RefreshCw,
   CalendarDays,
+  Wallet,
+  Receipt,
+  Building2,
+  PiggyBank,
   type LucideIcon,
 } from "lucide-react";
 import { useSidebarStore } from "@/stores";
@@ -68,6 +72,19 @@ const areaNavigation: NavArea[] = [
       { name: "Overview", href: ROUTES.EMAIL, icon: LayoutDashboard },
       { name: "Sync History", href: ROUTES.EMAIL_SYNCS, icon: RefreshCw },
       { name: "Messages", href: ROUTES.EMAIL_MESSAGES, icon: Inbox },
+    ],
+  },
+  {
+    id: "finances",
+    name: "Finances",
+    icon: Wallet,
+    children: [
+      { name: "Overview", href: ROUTES.FINANCES, icon: LayoutDashboard },
+      { name: "Transactions", href: ROUTES.FINANCES_TRANSACTIONS, icon: Receipt },
+      { name: "Accounts", href: ROUTES.FINANCES_ACCOUNTS, icon: Building2 },
+      { name: "Budgets", href: ROUTES.FINANCES_BUDGETS, icon: PiggyBank },
+      { name: "Recurring", href: ROUTES.FINANCES_RECURRING, icon: RefreshCw },
+      { name: "Assistant", href: ROUTES.FINANCES_ASSISTANT, icon: Bot },
     ],
   },
 ];
