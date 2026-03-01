@@ -105,7 +105,9 @@ class FinanceEmailSyncPipeline(ActionPipeline[FinanceEmailSyncInput, FinanceEmai
             if input.source_id:
                 source = await email_source_repo.get_by_id(db, input.source_id)
                 if source is None or source.user_id != context.user_id:
-                    return ActionResult(success=False, error="Email source not found or access denied")
+                    return ActionResult(
+                        success=False, error="Email source not found or access denied"
+                    )
                 sources = [source]
             else:
                 sources = await email_source_repo.get_active_by_user_id(db, context.user_id)

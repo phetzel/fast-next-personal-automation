@@ -20,11 +20,11 @@ from app.schemas.finance import (
     BudgetUpdate,
     CSVImportRequest,
     CSVImportResponse,
+    FinanceStatsResponse,
     FinancialAccountBalanceUpdate,
     FinancialAccountCreate,
     FinancialAccountResponse,
     FinancialAccountUpdate,
-    FinanceStatsResponse,
     RecurringExpenseCreate,
     RecurringExpenseResponse,
     RecurringExpenseUpdate,
@@ -99,7 +99,9 @@ async def update_account_balance(
     current_user: CurrentUser,
     finance_service: FinanceSvc,
 ) -> FinancialAccountResponse:
-    account = await finance_service.update_balance(current_user.id, account_id, data.current_balance)
+    account = await finance_service.update_balance(
+        current_user.id, account_id, data.current_balance
+    )
     return FinancialAccountResponse.model_validate(account)
 
 

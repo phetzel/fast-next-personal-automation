@@ -126,7 +126,9 @@ async def get_spending_summary(
 
     try:
         spending = await finance_repo.get_spending_by_category(db, user_id, month, year)
-        income, expenses, tx_count = await finance_repo.get_monthly_summary(db, user_id, month, year)
+        income, expenses, tx_count = await finance_repo.get_monthly_summary(
+            db, user_id, month, year
+        )
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -137,7 +139,9 @@ async def get_spending_summary(
         "total_expenses": float(expenses),
         "net": float(income - expenses),
         "transaction_count": tx_count,
-        "spending_by_category": {k: float(v) for k, v in sorted(spending.items(), key=lambda x: -x[1])},
+        "spending_by_category": {
+            k: float(v) for k, v in sorted(spending.items(), key=lambda x: -x[1])
+        },
     }
 
 
@@ -163,8 +167,12 @@ async def get_account_summary(ctx: RunContext) -> dict:
                 "institution": a.institution,
                 "account_type": a.account_type,
                 "last_four": a.last_four,
-                "current_balance": float(a.current_balance) if a.current_balance is not None else None,
-                "balance_updated_at": a.balance_updated_at.isoformat() if a.balance_updated_at else None,
+                "current_balance": float(a.current_balance)
+                if a.current_balance is not None
+                else None,
+                "balance_updated_at": a.balance_updated_at.isoformat()
+                if a.balance_updated_at
+                else None,
                 "is_active": a.is_active,
             }
             for a in accounts
@@ -256,7 +264,9 @@ async def list_recurring_expenses(ctx: RunContext, active_only: bool = True) -> 
                 "name": r.name,
                 "merchant": r.merchant,
                 "category": r.category,
-                "expected_amount": float(r.expected_amount) if r.expected_amount is not None else None,
+                "expected_amount": float(r.expected_amount)
+                if r.expected_amount is not None
+                else None,
                 "billing_cycle": r.billing_cycle,
                 "next_due_date": r.next_due_date.isoformat() if r.next_due_date else None,
                 "last_seen_date": r.last_seen_date.isoformat() if r.last_seen_date else None,
@@ -309,7 +319,10 @@ async def create_transaction(
     try:
         tx_date = date.fromisoformat(transaction_date)
     except ValueError:
-        return {"success": False, "error": f"Invalid date format: {transaction_date}. Use YYYY-MM-DD."}
+        return {
+            "success": False,
+            "error": f"Invalid date format: {transaction_date}. Use YYYY-MM-DD.",
+        }
 
     try:
         data = TransactionCreate(

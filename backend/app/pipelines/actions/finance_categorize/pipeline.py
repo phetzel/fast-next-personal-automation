@@ -32,7 +32,6 @@ class FinanceCategorizeInput(BaseModel):
 class FinanceCategorizeOutput(BaseModel):
     categorized: int = 0
     failed: int = 0
-    skipped: int = 0
 
 
 @register_pipeline

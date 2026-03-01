@@ -7,9 +7,14 @@ from uuid import UUID
 
 from pydantic import Field
 
-from app.db.models.finance import AccountType, BillingCycle, TransactionCategory, TransactionSource, TransactionType
+from app.db.models.finance import (
+    AccountType,
+    BillingCycle,
+    TransactionCategory,
+    TransactionSource,
+    TransactionType,
+)
 from app.schemas.base import BaseSchema, TimestampSchema
-
 
 # ──────────────────────────── Financial Account ─────────────────────────────
 
@@ -211,7 +216,9 @@ class CSVImportRequest(BaseSchema):
     account_id: UUID | None = None
     csv_content: str = Field(description="Raw CSV content as string")
     date_column: str = Field(default="Date", description="Name of the date column in the CSV")
-    description_column: str = Field(default="Description", description="Name of the description column")
+    description_column: str = Field(
+        default="Description", description="Name of the description column"
+    )
     amount_column: str = Field(default="Amount", description="Name of the amount column")
     date_format: str = Field(default="%m/%d/%Y", description="Python strftime date format string")
 

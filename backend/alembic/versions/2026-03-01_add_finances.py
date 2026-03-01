@@ -9,7 +9,6 @@ Create Date: 2026-03-01 10:00:00.000000
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
@@ -51,7 +50,9 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name=op.f("financial_accounts_pkey")),
         sa.UniqueConstraint("user_id", "name", name="financial_accounts_user_id_name_key"),
     )
-    op.create_index(op.f("financial_accounts_user_id_idx"), "financial_accounts", ["user_id"], unique=False)
+    op.create_index(
+        op.f("financial_accounts_user_id_idx"), "financial_accounts", ["user_id"], unique=False
+    )
 
     # Create recurring_expenses table (before transactions, since transactions has FK to it)
     op.create_table(
@@ -83,9 +84,15 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("recurring_expenses_pkey")),
     )
-    op.create_index(op.f("recurring_expenses_user_id_idx"), "recurring_expenses", ["user_id"], unique=False)
-    op.create_index(op.f("recurring_expenses_category_idx"), "recurring_expenses", ["category"], unique=False)
-    op.create_index(op.f("recurring_expenses_is_active_idx"), "recurring_expenses", ["is_active"], unique=False)
+    op.create_index(
+        op.f("recurring_expenses_user_id_idx"), "recurring_expenses", ["user_id"], unique=False
+    )
+    op.create_index(
+        op.f("recurring_expenses_category_idx"), "recurring_expenses", ["category"], unique=False
+    )
+    op.create_index(
+        op.f("recurring_expenses_is_active_idx"), "recurring_expenses", ["is_active"], unique=False
+    )
 
     # Create transactions table
     op.create_table(
@@ -134,12 +141,26 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name=op.f("transactions_pkey")),
     )
     op.create_index(op.f("transactions_user_id_idx"), "transactions", ["user_id"], unique=False)
-    op.create_index(op.f("transactions_account_id_idx"), "transactions", ["account_id"], unique=False)
-    op.create_index(op.f("transactions_transaction_date_idx"), "transactions", ["transaction_date"], unique=False)
+    op.create_index(
+        op.f("transactions_account_id_idx"), "transactions", ["account_id"], unique=False
+    )
+    op.create_index(
+        op.f("transactions_transaction_date_idx"),
+        "transactions",
+        ["transaction_date"],
+        unique=False,
+    )
     op.create_index(op.f("transactions_category_idx"), "transactions", ["category"], unique=False)
     op.create_index(op.f("transactions_source_idx"), "transactions", ["source"], unique=False)
-    op.create_index(op.f("transactions_is_reviewed_idx"), "transactions", ["is_reviewed"], unique=False)
-    op.create_index(op.f("transactions_recurring_expense_id_idx"), "transactions", ["recurring_expense_id"], unique=False)
+    op.create_index(
+        op.f("transactions_is_reviewed_idx"), "transactions", ["is_reviewed"], unique=False
+    )
+    op.create_index(
+        op.f("transactions_recurring_expense_id_idx"),
+        "transactions",
+        ["recurring_expense_id"],
+        unique=False,
+    )
     # Partial unique index for email dedup: only unique when raw_email_id is not null
     op.create_index(
         "transactions_user_id_raw_email_id_idx",
@@ -174,7 +195,10 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("budgets_pkey")),
         sa.UniqueConstraint(
-            "user_id", "category", "month", "year",
+            "user_id",
+            "category",
+            "month",
+            "year",
             name="budgets_user_id_category_month_year_key",
         ),
     )

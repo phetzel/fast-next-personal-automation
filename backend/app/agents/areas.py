@@ -10,8 +10,8 @@ from __future__ import annotations
 from pydantic_ai import CombinedToolset
 
 from app.agents.area_config import AreaAgentConfig
-from app.agents.tools.jobs import job_profiles_toolset, jobs_toolset
 from app.agents.tools.finance import finance_toolset
+from app.agents.tools.jobs import job_profiles_toolset, jobs_toolset
 
 # =============================================================================
 # Jobs Area Configuration

@@ -14,7 +14,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.finance import Budget, FinancialAccount, RecurringExpense, Transaction
 from app.schemas.finance import TransactionFilters
 
-
 # ──────────────────────────── FinancialAccount ───────────────────────────────
 
 
@@ -61,7 +60,9 @@ async def update_account(
     return account
 
 
-async def delete_account(db: AsyncSession, account_id: UUID, user_id: UUID) -> FinancialAccount | None:
+async def delete_account(
+    db: AsyncSession, account_id: UUID, user_id: UUID
+) -> FinancialAccount | None:
     account = await get_account_by_id_and_user(db, account_id, user_id)
     if account:
         await db.delete(account)
@@ -97,9 +98,7 @@ async def get_by_raw_email_id(
     return result.scalar_one_or_none()
 
 
-def _apply_transaction_filters(
-    query: Select, user_id: UUID, filters: TransactionFilters
-) -> Select:
+def _apply_transaction_filters(query: Select, user_id: UUID, filters: TransactionFilters) -> Select:
     query = query.where(Transaction.user_id == user_id)
 
     if filters.account_id:
@@ -286,7 +285,8 @@ async def get_uncategorized_transactions(
 async def get_unreviewed_count(db: AsyncSession, user_id: UUID) -> int:
     result = await db.execute(
         select(func.count(Transaction.id)).where(
-            Transaction.user_id == user_id, Transaction.is_reviewed == False  # noqa: E712
+            Transaction.user_id == user_id,
+            Transaction.is_reviewed == False,  # noqa: E712
         )
     )
     return result.scalar() or 0
@@ -379,9 +379,7 @@ async def get_recurring_by_user(
     return list(result.scalars().all())
 
 
-async def create_recurring(
-    db: AsyncSession, *, user_id: UUID, **kwargs
-) -> RecurringExpense:
+async def create_recurring(db: AsyncSession, *, user_id: UUID, **kwargs) -> RecurringExpense:
     recurring = RecurringExpense(user_id=user_id, **kwargs)
     db.add(recurring)
     await db.flush()

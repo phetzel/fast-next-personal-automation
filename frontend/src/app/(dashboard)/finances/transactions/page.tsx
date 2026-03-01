@@ -30,7 +30,6 @@ export default function TransactionsPage() {
     triggerCategorize,
     setFilters,
     resetFilters,
-    goToPage,
   } = useFinances();
 
   const [showForm, setShowForm] = useState(false);
@@ -149,10 +148,7 @@ export default function TransactionsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    goToPage(page - 1);
-                    fetchTransactions({ page: page - 1 });
-                  }}
+                  onClick={() => fetchTransactions({ page: page - 1 })}
                   disabled={page <= 1}
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -161,10 +157,7 @@ export default function TransactionsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    goToPage(page + 1);
-                    fetchTransactions({ page: page + 1 });
-                  }}
+                  onClick={() => fetchTransactions({ page: page + 1 })}
                   disabled={page >= totalPages}
                 >
                   Next

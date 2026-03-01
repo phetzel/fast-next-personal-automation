@@ -75,14 +75,16 @@ export function useFinances() {
     async (data: Partial<FinancialAccount>): Promise<FinancialAccount | null> => {
       try {
         const account = await apiClient.post<FinancialAccount>("/finances/accounts", data);
-        setAccounts([...accounts, account]);
+        // Re-fetch to avoid stale closure over the accounts list
+        const updated = await apiClient.get<FinancialAccount[]>("/finances/accounts");
+        setAccounts(updated);
         return account;
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to create account");
         return null;
       }
     },
-    [accounts, setAccounts, setError]
+    [setAccounts, setError]
   );
 
   const updateAccountData = useCallback(
@@ -189,14 +191,13 @@ export function useFinances() {
     async (data: object): Promise<Transaction | null> => {
       try {
         const tx = await apiClient.post<Transaction>("/finances/transactions", data);
-        setTransactions([tx, ...transactions], total + 1);
         return tx;
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to create transaction");
         return null;
       }
     },
-    [transactions, total, setTransactions, setError]
+    [setError]
   );
 
   const updateTransactionData = useCallback(
@@ -353,14 +354,16 @@ export function useFinances() {
     async (data: object): Promise<RecurringExpense | null> => {
       try {
         const recurring = await apiClient.post<RecurringExpense>("/finances/recurring", data);
-        setRecurringExpenses([...recurringExpenses, recurring]);
+        // Re-fetch to avoid stale closure over the recurringExpenses list
+        const updated = await apiClient.get<RecurringExpense[]>("/finances/recurring?active_only=false");
+        setRecurringExpenses(updated);
         return recurring;
       } catch {
         setError("Failed to create recurring expense");
         return null;
       }
     },
-    [recurringExpenses, setRecurringExpenses, setError]
+    [setRecurringExpenses, setError]
   );
 
   const updateRecurringData = useCallback(

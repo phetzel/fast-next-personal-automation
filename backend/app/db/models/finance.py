@@ -6,7 +6,17 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy import text as sa_text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -93,11 +103,15 @@ class FinancialAccount(Base, TimestampMixin):
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     institution: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    account_type: Mapped[str] = mapped_column(String(50), nullable=False, default=AccountType.CHECKING.value)
+    account_type: Mapped[str] = mapped_column(
+        String(50), nullable=False, default=AccountType.CHECKING.value
+    )
     last_four: Mapped[str | None] = mapped_column(String(4), nullable=True)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD")
     current_balance: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
-    balance_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    balance_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -156,14 +170,18 @@ class Transaction(Base, TimestampMixin):
     merchant: Mapped[str | None] = mapped_column(String(255), nullable=True)
     transaction_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     posted_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    transaction_type: Mapped[str] = mapped_column(String(20), nullable=False, default=TransactionType.DEBIT.value)
+    transaction_type: Mapped[str] = mapped_column(
+        String(20), nullable=False, default=TransactionType.DEBIT.value
+    )
 
     # Categorization (AI-assigned, user-overridable)
     category: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     category_confidence: Mapped[float | None] = mapped_column(Numeric(4, 3), nullable=True)
 
     # Ingestion metadata
-    source: Mapped[str] = mapped_column(String(20), nullable=False, default=TransactionSource.MANUAL.value, index=True)
+    source: Mapped[str] = mapped_column(
+        String(20), nullable=False, default=TransactionSource.MANUAL.value, index=True
+    )
     raw_email_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # User review status
@@ -189,7 +207,10 @@ class Budget(Base, TimestampMixin):
     __tablename__ = "budgets"
     __table_args__ = (
         UniqueConstraint(
-            "user_id", "category", "month", "year",
+            "user_id",
+            "category",
+            "month",
+            "year",
             name="budgets_user_id_category_month_year_key",
         ),
     )
@@ -235,7 +256,9 @@ class RecurringExpense(Base, TimestampMixin):
     merchant: Mapped[str | None] = mapped_column(String(255), nullable=True)
     category: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     expected_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
-    billing_cycle: Mapped[str] = mapped_column(String(20), nullable=False, default=BillingCycle.MONTHLY.value)
+    billing_cycle: Mapped[str] = mapped_column(
+        String(20), nullable=False, default=BillingCycle.MONTHLY.value
+    )
     next_due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     last_seen_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, index=True)

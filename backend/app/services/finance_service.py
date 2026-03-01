@@ -7,7 +7,7 @@ and recurring expenses. Uses finance repository for database access.
 import csv
 import io
 import logging
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import UUID
@@ -28,9 +28,9 @@ from app.schemas.finance import (
     BudgetStatusResponse,
     BudgetUpdate,
     CSVImportResponse,
+    FinanceStatsResponse,
     FinancialAccountCreate,
     FinancialAccountUpdate,
-    FinanceStatsResponse,
     RecurringExpenseCreate,
     RecurringExpenseUpdate,
     TransactionCreate,
@@ -49,16 +49,16 @@ class FinanceService:
 
     # ──────────────────── FinancialAccount ────────────────────────────────
 
-    async def create_account(
-        self, user_id: UUID, data: FinancialAccountCreate
-    ) -> FinancialAccount:
+    async def create_account(self, user_id: UUID, data: FinancialAccountCreate) -> FinancialAccount:
         account = await finance_repo.create_account(self.db, user_id=user_id, **data.model_dump())
         return account
 
     async def get_account(self, user_id: UUID, account_id: UUID) -> FinancialAccount:
         account = await finance_repo.get_account_by_id_and_user(self.db, account_id, user_id)
         if not account:
-            raise NotFoundError(message="Account not found", details={"account_id": str(account_id)})
+            raise NotFoundError(
+                message="Account not found", details={"account_id": str(account_id)}
+            )
         return account
 
     async def list_accounts(self, user_id: UUID) -> list[FinancialAccount]:
@@ -68,7 +68,7 @@ class FinanceService:
         self, user_id: UUID, account_id: UUID, data: FinancialAccountUpdate
     ) -> FinancialAccount:
         account = await self.get_account(user_id, account_id)
-        update_data = data.model_dump(exclude_none=True)
+        update_data = data.model_dump(exclude_unset=True)
         if not update_data:
             return account
         return await finance_repo.update_account(self.db, account=account, update_data=update_data)
@@ -86,15 +86,13 @@ class FinanceService:
             account=account,
             update_data={
                 "current_balance": balance,
-                "balance_updated_at": datetime.utcnow(),
+                "balance_updated_at": datetime.now(UTC),
             },
         )
 
     # ──────────────────── Transaction ─────────────────────────────────────
 
-    async def create_transaction(
-        self, user_id: UUID, data: TransactionCreate
-    ) -> Transaction:
+    async def create_transaction(self, user_id: UUID, data: TransactionCreate) -> Transaction:
         if data.account_id:
             await self.get_account(user_id, data.account_id)
 
@@ -102,7 +100,9 @@ class FinanceService:
 
         # Auto-match to a recurring expense if no explicit link and merchant is set
         if not tx_data.get("recurring_expense_id") and tx_data.get("merchant"):
-            match = await finance_repo.find_matching_recurring(self.db, user_id, tx_data["merchant"])
+            match = await finance_repo.find_matching_recurring(
+                self.db, user_id, tx_data["merchant"]
+            )
             if match:
                 tx_data["recurring_expense_id"] = match.id
                 if match.last_seen_date is None or match.last_seen_date < data.transaction_date:
@@ -131,10 +131,12 @@ class FinanceService:
         self, user_id: UUID, tx_id: UUID, data: TransactionUpdate
     ) -> Transaction:
         tx = await self.get_transaction(user_id, tx_id)
-        update_data = data.model_dump(exclude_none=True)
+        update_data = data.model_dump(exclude_unset=True)
         if not update_data:
             return tx
-        return await finance_repo.update_transaction(self.db, transaction=tx, update_data=update_data)
+        return await finance_repo.update_transaction(
+            self.db, transaction=tx, update_data=update_data
+        )
 
     async def delete_transaction(self, user_id: UUID, tx_id: UUID) -> None:
         await self.get_transaction(user_id, tx_id)
@@ -226,8 +228,9 @@ class FinanceService:
 
         Returns (categorized_count, failed_count).
         """
-        from app.core.config import settings
         from openai import AsyncOpenAI
+
+        from app.core.config import settings
 
         transactions = await finance_repo.get_uncategorized_transactions(
             self.db, user_id, limit=limit, account_id=account_id
@@ -353,13 +356,11 @@ Transactions:
             )
         return results
 
-    async def update_budget(
-        self, user_id: UUID, budget_id: UUID, data: BudgetUpdate
-    ) -> Budget:
+    async def update_budget(self, user_id: UUID, budget_id: UUID, data: BudgetUpdate) -> Budget:
         budget = await finance_repo.get_budget_by_id_and_user(self.db, budget_id, user_id)
         if not budget:
             raise NotFoundError(message="Budget not found", details={"budget_id": str(budget_id)})
-        update_data = data.model_dump(exclude_none=True)
+        update_data = data.model_dump(exclude_unset=True)
         if not update_data:
             return budget
         return await finance_repo.update_budget(self.db, budget=budget, update_data=update_data)
@@ -393,7 +394,7 @@ Transactions:
             raise NotFoundError(
                 message="Recurring expense not found", details={"recurring_id": str(recurring_id)}
             )
-        update_data = data.model_dump(exclude_none=True)
+        update_data = data.model_dump(exclude_unset=True)
         if "category" in update_data and update_data["category"] is not None:
             update_data["category"] = update_data["category"].value
         if not update_data:
