@@ -7,6 +7,7 @@ import type {
   BudgetStatus,
   CSVImportRequest,
   CSVImportResponse,
+  FinanceCategory,
   FinancialAccount,
   FinanceStats,
   RecurringExpense,
@@ -34,6 +35,8 @@ export function useFinances() {
     budgetsLoading,
     recurringExpenses,
     recurringLoading,
+    categories,
+    categoriesLoading,
     selectedTransaction,
     setAccounts,
     setAccountsLoading,
@@ -55,6 +58,10 @@ export function useFinances() {
     setRecurringLoading,
     updateRecurring,
     removeRecurring,
+    setCategories,
+    setCategoriesLoading,
+    updateCategory,
+    removeCategory,
   } = useFinanceStore();
 
   // ──────────────────── Accounts ────────────────────────────────────────
@@ -397,6 +404,71 @@ export function useFinances() {
     [removeRecurring, setError]
   );
 
+  // ──────────────────── Categories ──────────────────────────────────────
+
+  const fetchCategories = useCallback(
+    async (activeOnly = true) => {
+      setCategoriesLoading(true);
+      try {
+        const data = await apiClient.get<FinanceCategory[]>(
+          `/finances/categories?active_only=${activeOnly}`
+        );
+        setCategories(data);
+      } catch {
+        setCategories([]);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    },
+    [setCategories, setCategoriesLoading]
+  );
+
+  const createCategory = useCallback(
+    async (data: object): Promise<FinanceCategory | null> => {
+      try {
+        const category = await apiClient.post<FinanceCategory>("/finances/categories", data);
+        const updated = await apiClient.get<FinanceCategory[]>("/finances/categories");
+        setCategories(updated);
+        return category;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to create category");
+        return null;
+      }
+    },
+    [setCategories, setError]
+  );
+
+  const updateCategoryData = useCallback(
+    async (categoryId: string, data: object): Promise<FinanceCategory | null> => {
+      try {
+        const category = await apiClient.patch<FinanceCategory>(
+          `/finances/categories/${categoryId}`,
+          data
+        );
+        updateCategory(category);
+        return category;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to update category");
+        return null;
+      }
+    },
+    [updateCategory, setError]
+  );
+
+  const deleteCategory = useCallback(
+    async (categoryId: string): Promise<boolean> => {
+      try {
+        await apiClient.delete(`/finances/categories/${categoryId}`);
+        removeCategory(categoryId);
+        return true;
+      } catch {
+        setError("Failed to delete category");
+        return false;
+      }
+    },
+    [removeCategory, setError]
+  );
+
   const goToPage = useCallback(
     (page: number) => setFilters({ page }),
     [setFilters]
@@ -417,6 +489,8 @@ export function useFinances() {
     budgetsLoading,
     recurringExpenses,
     recurringLoading,
+    categories,
+    categoriesLoading,
     selectedTransaction,
     hasMore: (filters.page ?? 1) * (filters.page_size ?? 50) < total,
 
@@ -452,5 +526,11 @@ export function useFinances() {
     createRecurring,
     updateRecurring: updateRecurringData,
     deleteRecurring,
+
+    // Categories
+    fetchCategories,
+    createCategory,
+    updateCategory: updateCategoryData,
+    deleteCategory,
   };
 }

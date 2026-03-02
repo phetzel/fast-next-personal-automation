@@ -9,3 +9,4 @@ export { TransactionFiltersBar } from "./transaction-filters";
 export { CSVImportModal } from "./csv-import-modal";
 export { RecurringExpenseRow } from "./recurring-expense-row";
 export { RecurringForm } from "./recurring-form";
+export { CategoryForm } from "./category-form";

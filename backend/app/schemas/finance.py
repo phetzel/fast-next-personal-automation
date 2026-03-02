@@ -10,11 +10,38 @@ from pydantic import Field
 from app.db.models.finance import (
     AccountType,
     BillingCycle,
-    TransactionCategory,
     TransactionSource,
     TransactionType,
 )
 from app.schemas.base import BaseSchema, TimestampSchema
+
+# ──────────────────────────── FinanceCategory ────────────────────────────────
+
+
+class FinanceCategoryCreate(BaseSchema):
+    name: str = Field(max_length=100, description="Display name e.g. 'Dining Out'")
+    category_type: Literal["income", "expense"]
+    color: str | None = Field(default=None, max_length=20, description="Hex color e.g. '#4ade80'")
+    sort_order: int = 0
+
+
+class FinanceCategoryUpdate(BaseSchema):
+    name: str | None = Field(default=None, max_length=100)
+    color: str | None = Field(default=None, max_length=20)
+    sort_order: int | None = None
+    is_active: bool | None = None
+
+
+class FinanceCategoryResponse(BaseSchema, TimestampSchema):
+    id: UUID
+    user_id: UUID
+    name: str
+    slug: str
+    category_type: str
+    color: str | None = None
+    sort_order: int
+    is_active: bool
+
 
 # ──────────────────────────── Financial Account ─────────────────────────────
 
@@ -69,7 +96,7 @@ class TransactionBase(BaseSchema):
 
 class TransactionCreate(TransactionBase):
     account_id: UUID | None = None
-    category: TransactionCategory | None = None
+    category: str | None = None
     source: TransactionSource = TransactionSource.MANUAL
     raw_email_id: str | None = None
     recurring_expense_id: UUID | None = None
@@ -82,7 +109,7 @@ class TransactionUpdate(BaseSchema):
     transaction_date: date | None = None
     posted_date: date | None = None
     transaction_type: TransactionType | None = None
-    category: TransactionCategory | None = None
+    category: str | None = None
     account_id: UUID | None = None
     recurring_expense_id: UUID | None = None
     is_reviewed: bool | None = None
@@ -94,7 +121,7 @@ class TransactionResponse(TransactionBase, TimestampSchema):
     user_id: UUID
     account_id: UUID | None = None
     recurring_expense_id: UUID | None = None
-    category: TransactionCategory | None = None
+    category: str | None = None
     category_confidence: float | None = None
     source: TransactionSource = TransactionSource.MANUAL
     raw_email_id: str | None = None
@@ -111,7 +138,7 @@ class TransactionListResponse(BaseSchema):
 
 class TransactionFilters(BaseSchema):
     account_id: UUID | None = None
-    category: TransactionCategory | None = None
+    category: str | None = None
     source: TransactionSource | None = None
     transaction_type: TransactionType | None = None
     date_from: date | None = None
@@ -130,7 +157,7 @@ class TransactionFilters(BaseSchema):
 
 
 class BudgetBase(BaseSchema):
-    category: TransactionCategory
+    category: str = Field(description="Category slug e.g. 'dining'")
     month: int = Field(ge=1, le=12)
     year: int = Field(ge=2000, le=2100)
     amount_limit: Decimal = Field(gt=0)
@@ -167,7 +194,7 @@ class BudgetStatusResponse(BaseSchema):
 class RecurringExpenseBase(BaseSchema):
     name: str = Field(max_length=255)
     merchant: str | None = Field(default=None, max_length=255)
-    category: TransactionCategory | None = None
+    category: str | None = None
     expected_amount: Decimal | None = Field(default=None, gt=0)
     billing_cycle: BillingCycle = BillingCycle.MONTHLY
     next_due_date: date | None = None
@@ -183,7 +210,7 @@ class RecurringExpenseCreate(RecurringExpenseBase):
 class RecurringExpenseUpdate(BaseSchema):
     name: str | None = Field(default=None, max_length=255)
     merchant: str | None = None
-    category: TransactionCategory | None = None
+    category: str | None = None
     expected_amount: Decimal | None = Field(default=None, gt=0)
     billing_cycle: BillingCycle | None = None
     next_due_date: date | None = None
@@ -197,6 +224,26 @@ class RecurringExpenseResponse(RecurringExpenseBase, TimestampSchema):
     id: UUID
     user_id: UUID
     last_seen_date: date | None = None
+
+
+# ──────────────────────────── Recurring Calendar ─────────────────────────────
+
+
+class RecurringCalendarOccurrence(BaseSchema):
+    id: str
+    task_id: str
+    title: str
+    description: str | None = None
+    pipeline_name: str
+    start: str
+    end: str
+    all_day: bool
+    color: str | None = None
+    enabled: bool
+
+
+class RecurringCalendarResponse(BaseSchema):
+    occurrences: list[RecurringCalendarOccurrence]
 
 
 # ──────────────────────────── Stats & Import ─────────────────────────────────

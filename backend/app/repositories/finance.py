@@ -11,7 +11,13 @@ from uuid import UUID
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.finance import Budget, FinancialAccount, RecurringExpense, Transaction
+from app.db.models.finance import (
+    Budget,
+    FinanceCategory,
+    FinancialAccount,
+    RecurringExpense,
+    Transaction,
+)
 from app.schemas.finance import TransactionFilters
 
 # ──────────────────────────── FinancialAccount ───────────────────────────────
@@ -104,7 +110,7 @@ def _apply_transaction_filters(query: Select, user_id: UUID, filters: Transactio
     if filters.account_id:
         query = query.where(Transaction.account_id == filters.account_id)
     if filters.category:
-        query = query.where(Transaction.category == filters.category.value)
+        query = query.where(Transaction.category == filters.category)
     if filters.source:
         query = query.where(Transaction.source == filters.source.value)
     if filters.transaction_type:
@@ -431,3 +437,123 @@ async def get_active_recurring_count(db: AsyncSession, user_id: UUID) -> int:
         )
     )
     return result.scalar() or 0
+
+
+# ──────────────────────────── FinanceCategory ─────────────────────────────────
+
+_DEFAULT_CATEGORIES = [
+    # Income
+    ("Salary", "salary", "income", "#4ade80"),
+    ("Freelance", "freelance", "income", "#34d399"),
+    ("Investment Returns", "investment_returns", "income", "#10b981"),
+    ("Refunds", "refunds", "income", "#6ee7b7"),
+    # Expenses
+    ("Housing", "housing", "expense", "#818cf8"),
+    ("Utilities", "utilities", "expense", "#a78bfa"),
+    ("Groceries", "groceries", "expense", "#f87171"),
+    ("Dining", "dining", "expense", "#fb923c"),
+    ("Transportation", "transportation", "expense", "#facc15"),
+    ("Healthcare", "healthcare", "expense", "#38bdf8"),
+    ("Entertainment", "entertainment", "expense", "#e879f9"),
+    ("Shopping", "shopping", "expense", "#f472b6"),
+    ("Subscriptions", "subscriptions", "expense", "#94a3b8"),
+    ("Travel", "travel", "expense", "#2dd4bf"),
+    ("Other", "other", "expense", "#6b7280"),
+]
+
+
+async def get_categories_by_user(
+    db: AsyncSession, user_id: UUID, active_only: bool = True
+) -> list[FinanceCategory]:
+    query = select(FinanceCategory).where(FinanceCategory.user_id == user_id)
+    if active_only:
+        query = query.where(FinanceCategory.is_active == True)  # noqa: E712
+    query = query.order_by(FinanceCategory.sort_order.asc(), FinanceCategory.name.asc())
+    result = await db.execute(query)
+    return list(result.scalars().all())
+
+
+async def get_category_by_id_and_user(
+    db: AsyncSession, category_id: UUID, user_id: UUID
+) -> FinanceCategory | None:
+    result = await db.execute(
+        select(FinanceCategory).where(
+            FinanceCategory.id == category_id, FinanceCategory.user_id == user_id
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_category_by_slug(
+    db: AsyncSession, user_id: UUID, slug: str
+) -> FinanceCategory | None:
+    result = await db.execute(
+        select(FinanceCategory).where(
+            FinanceCategory.user_id == user_id, FinanceCategory.slug == slug
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_category(
+    db: AsyncSession,
+    *,
+    user_id: UUID,
+    name: str,
+    slug: str,
+    category_type: str,
+    color: str | None = None,
+    sort_order: int = 0,
+) -> FinanceCategory:
+    category = FinanceCategory(
+        user_id=user_id,
+        name=name,
+        slug=slug,
+        category_type=category_type,
+        color=color,
+        sort_order=sort_order,
+    )
+    db.add(category)
+    await db.flush()
+    await db.refresh(category)
+    return category
+
+
+async def update_category(
+    db: AsyncSession, *, category: FinanceCategory, update_data: dict
+) -> FinanceCategory:
+    for field, value in update_data.items():
+        setattr(category, field, value)
+    db.add(category)
+    await db.flush()
+    await db.refresh(category)
+    return category
+
+
+async def delete_category(db: AsyncSession, category_id: UUID, user_id: UUID) -> bool:
+    category = await get_category_by_id_and_user(db, category_id, user_id)
+    if not category:
+        return False
+    await db.delete(category)
+    await db.flush()
+    return True
+
+
+async def create_default_categories(db: AsyncSession, user_id: UUID) -> list[FinanceCategory]:
+    """Seed the default 15 categories for a new user."""
+    created: list[FinanceCategory] = []
+    for i, (name, slug, cat_type, color) in enumerate(_DEFAULT_CATEGORIES):
+        cat = FinanceCategory(
+            user_id=user_id,
+            name=name,
+            slug=slug,
+            category_type=cat_type,
+            color=color,
+            sort_order=i,
+        )
+        db.add(cat)
+        created.append(cat)
+    await db.flush()
+    for cat in created:
+        await db.refresh(cat)
+    return created

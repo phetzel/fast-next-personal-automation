@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import AlreadyExistsError, NotFoundError, ValidationError
 from app.db.models.finance import (
     Budget,
+    FinanceCategory,
     FinancialAccount,
     RecurringExpense,
     Transaction,
@@ -28,9 +29,13 @@ from app.schemas.finance import (
     BudgetStatusResponse,
     BudgetUpdate,
     CSVImportResponse,
+    FinanceCategoryCreate,
+    FinanceCategoryUpdate,
     FinanceStatsResponse,
     FinancialAccountCreate,
     FinancialAccountUpdate,
+    RecurringCalendarOccurrence,
+    RecurringCalendarResponse,
     RecurringExpenseCreate,
     RecurringExpenseUpdate,
     TransactionCreate,
@@ -238,11 +243,14 @@ class FinanceService:
         if not transactions:
             return 0, 0
 
-        # Import category values for the prompt
-        from app.db.models.finance import TransactionCategory
-
-        valid_categories = [c.value for c in TransactionCategory]
-        categories_str = ", ".join(valid_categories)
+        # Load user's categories from DB
+        user_categories = await finance_repo.get_categories_by_user(self.db, user_id)
+        if not user_categories:
+            user_categories = await finance_repo.create_default_categories(self.db, user_id)
+        valid_categories = [c.slug for c in user_categories]
+        categories_str = ", ".join(
+            f"{c.slug} ({c.name})" for c in user_categories
+        )
 
         client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
         categorized = 0
@@ -315,16 +323,14 @@ Transactions:
 
     async def create_budget(self, user_id: UUID, data: BudgetCreate) -> Budget:
         existing = await finance_repo.get_budget_by_category(
-            self.db, user_id, data.category.value, data.month, data.year
+            self.db, user_id, data.category, data.month, data.year
         )
         if existing:
             raise AlreadyExistsError(
                 message="Budget already exists for this category/month/year",
-                details={"category": data.category.value, "month": data.month, "year": data.year},
+                details={"category": data.category, "month": data.month, "year": data.year},
             )
-        budget_data = data.model_dump()
-        budget_data["category"] = data.category.value
-        return await finance_repo.create_budget(self.db, user_id=user_id, **budget_data)
+        return await finance_repo.create_budget(self.db, user_id=user_id, **data.model_dump())
 
     async def get_budgets(self, user_id: UUID, month: int, year: int) -> list[Budget]:
         return await finance_repo.get_budgets_by_user(self.db, user_id, month, year)
@@ -376,10 +382,9 @@ Transactions:
     async def create_recurring(
         self, user_id: UUID, data: RecurringExpenseCreate
     ) -> RecurringExpense:
-        re_data = data.model_dump()
-        if data.category:
-            re_data["category"] = data.category.value
-        return await finance_repo.create_recurring(self.db, user_id=user_id, **re_data)
+        return await finance_repo.create_recurring(
+            self.db, user_id=user_id, **data.model_dump()
+        )
 
     async def list_recurring(
         self, user_id: UUID, active_only: bool = True
@@ -395,8 +400,6 @@ Transactions:
                 message="Recurring expense not found", details={"recurring_id": str(recurring_id)}
             )
         update_data = data.model_dump(exclude_unset=True)
-        if "category" in update_data and update_data["category"] is not None:
-            update_data["category"] = update_data["category"].value
         if not update_data:
             return recurring
         return await finance_repo.update_recurring(
@@ -410,6 +413,140 @@ Transactions:
                 message="Recurring expense not found", details={"recurring_id": str(recurring_id)}
             )
         await finance_repo.delete_recurring(self.db, recurring_id, user_id)
+
+    # ──────────────────── FinanceCategory ─────────────────────────────────
+
+    async def list_categories(
+        self, user_id: UUID, active_only: bool = True
+    ) -> list[FinanceCategory]:
+        categories = await finance_repo.get_categories_by_user(self.db, user_id, active_only)
+        if not categories:
+            categories = await finance_repo.create_default_categories(self.db, user_id)
+        return categories
+
+    async def create_category(
+        self, user_id: UUID, data: FinanceCategoryCreate
+    ) -> FinanceCategory:
+        slug = data.name.lower().replace(" ", "_").replace("-", "_")
+        existing = await finance_repo.get_category_by_slug(self.db, user_id, slug)
+        if existing:
+            raise AlreadyExistsError(
+                message="Category with this name already exists",
+                details={"slug": slug},
+            )
+        return await finance_repo.create_category(
+            self.db,
+            user_id=user_id,
+            name=data.name,
+            slug=slug,
+            category_type=data.category_type,
+            color=data.color,
+            sort_order=data.sort_order,
+        )
+
+    async def update_category(
+        self, user_id: UUID, category_id: UUID, data: FinanceCategoryUpdate
+    ) -> FinanceCategory:
+        category = await finance_repo.get_category_by_id_and_user(self.db, category_id, user_id)
+        if not category:
+            raise NotFoundError(
+                message="Category not found", details={"category_id": str(category_id)}
+            )
+        update_data = data.model_dump(exclude_unset=True)
+        if not update_data:
+            return category
+        return await finance_repo.update_category(
+            self.db, category=category, update_data=update_data
+        )
+
+    async def delete_category(self, user_id: UUID, category_id: UUID) -> None:
+        deleted = await finance_repo.delete_category(self.db, category_id, user_id)
+        if not deleted:
+            raise NotFoundError(
+                message="Category not found", details={"category_id": str(category_id)}
+            )
+
+    # ──────────────────── Recurring Calendar ──────────────────────────────
+
+    async def get_recurring_calendar_occurrences(
+        self, user_id: UUID, start_date: date, end_date: date
+    ) -> RecurringCalendarResponse:
+        """Generate calendar occurrence dicts for recurring expenses within a date range."""
+        import calendar as cal
+        from datetime import timedelta
+
+        def _add_months(d: date, months: int) -> date:
+            month = d.month - 1 + months
+            year = d.year + month // 12
+            month = month % 12 + 1
+            day = min(d.day, cal.monthrange(year, month)[1])
+            return date(year, month, day)
+
+        def _advance(d: date, billing_cycle: str) -> date:
+            if billing_cycle == "weekly":
+                return d + timedelta(days=7)
+            if billing_cycle == "biweekly":
+                return d + timedelta(days=14)
+            if billing_cycle == "quarterly":
+                return _add_months(d, 3)
+            if billing_cycle == "annual":
+                return _add_months(d, 12)
+            return _add_months(d, 1)  # monthly default
+
+        def _retreat(d: date, billing_cycle: str) -> date:
+            if billing_cycle == "weekly":
+                return d - timedelta(days=7)
+            if billing_cycle == "biweekly":
+                return d - timedelta(days=14)
+            if billing_cycle == "quarterly":
+                return _add_months(d, -3)
+            if billing_cycle == "annual":
+                return _add_months(d, -12)
+            return _add_months(d, -1)  # monthly default
+
+        recurring_list = await finance_repo.get_recurring_by_user(
+            self.db, user_id, active_only=True
+        )
+        occurrences: list[RecurringCalendarOccurrence] = []
+
+        for expense in recurring_list:
+            if not expense.next_due_date:
+                continue
+
+            cycle = expense.billing_cycle
+
+            # Walk anchor backward to before or at start_date
+            anchor = expense.next_due_date
+            while anchor > start_date:
+                anchor = _retreat(anchor, cycle)
+            # Step forward until within range
+            while anchor < start_date:
+                anchor = _advance(anchor, cycle)
+
+            # Emit all occurrences within range
+            current = anchor
+            while current <= end_date:
+                desc = None
+                if expense.expected_amount is not None:
+                    desc = f"${expense.expected_amount:,.2f}"
+                occurrences.append(
+                    RecurringCalendarOccurrence(
+                        id=f"recurring_{expense.id}_{current.isoformat()}",
+                        task_id=str(expense.id),
+                        title=expense.name,
+                        description=desc,
+                        pipeline_name="recurring_expense",
+                        start=f"{current.isoformat()}T09:00:00",
+                        end=f"{current.isoformat()}T10:00:00",
+                        all_day=True,
+                        color="rose",
+                        enabled=expense.is_active,
+                    )
+                )
+                current = _advance(current, cycle)
+
+        occurrences.sort(key=lambda o: o.start)
+        return RecurringCalendarResponse(occurrences=occurrences)
 
     # ──────────────────── Stats ────────────────────────────────────────────
 

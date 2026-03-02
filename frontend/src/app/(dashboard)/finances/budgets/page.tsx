@@ -15,6 +15,8 @@ export default function BudgetsPage() {
     createBudget,
     updateBudget,
     deleteBudget,
+    categories,
+    fetchCategories,
   } = useFinances();
 
   const now = new Date();
@@ -25,7 +27,8 @@ export default function BudgetsPage() {
 
   useEffect(() => {
     fetchBudgetStatus(month, year);
-  }, [month, year, fetchBudgetStatus]);
+    fetchCategories();
+  }, [month, year, fetchBudgetStatus, fetchCategories]);
 
   const handlePrev = () => {
     if (month === 1) {
@@ -157,6 +160,7 @@ export default function BudgetsPage() {
         budget={editBudget}
         defaultMonth={month}
         defaultYear={year}
+        categories={categories}
       />
     </div>
   );

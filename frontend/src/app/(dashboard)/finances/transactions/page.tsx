@@ -20,8 +20,10 @@ export default function TransactionsPage() {
     filters,
     accounts,
     accountsLoading,
+    categories,
     fetchTransactions,
     fetchAccounts,
+    fetchCategories,
     createTransaction,
     updateTransaction,
     deleteTransaction,
@@ -40,7 +42,8 @@ export default function TransactionsPage() {
   useEffect(() => {
     fetchAccounts();
     fetchTransactions();
-  }, [fetchAccounts, fetchTransactions]);
+    fetchCategories();
+  }, [fetchAccounts, fetchTransactions, fetchCategories]);
 
   const page = filters.page ?? 1;
   const pageSize = filters.page_size ?? 50;
@@ -114,6 +117,7 @@ export default function TransactionsPage() {
           <TransactionFiltersBar
             filters={filters}
             accounts={accountsLoading ? [] : accounts}
+            categories={categories}
             onChange={handleFilterChange}
             onReset={handleReset}
           />
@@ -178,6 +182,7 @@ export default function TransactionsPage() {
         onSubmit={editTx ? handleEdit : handleCreate}
         transaction={editTx}
         accounts={accounts}
+        categories={categories}
       />
 
       <CSVImportModal

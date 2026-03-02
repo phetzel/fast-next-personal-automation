@@ -12,7 +12,7 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
 from app.api.deps import CurrentUser, FinanceSvc
-from app.db.models.finance import TransactionCategory, TransactionSource, TransactionType
+from app.db.models.finance import TransactionSource, TransactionType
 from app.schemas.finance import (
     BudgetCreate,
     BudgetResponse,
@@ -20,11 +20,15 @@ from app.schemas.finance import (
     BudgetUpdate,
     CSVImportRequest,
     CSVImportResponse,
+    FinanceCategoryCreate,
+    FinanceCategoryResponse,
+    FinanceCategoryUpdate,
     FinanceStatsResponse,
     FinancialAccountBalanceUpdate,
     FinancialAccountCreate,
     FinancialAccountResponse,
     FinancialAccountUpdate,
+    RecurringCalendarResponse,
     RecurringExpenseCreate,
     RecurringExpenseResponse,
     RecurringExpenseUpdate,
@@ -124,7 +128,7 @@ async def list_transactions(
     current_user: CurrentUser,
     finance_service: FinanceSvc,
     account_id: UUID | None = Query(None),
-    category: TransactionCategory | None = Query(None),
+    category: str | None = Query(None),
     source: TransactionSource | None = Query(None),
     transaction_type: TransactionType | None = Query(None),
     date_from: str | None = Query(None, description="ISO date YYYY-MM-DD"),
@@ -351,3 +355,60 @@ async def delete_recurring(
     finance_service: FinanceSvc,
 ) -> None:
     await finance_service.delete_recurring(current_user.id, recurring_id)
+
+
+@router.get("/recurring/calendar", response_model=RecurringCalendarResponse)
+async def get_recurring_calendar(
+    current_user: CurrentUser,
+    finance_service: FinanceSvc,
+    start_date: str = Query(..., description="ISO date YYYY-MM-DD"),
+    end_date: str = Query(..., description="ISO date YYYY-MM-DD"),
+) -> RecurringCalendarResponse:
+    from datetime import date
+
+    start = date.fromisoformat(start_date)
+    end = date.fromisoformat(end_date)
+    return await finance_service.get_recurring_calendar_occurrences(current_user.id, start, end)
+
+
+# ──────────────────────────── Categories ─────────────────────────────────────
+
+
+@router.get("/categories", response_model=list[FinanceCategoryResponse])
+async def list_categories(
+    current_user: CurrentUser,
+    finance_service: FinanceSvc,
+    active_only: bool = Query(True),
+) -> list[FinanceCategoryResponse]:
+    categories = await finance_service.list_categories(current_user.id, active_only=active_only)
+    return [FinanceCategoryResponse.model_validate(c) for c in categories]
+
+
+@router.post("/categories", response_model=FinanceCategoryResponse, status_code=201)
+async def create_category(
+    data: FinanceCategoryCreate,
+    current_user: CurrentUser,
+    finance_service: FinanceSvc,
+) -> FinanceCategoryResponse:
+    category = await finance_service.create_category(current_user.id, data)
+    return FinanceCategoryResponse.model_validate(category)
+
+
+@router.patch("/categories/{category_id}", response_model=FinanceCategoryResponse)
+async def update_category(
+    category_id: UUID,
+    data: FinanceCategoryUpdate,
+    current_user: CurrentUser,
+    finance_service: FinanceSvc,
+) -> FinanceCategoryResponse:
+    category = await finance_service.update_category(current_user.id, category_id, data)
+    return FinanceCategoryResponse.model_validate(category)
+
+
+@router.delete("/categories/{category_id}", status_code=204)
+async def delete_category(
+    category_id: UUID,
+    current_user: CurrentUser,
+    finance_service: FinanceSvc,
+) -> None:
+    await finance_service.delete_category(current_user.id, category_id)

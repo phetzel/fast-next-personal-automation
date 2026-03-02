@@ -1,7 +1,6 @@
 "use client";
 
-import { ALL_CATEGORIES, CATEGORY_LABELS } from "@/types";
-import type { FinancialAccount, TransactionFilters } from "@/types";
+import type { FinanceCategory, FinancialAccount, TransactionFilters } from "@/types";
 import { Button, Input } from "@/components/ui";
 import {
   Select,
@@ -15,11 +14,12 @@ import { X } from "lucide-react";
 interface TransactionFiltersProps {
   filters: TransactionFilters;
   accounts: FinancialAccount[];
+  categories: FinanceCategory[];
   onChange: (filters: Partial<TransactionFilters>) => void;
   onReset: () => void;
 }
 
-export function TransactionFiltersBar({ filters, accounts, onChange, onReset }: TransactionFiltersProps) {
+export function TransactionFiltersBar({ filters, accounts, categories, onChange, onReset }: TransactionFiltersProps) {
   const hasActiveFilters =
     filters.category ||
     filters.account_id ||
@@ -44,16 +44,16 @@ export function TransactionFiltersBar({ filters, accounts, onChange, onReset }: 
         {/* Category */}
         <Select
           value={filters.category ?? "all"}
-          onValueChange={(v) => onChange({ category: v === "all" ? undefined : (v as TransactionFilters["category"]), page: 1 })}
+          onValueChange={(v) => onChange({ category: v === "all" ? undefined : v, page: 1 })}
         >
           <SelectTrigger className="h-9 w-44">
             <SelectValue placeholder="All Categories" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
-            {ALL_CATEGORIES.map((cat) => (
-              <SelectItem key={cat} value={cat}>
-                {CATEGORY_LABELS[cat]}
+            {categories.map((cat) => (
+              <SelectItem key={cat.slug} value={cat.slug}>
+                {cat.name}
               </SelectItem>
             ))}
           </SelectContent>

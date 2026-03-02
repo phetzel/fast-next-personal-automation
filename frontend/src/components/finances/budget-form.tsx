@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ALL_CATEGORIES, CATEGORY_LABELS } from "@/types";
-import type { Budget, TransactionCategory } from "@/types";
+import type { Budget, FinanceCategory } from "@/types";
 import { Button, Input, Label } from "@/components/ui";
 import {
   Dialog,
@@ -26,6 +25,7 @@ interface BudgetFormProps {
   budget?: Budget | null;
   defaultMonth?: number;
   defaultYear?: number;
+  categories?: FinanceCategory[];
 }
 
 export function BudgetForm({
@@ -35,12 +35,13 @@ export function BudgetForm({
   budget,
   defaultMonth,
   defaultYear,
+  categories = [],
 }: BudgetFormProps) {
   const isEdit = !!budget;
   const now = new Date();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    category: budget?.category ?? ("other" as TransactionCategory),
+    category: budget?.category ?? "other",
     month: budget?.month ?? defaultMonth ?? now.getMonth() + 1,
     year: budget?.year ?? defaultYear ?? now.getFullYear(),
     amount_limit: budget?.amount_limit?.toString() ?? "",
@@ -75,15 +76,15 @@ export function BudgetForm({
             <Label htmlFor="category">Category *</Label>
             <Select
               value={formData.category}
-              onValueChange={(v) => setFormData((p) => ({ ...p, category: v as TransactionCategory }))}
+              onValueChange={(v) => setFormData((p) => ({ ...p, category: v }))}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {ALL_CATEGORIES.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {CATEGORY_LABELS[cat]}
+                {categories.map((cat) => (
+                  <SelectItem key={cat.slug} value={cat.slug}>
+                    {cat.name}
                   </SelectItem>
                 ))}
               </SelectContent>

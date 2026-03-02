@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import type {
   BudgetStatus,
+  FinanceCategory,
   FinancialAccount,
   FinanceStats,
   RecurringExpense,
@@ -35,6 +36,10 @@ interface FinanceStore {
   recurringExpenses: RecurringExpense[];
   recurringLoading: boolean;
 
+  // Categories
+  categories: FinanceCategory[];
+  categoriesLoading: boolean;
+
   // Actions — accounts
   setAccounts: (accounts: FinancialAccount[]) => void;
   setAccountsLoading: (loading: boolean) => void;
@@ -64,6 +69,12 @@ interface FinanceStore {
   setRecurringLoading: (loading: boolean) => void;
   updateRecurring: (recurring: RecurringExpense) => void;
   removeRecurring: (recurringId: string) => void;
+
+  // Actions — categories
+  setCategories: (categories: FinanceCategory[]) => void;
+  setCategoriesLoading: (loading: boolean) => void;
+  updateCategory: (category: FinanceCategory) => void;
+  removeCategory: (categoryId: string) => void;
 }
 
 const defaultFilters: TransactionFilters = {
@@ -93,6 +104,9 @@ export const useFinanceStore = create<FinanceStore>((set) => ({
 
   recurringExpenses: [],
   recurringLoading: false,
+
+  categories: [],
+  categoriesLoading: false,
 
   // Account actions
   setAccounts: (accounts) => set({ accounts }),
@@ -148,5 +162,17 @@ export const useFinanceStore = create<FinanceStore>((set) => ({
   removeRecurring: (recurringId) =>
     set((state) => ({
       recurringExpenses: state.recurringExpenses.filter((r) => r.id !== recurringId),
+    })),
+
+  // Category actions
+  setCategories: (categories) => set({ categories }),
+  setCategoriesLoading: (categoriesLoading) => set({ categoriesLoading }),
+  updateCategory: (updated) =>
+    set((state) => ({
+      categories: state.categories.map((c) => (c.id === updated.id ? updated : c)),
+    })),
+  removeCategory: (categoryId) =>
+    set((state) => ({
+      categories: state.categories.filter((c) => c.id !== categoryId),
     })),
 }));

@@ -23,6 +23,7 @@ import {
   Receipt,
   Building2,
   PiggyBank,
+  Tag,
   type LucideIcon,
 } from "lucide-react";
 import { useSidebarStore } from "@/stores";
@@ -72,6 +73,7 @@ const areaNavigation: NavArea[] = [
       { name: "Accounts", href: ROUTES.FINANCES_ACCOUNTS, icon: Building2 },
       { name: "Budgets", href: ROUTES.FINANCES_BUDGETS, icon: PiggyBank },
       { name: "Recurring", href: ROUTES.FINANCES_RECURRING, icon: RefreshCw },
+      { name: "Categories", href: ROUTES.FINANCES_CATEGORIES, icon: Tag },
       { name: "Assistant", href: ROUTES.FINANCES_ASSISTANT, icon: Bot },
     ],
   },

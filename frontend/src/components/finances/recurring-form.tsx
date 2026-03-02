@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ALL_CATEGORIES, BILLING_CYCLE_LABELS, CATEGORY_LABELS } from "@/types";
-import type { BillingCycle, RecurringExpense, TransactionCategory } from "@/types";
+import { BILLING_CYCLE_LABELS } from "@/types";
+import type { BillingCycle, FinanceCategory, RecurringExpense } from "@/types";
 import { Button, Input, Label } from "@/components/ui";
 import {
   Dialog,
@@ -24,17 +24,18 @@ interface RecurringFormProps {
   onClose: () => void;
   onSubmit: (data: object) => Promise<void>;
   expense?: RecurringExpense | null;
+  categories?: FinanceCategory[];
 }
 
 const billingCycles = Object.entries(BILLING_CYCLE_LABELS) as [BillingCycle, string][];
 
-export function RecurringForm({ open, onClose, onSubmit, expense }: RecurringFormProps) {
+export function RecurringForm({ open, onClose, onSubmit, expense, categories = [] }: RecurringFormProps) {
   const isEdit = !!expense;
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: expense?.name ?? "",
     merchant: expense?.merchant ?? "",
-    category: (expense?.category ?? "") as TransactionCategory | "",
+    category: expense?.category ?? "",
     expected_amount: expense?.expected_amount?.toString() ?? "",
     billing_cycle: expense?.billing_cycle ?? ("monthly" as BillingCycle),
     next_due_date: expense?.next_due_date ?? "",
@@ -127,15 +128,15 @@ export function RecurringForm({ open, onClose, onSubmit, expense }: RecurringFor
             <Label htmlFor="category">Category</Label>
             <Select
               value={formData.category}
-              onValueChange={(v) => setFormData((p) => ({ ...p, category: v as TransactionCategory }))}
+              onValueChange={(v) => setFormData((p) => ({ ...p, category: v }))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select category..." />
               </SelectTrigger>
               <SelectContent>
-                {ALL_CATEGORIES.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {CATEGORY_LABELS[cat]}
+                {categories.map((cat) => (
+                  <SelectItem key={cat.slug} value={cat.slug}>
+                    {cat.name}
                   </SelectItem>
                 ))}
               </SelectContent>

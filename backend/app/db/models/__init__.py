@@ -22,10 +22,10 @@ from app.db.models.finance import (
     Transaction,
     Budget,
     RecurringExpense,
+    FinanceCategory,
     AccountType,
     TransactionType,
     TransactionSource,
-    TransactionCategory,
     BillingCycle,
 )
 
@@ -56,9 +56,9 @@ __all__ = [
     "Transaction",
     "Budget",
     "RecurringExpense",
+    "FinanceCategory",
     "AccountType",
     "TransactionType",
     "TransactionSource",
-    "TransactionCategory",
     "BillingCycle",
 ]

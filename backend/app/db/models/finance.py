@@ -56,33 +56,33 @@ class BillingCycle(StrEnum):
     ANNUAL = "annual"
 
 
-class TransactionCategory(StrEnum):
-    # Income
-    INCOME_SALARY = "income_salary"
-    INCOME_FREELANCE = "income_freelance"
-    INCOME_INVESTMENT = "income_investment"
-    INCOME_REFUND = "income_refund"
-    INCOME_OTHER = "income_other"
-    # Expenses
-    HOUSING = "housing"
-    UTILITIES = "utilities"
-    GROCERIES = "groceries"
-    DINING = "dining"
-    TRANSPORTATION = "transportation"
-    HEALTHCARE = "healthcare"
-    ENTERTAINMENT = "entertainment"
-    SHOPPING = "shopping"
-    SUBSCRIPTIONS = "subscriptions"
-    TRAVEL = "travel"
-    EDUCATION = "education"
-    PERSONAL_CARE = "personal_care"
-    FITNESS = "fitness"
-    PETS = "pets"
-    GIFTS_DONATIONS = "gifts_donations"
-    BUSINESS = "business"
-    TAXES = "taxes"
-    TRANSFER = "transfer"
-    OTHER = "other"
+class FinanceCategory(Base, TimestampMixin):
+    """A user-defined finance category (income or expense)."""
+
+    __tablename__ = "finance_categories"
+    __table_args__ = (
+        UniqueConstraint("user_id", "slug", name="finance_categories_user_id_slug_key"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    slug: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    category_type: Mapped[str] = mapped_column(String(10), nullable=False)  # "income" | "expense"
+    color: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    sort_order: Mapped[int] = mapped_column(nullable=False, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    # Relationships
+    user: Mapped["User"] = relationship("User", lazy="selectin")
+
+    def __repr__(self) -> str:
+        return f"<FinanceCategory(id={self.id}, slug={self.slug}, type={self.category_type})>"
 
 
 class FinancialAccount(Base, TimestampMixin):

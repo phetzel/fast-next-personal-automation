@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ALL_CATEGORIES, CATEGORY_LABELS } from "@/types";
-import type { FinancialAccount, Transaction, TransactionCategory } from "@/types";
+import type { FinanceCategory, FinancialAccount, Transaction } from "@/types";
 import { Button, Input, Label } from "@/components/ui";
 import {
   Dialog,
@@ -25,6 +24,7 @@ interface TransactionFormProps {
   onSubmit: (data: object) => Promise<void>;
   transaction?: Transaction | null;
   accounts?: FinancialAccount[];
+  categories?: FinanceCategory[];
 }
 
 export function TransactionForm({
@@ -33,6 +33,7 @@ export function TransactionForm({
   onSubmit,
   transaction,
   accounts = [],
+  categories = [],
 }: TransactionFormProps) {
   const isEdit = !!transaction;
   const [loading, setLoading] = useState(false);
@@ -44,7 +45,7 @@ export function TransactionForm({
     transaction_type: transaction?.transaction_type ?? "debit",
     transaction_date: transaction?.transaction_date ?? today,
     merchant: transaction?.merchant ?? "",
-    category: (transaction?.category ?? "") as TransactionCategory | "",
+    category: transaction?.category ?? "",
     account_id: transaction?.account_id ?? "",
     notes: transaction?.notes ?? "",
   });
@@ -148,15 +149,15 @@ export function TransactionForm({
             <Label htmlFor="category">Category</Label>
             <Select
               value={formData.category}
-              onValueChange={(v) => setFormData((p) => ({ ...p, category: v as TransactionCategory }))}
+              onValueChange={(v) => setFormData((p) => ({ ...p, category: v }))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select category..." />
               </SelectTrigger>
               <SelectContent>
-                {ALL_CATEGORIES.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {CATEGORY_LABELS[cat]}
+                {categories.map((cat) => (
+                  <SelectItem key={cat.slug} value={cat.slug}>
+                    {cat.name}
                   </SelectItem>
                 ))}
               </SelectContent>

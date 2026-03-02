@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { addMonths, startOfMonth, endOfMonth } from "date-fns";
 import cronstrue from "cronstrue";
 import { useSchedules, usePipelines } from "@/hooks";
+import { ROUTES } from "@/lib/constants";
 import {
   EventCalendar,
   type CalendarEvent,
@@ -57,6 +59,7 @@ function describeCron(expression: string): string | null {
 const EVENT_COLORS: EventColor[] = ["sky", "amber", "violet", "rose", "emerald", "orange"];
 
 export default function SchedulesPage() {
+  const router = useRouter();
   const {
     schedules,
     occurrences,
@@ -73,6 +76,7 @@ export default function SchedulesPage() {
   const { pipelines, fetchPipelines } = usePipelines();
 
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [recurringOccurrences, setRecurringOccurrences] = useState<CalendarOccurrence[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<ScheduledTask | null>(null);
   const [formData, setFormData] = useState<ScheduledTaskCreate>({
@@ -91,10 +95,25 @@ export default function SchedulesPage() {
     fetchPipelines();
   }, [fetchPipelines, fetchSchedules]);
 
-  const refreshOccurrences = useCallback(() => {
+  const refreshOccurrences = useCallback(async () => {
     const start = startOfMonth(addMonths(currentDate, -1));
     const end = endOfMonth(addMonths(currentDate, 1));
     fetchOccurrences(start, end);
+
+    // Also fetch recurring expense calendar occurrences
+    try {
+      const qs = new URLSearchParams({
+        start_date: start.toISOString(),
+        end_date: end.toISOString(),
+      });
+      const res = await fetch(`/api/finances/recurring/calendar?${qs}`);
+      if (res.ok) {
+        const data = await res.json();
+        setRecurringOccurrences(data.occurrences ?? []);
+      }
+    } catch {
+      // Non-fatal: calendar still works without recurring events
+    }
   }, [currentDate, fetchOccurrences]);
 
   // Fetch occurrences when date range changes
@@ -102,9 +121,9 @@ export default function SchedulesPage() {
     refreshOccurrences();
   }, [refreshOccurrences]);
 
-  // Convert occurrences to CalendarEvent format
+  // Convert occurrences to CalendarEvent format (pipeline + recurring)
   const calendarEvents: CalendarEvent[] = useMemo(() => {
-    return occurrences.map((occ: CalendarOccurrence) => ({
+    const pipelineEvents = occurrences.map((occ: CalendarOccurrence) => ({
       id: occ.id,
       title: occ.title,
       description: occ.description || undefined,
@@ -113,13 +132,28 @@ export default function SchedulesPage() {
       allDay: occ.all_day,
       color: (occ.color as EventColor) || "sky",
     }));
-  }, [occurrences]);
+    const recurringEvents = recurringOccurrences.map((occ: CalendarOccurrence) => ({
+      id: occ.id,
+      title: occ.title,
+      description: occ.description || undefined,
+      start: new Date(occ.start),
+      end: new Date(occ.end),
+      allDay: occ.all_day,
+      color: "rose" as EventColor,
+    }));
+    return [...pipelineEvents, ...recurringEvents];
+  }, [occurrences, recurringOccurrences]);
 
   const handleCalendarCreate = (_startTime?: Date) => {
     openNewScheduleDialog();
   };
 
   const handleCalendarSelect = (event: CalendarEvent) => {
+    // Recurring expense events navigate to the recurring page
+    if (event.id.startsWith("recurring_")) {
+      router.push(ROUTES.FINANCES_RECURRING);
+      return;
+    }
     const occurrence = occurrences.find((o) => o.id === event.id);
     if (occurrence) {
       const task = schedules.find((s) => s.id === occurrence.task_id);
@@ -130,6 +164,8 @@ export default function SchedulesPage() {
   };
 
   const handleEventDelete = async (eventId: string) => {
+    // Recurring expense events can't be deleted from this page
+    if (eventId.startsWith("recurring_")) return;
     const occurrence = occurrences.find((o) => o.id === eventId);
     if (occurrence) {
       const confirmed = window.confirm(

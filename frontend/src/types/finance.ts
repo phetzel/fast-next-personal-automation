@@ -10,90 +10,18 @@ export type TransactionSource = "manual" | "csv_import" | "email_parsed";
 
 export type BillingCycle = "weekly" | "biweekly" | "monthly" | "quarterly" | "annual";
 
-export type TransactionCategory =
-  | "income_salary"
-  | "income_freelance"
-  | "income_investment"
-  | "income_refund"
-  | "income_other"
-  | "housing"
-  | "utilities"
-  | "groceries"
-  | "dining"
-  | "transportation"
-  | "healthcare"
-  | "entertainment"
-  | "shopping"
-  | "subscriptions"
-  | "travel"
-  | "education"
-  | "personal_care"
-  | "fitness"
-  | "pets"
-  | "gifts_donations"
-  | "business"
-  | "taxes"
-  | "transfer"
-  | "other";
-
-export const INCOME_CATEGORIES: TransactionCategory[] = [
-  "income_salary",
-  "income_freelance",
-  "income_investment",
-  "income_refund",
-  "income_other",
-];
-
-export const EXPENSE_CATEGORIES: TransactionCategory[] = [
-  "housing",
-  "utilities",
-  "groceries",
-  "dining",
-  "transportation",
-  "healthcare",
-  "entertainment",
-  "shopping",
-  "subscriptions",
-  "travel",
-  "education",
-  "personal_care",
-  "fitness",
-  "pets",
-  "gifts_donations",
-  "business",
-  "taxes",
-  "transfer",
-  "other",
-];
-
-export const ALL_CATEGORIES: TransactionCategory[] = [...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES];
-
-export const CATEGORY_LABELS: Record<TransactionCategory, string> = {
-  income_salary: "Salary",
-  income_freelance: "Freelance",
-  income_investment: "Investment Returns",
-  income_refund: "Refund",
-  income_other: "Other Income",
-  housing: "Housing",
-  utilities: "Utilities",
-  groceries: "Groceries",
-  dining: "Dining",
-  transportation: "Transportation",
-  healthcare: "Healthcare",
-  entertainment: "Entertainment",
-  shopping: "Shopping",
-  subscriptions: "Subscriptions",
-  travel: "Travel",
-  education: "Education",
-  personal_care: "Personal Care",
-  fitness: "Fitness",
-  pets: "Pets",
-  gifts_donations: "Gifts & Donations",
-  business: "Business",
-  taxes: "Taxes",
-  transfer: "Transfer",
-  other: "Other",
-};
+export interface FinanceCategory {
+  id: string;
+  user_id: string;
+  name: string;
+  slug: string;
+  category_type: "income" | "expense";
+  color: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string | null;
+}
 
 export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   checking: "Checking",
@@ -141,7 +69,7 @@ export interface Transaction {
   transaction_date: string; // ISO date YYYY-MM-DD
   posted_date: string | null;
   transaction_type: TransactionType;
-  category: TransactionCategory | null;
+  category: string | null;
   category_confidence: number | null;
   source: TransactionSource;
   raw_email_id: string | null;
@@ -153,7 +81,7 @@ export interface Transaction {
 
 export interface TransactionFilters {
   account_id?: string;
-  category?: TransactionCategory;
+  category?: string;
   source?: TransactionSource;
   transaction_type?: TransactionType;
   date_from?: string;
@@ -182,7 +110,7 @@ export interface TransactionCreate {
   transaction_date: string;
   transaction_type?: TransactionType;
   merchant?: string | null;
-  category?: TransactionCategory | null;
+  category?: string | null;
   account_id?: string | null;
   notes?: string | null;
   source?: TransactionSource;
@@ -195,7 +123,7 @@ export interface TransactionUpdate {
   transaction_date?: string;
   posted_date?: string | null;
   transaction_type?: TransactionType;
-  category?: TransactionCategory | null;
+  category?: string | null;
   account_id?: string | null;
   recurring_expense_id?: string | null;
   is_reviewed?: boolean;
@@ -205,7 +133,7 @@ export interface TransactionUpdate {
 export interface Budget {
   id: string;
   user_id: string;
-  category: TransactionCategory;
+  category: string;
   month: number;
   year: number;
   amount_limit: number;
@@ -227,7 +155,7 @@ export interface RecurringExpense {
   user_id: string;
   name: string;
   merchant: string | null;
-  category: TransactionCategory | null;
+  category: string | null;
   expected_amount: number | null;
   billing_cycle: BillingCycle;
   next_due_date: string | null;
