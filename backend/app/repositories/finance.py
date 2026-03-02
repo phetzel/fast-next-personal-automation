@@ -267,11 +267,11 @@ async def get_monthly_summary(
             Transaction.transaction_date <= end,
         )
     )
-    row = result.one()
-    income = row.income or Decimal("0")
-    expenses = abs(row.expenses or Decimal("0"))
-    count = row.count or 0
-    return income, expenses, count
+    income_val, expenses_val, count_val = result.one()
+    income = income_val or Decimal("0")
+    expenses = abs(expenses_val or Decimal("0"))
+    tx_count = int(count_val) if count_val else 0
+    return income, expenses, tx_count
 
 
 async def get_uncategorized_transactions(

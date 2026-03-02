@@ -1,10 +1,10 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { CATEGORY_LABELS } from "@/types";
 import type { BudgetStatus } from "@/types";
 import { AlertTriangle, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui";
+import { CategoryBadge } from "./category-badge";
 
 interface BudgetProgressProps {
   status: BudgetStatus;
@@ -32,7 +32,7 @@ export function BudgetProgress({ status, onEdit, onDelete }: BudgetProgressProps
     <div className="rounded-lg border p-4 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <p className="font-medium text-sm">{CATEGORY_LABELS[budget.category]}</p>
+          <CategoryBadge category={budget.category} size="md" />
           <p className="text-muted-foreground text-xs">{transactions_count} transactions</p>
         </div>
         <div className="flex items-center gap-1">

@@ -12,6 +12,7 @@ const routeLabels: Record<string, string> = {
   [ROUTES.FINANCES_ACCOUNTS]: "Accounts",
   [ROUTES.FINANCES_BUDGETS]: "Budgets",
   [ROUTES.FINANCES_RECURRING]: "Recurring",
+  [ROUTES.FINANCES_CATEGORIES]: "Categories",
   [ROUTES.FINANCES_ASSISTANT]: "Assistant",
 };
 

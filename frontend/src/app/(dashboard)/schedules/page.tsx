@@ -102,9 +102,10 @@ export default function SchedulesPage() {
 
     // Also fetch recurring expense calendar occurrences
     try {
+      const toDateStr = (d: Date) => d.toISOString().split("T")[0];
       const qs = new URLSearchParams({
-        start_date: start.toISOString(),
-        end_date: end.toISOString(),
+        start_date: toDateStr(start),
+        end_date: toDateStr(end),
       });
       const res = await fetch(`/api/finances/recurring/calendar?${qs}`);
       if (res.ok) {

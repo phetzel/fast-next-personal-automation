@@ -116,7 +116,7 @@ export function RecurringForm({ open, onClose, onSubmit, expense, categories = [
                 id="expected_amount"
                 type="number"
                 step="0.01"
-                min="0"
+                min="0.01"
                 value={formData.expected_amount}
                 onChange={(e) => setFormData((p) => ({ ...p, expected_amount: e.target.value }))}
                 placeholder="15.99"

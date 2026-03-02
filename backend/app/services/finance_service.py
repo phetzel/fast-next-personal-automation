@@ -248,9 +248,7 @@ class FinanceService:
         if not user_categories:
             user_categories = await finance_repo.create_default_categories(self.db, user_id)
         valid_categories = [c.slug for c in user_categories]
-        categories_str = ", ".join(
-            f"{c.slug} ({c.name})" for c in user_categories
-        )
+        categories_str = ", ".join(f"{c.slug} ({c.name})" for c in user_categories)
 
         client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
         categorized = 0
@@ -382,9 +380,7 @@ Transactions:
     async def create_recurring(
         self, user_id: UUID, data: RecurringExpenseCreate
     ) -> RecurringExpense:
-        return await finance_repo.create_recurring(
-            self.db, user_id=user_id, **data.model_dump()
-        )
+        return await finance_repo.create_recurring(self.db, user_id=user_id, **data.model_dump())
 
     async def list_recurring(
         self, user_id: UUID, active_only: bool = True
@@ -424,9 +420,7 @@ Transactions:
             categories = await finance_repo.create_default_categories(self.db, user_id)
         return categories
 
-    async def create_category(
-        self, user_id: UUID, data: FinanceCategoryCreate
-    ) -> FinanceCategory:
+    async def create_category(self, user_id: UUID, data: FinanceCategoryCreate) -> FinanceCategory:
         slug = data.name.lower().replace(" ", "_").replace("-", "_")
         existing = await finance_repo.get_category_by_slug(self.db, user_id, slug)
         if existing:

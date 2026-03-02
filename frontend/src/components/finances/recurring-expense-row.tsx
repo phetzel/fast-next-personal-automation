@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { BILLING_CYCLE_LABELS, CATEGORY_LABELS } from "@/types";
+import { BILLING_CYCLE_LABELS } from "@/types";
 import type { RecurringExpense } from "@/types";
 import { CategoryBadge } from "./category-badge";
 import { Button } from "@/components/ui";

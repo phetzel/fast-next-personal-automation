@@ -90,6 +90,8 @@ describe("Finance Store", () => {
       budgetsLoading: false,
       recurringExpenses: [],
       recurringLoading: false,
+      categories: [],
+      categoriesLoading: false,
     });
   });
 

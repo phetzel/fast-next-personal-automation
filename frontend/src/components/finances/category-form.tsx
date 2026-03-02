@@ -41,7 +41,8 @@ export function CategoryForm({ open, onClose, onSubmit, category }: CategoryForm
     try {
       await onSubmit({
         name: formData.name,
-        category_type: formData.category_type,
+        // category_type is only sent on create (backend update schema doesn't include it)
+        ...(!isEdit && { category_type: formData.category_type }),
         color: formData.color || null,
         sort_order: parseInt(formData.sort_order) || 0,
       });
@@ -70,12 +71,13 @@ export function CategoryForm({ open, onClose, onSubmit, category }: CategoryForm
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="category_type">Type *</Label>
+            <Label htmlFor="category_type">Type {!isEdit && "*"}</Label>
             <Select
               value={formData.category_type}
               onValueChange={(v) =>
                 setFormData((p) => ({ ...p, category_type: v as "income" | "expense" }))
               }
+              disabled={isEdit}
             >
               <SelectTrigger>
                 <SelectValue />

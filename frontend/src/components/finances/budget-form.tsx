@@ -130,7 +130,7 @@ export function BudgetForm({
               id="amount_limit"
               type="number"
               step="0.01"
-              min="0"
+              min="0.01"
               value={formData.amount_limit}
               onChange={(e) => setFormData((p) => ({ ...p, amount_limit: e.target.value }))}
               placeholder="500.00"

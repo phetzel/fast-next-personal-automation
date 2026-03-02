@@ -135,12 +135,16 @@ export const useFinanceStore = create<FinanceStore>((set) => ({
         state.selectedTransaction?.id === updated.id ? updated : state.selectedTransaction,
     })),
   removeTransaction: (txId) =>
-    set((state) => ({
-      transactions: state.transactions.filter((t) => t.id !== txId),
-      total: Math.max(0, state.total - 1),
-      selectedTransaction:
-        state.selectedTransaction?.id === txId ? null : state.selectedTransaction,
-    })),
+    set((state) => {
+      const filtered = state.transactions.filter((t) => t.id !== txId);
+      const removed = filtered.length < state.transactions.length;
+      return {
+        transactions: filtered,
+        total: removed ? Math.max(0, state.total - 1) : state.total,
+        selectedTransaction:
+          state.selectedTransaction?.id === txId ? null : state.selectedTransaction,
+      };
+    }),
 
   // Stats actions
   setStats: (stats) => set({ stats }),
