@@ -136,6 +136,17 @@ def get_scheduled_task_service(db: DBSession) -> ScheduledTaskService:
 
 ScheduledTaskSvc = Annotated[ScheduledTaskService, Depends(get_scheduled_task_service)]
 
+
+from app.services.finance_service import FinanceService
+
+
+def get_finance_service(db: DBSession) -> FinanceService:
+    """Create FinanceService instance with database session."""
+    return FinanceService(db)
+
+
+FinanceSvc = Annotated[FinanceService, Depends(get_finance_service)]
+
 # === Authentication Dependencies ===
 
 from app.core.exceptions import AuthenticationError, AuthorizationError

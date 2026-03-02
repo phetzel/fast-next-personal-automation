@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui";
-import { JobsAreaCard, EmailAreaCard } from "@/components/areas";
+import { JobsAreaCard, EmailAreaCard, FinancesAreaCard } from "@/components/areas";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/hooks";
 import type { HealthResponse, EmailSource } from "@/types";
@@ -64,8 +64,9 @@ export default function DashboardPage() {
           <h2 className="text-lg font-semibold">Areas</h2>
         </div>
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-          <JobsAreaCard />
           <EmailAreaCard />
+          <FinancesAreaCard />
+          <JobsAreaCard />
         </div>
       </section>
 

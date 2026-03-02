@@ -8,3 +8,4 @@ export { useConversationStore } from "./conversation-store";
 export { usePipelineStore } from "./pipeline-store";
 export { usePipelineRunStore } from "./pipeline-run-store";
 export { useJobStore } from "./job-store";
+export { useFinanceStore } from "./finance-store";
