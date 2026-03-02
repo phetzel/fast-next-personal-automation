@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { useFinances } from "@/hooks";
 import { TransactionTable } from "@/components/finances";
-import { Button, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
+import { Button, Card, CardContent, CardHeader, CardTitle, Separator } from "@/components/ui";
 import { ROUTES } from "@/lib/constants";
 import {
   Wallet,
@@ -88,6 +88,8 @@ export default function FinancesOverviewPage() {
         />
       </div>
 
+      <Separator />
+
       {/* Quick Actions */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <QuickLink href={ROUTES.FINANCES_TRANSACTIONS} icon={Receipt} label="Transactions" desc="View & manage all transactions" color="blue" />
@@ -97,6 +99,8 @@ export default function FinancesOverviewPage() {
         <QuickLink href={ROUTES.FINANCES_ASSISTANT} icon={Bot} label="Assistant" desc="Ask about your finances" color="violet" />
         <QuickLink href={ROUTES.PIPELINES} icon={Workflow} label="Run Email Sync" desc="Import transactions from email" color="cyan" />
       </div>
+
+      <Separator />
 
       {/* Budget Status */}
       {budgetStatus.length > 0 && (

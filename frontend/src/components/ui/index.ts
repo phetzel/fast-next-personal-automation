@@ -62,3 +62,4 @@ export {
   SelectValue,
 } from "./select";
 export { Switch } from "./switch";
+export { Separator } from "./separator";
