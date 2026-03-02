@@ -64,9 +64,9 @@ export default function DashboardPage() {
           <h2 className="text-lg font-semibold">Areas</h2>
         </div>
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-          <JobsAreaCard />
           <EmailAreaCard />
           <FinancesAreaCard />
+          <JobsAreaCard />
         </div>
       </section>
 

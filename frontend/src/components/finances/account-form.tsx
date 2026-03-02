@@ -34,11 +34,11 @@ const accountTypes = Object.entries(ACCOUNT_TYPE_LABELS) as [
 export function AccountForm({ open, onClose, onSubmit, account }: AccountFormProps) {
   const isEdit = !!account;
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: account?.name ?? "",
     institution: account?.institution ?? "",
     account_type: account?.account_type ?? "checking",
-    last_four: account?.last_four ?? "",
     currency: account?.currency ?? "USD",
     notes: account?.notes ?? "",
   });
@@ -46,21 +46,28 @@ export function AccountForm({ open, onClose, onSubmit, account }: AccountFormPro
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     try {
       await onSubmit({
         ...formData,
         institution: formData.institution || null,
-        last_four: formData.last_four || null,
         notes: formData.notes || null,
       });
       onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleClose = () => {
+    setError(null);
+    onClose();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit Account" : "Add Account"}</DialogTitle>
@@ -99,28 +106,14 @@ export function AccountForm({ open, onClose, onSubmit, account }: AccountFormPro
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="institution">Institution</Label>
-              <Input
-                id="institution"
-                value={formData.institution}
-                onChange={(e) => setFormData((p) => ({ ...p, institution: e.target.value }))}
-                placeholder="e.g. Chase"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="last_four">Last 4 Digits</Label>
-              <Input
-                id="last_four"
-                value={formData.last_four}
-                onChange={(e) =>
-                  setFormData((p) => ({ ...p, last_four: e.target.value.slice(0, 4) }))
-                }
-                placeholder="1234"
-                maxLength={4}
-              />
-            </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="institution">Institution</Label>
+            <Input
+              id="institution"
+              value={formData.institution}
+              onChange={(e) => setFormData((p) => ({ ...p, institution: e.target.value }))}
+              placeholder="e.g. Chase"
+            />
           </div>
 
           <div className="space-y-1.5">
@@ -146,8 +139,12 @@ export function AccountForm({ open, onClose, onSubmit, account }: AccountFormPro
             />
           </div>
 
+          {error && (
+            <p className="text-destructive text-sm">{error}</p>
+          )}
+
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+            <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading || !formData.name}>

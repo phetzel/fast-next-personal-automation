@@ -53,18 +53,6 @@ const generalNavigation: NavItem[] = [
 // Area-based navigation with sub-routes
 const areaNavigation: NavArea[] = [
   {
-    id: "jobs",
-    name: "Jobs",
-    icon: Briefcase,
-    children: [
-      { name: "Overview", href: ROUTES.JOBS, icon: LayoutDashboard },
-      { name: "Listings", href: ROUTES.JOBS_LIST, icon: LayoutList },
-      { name: "Profiles", href: ROUTES.JOBS_PROFILES, icon: UserCircle },
-      { name: "Pipelines", href: ROUTES.JOBS_PIPELINES, icon: Workflow },
-      { name: "Assistant", href: ROUTES.JOBS_ASSISTANT, icon: Bot },
-    ],
-  },
-  {
     id: "email",
     name: "Email",
     icon: Mail,
@@ -85,6 +73,18 @@ const areaNavigation: NavArea[] = [
       { name: "Budgets", href: ROUTES.FINANCES_BUDGETS, icon: PiggyBank },
       { name: "Recurring", href: ROUTES.FINANCES_RECURRING, icon: RefreshCw },
       { name: "Assistant", href: ROUTES.FINANCES_ASSISTANT, icon: Bot },
+    ],
+  },
+  {
+    id: "jobs",
+    name: "Jobs",
+    icon: Briefcase,
+    children: [
+      { name: "Overview", href: ROUTES.JOBS, icon: LayoutDashboard },
+      { name: "Listings", href: ROUTES.JOBS_LIST, icon: LayoutList },
+      { name: "Profiles", href: ROUTES.JOBS_PROFILES, icon: UserCircle },
+      { name: "Pipelines", href: ROUTES.JOBS_PIPELINES, icon: Workflow },
+      { name: "Assistant", href: ROUTES.JOBS_ASSISTANT, icon: Bot },
     ],
   },
 ];

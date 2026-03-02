@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { BackendApiError, backendFetch } from "@/lib/server-api";
+import { BackendApiError, backendErrorResponse, backendFetch } from "@/lib/server-api";
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,8 +10,7 @@ export async function GET(request: NextRequest) {
     });
     return NextResponse.json(data);
   } catch (error) {
-    if (error instanceof BackendApiError)
-      return NextResponse.json({ detail: error.message }, { status: error.status });
+    if (error instanceof BackendApiError) return backendErrorResponse(error);
     return NextResponse.json({ detail: "Internal server error" }, { status: 500 });
   }
 }

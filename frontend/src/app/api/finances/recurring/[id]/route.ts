@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { BackendApiError, backendFetch } from "@/lib/server-api";
+import { BackendApiError, backendErrorResponse, backendFetch } from "@/lib/server-api";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -20,8 +20,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     });
     return NextResponse.json(data);
   } catch (error) {
-    if (error instanceof BackendApiError)
-      return NextResponse.json({ detail: error.message }, { status: error.status });
+    if (error instanceof BackendApiError) return backendErrorResponse(error);
     return NextResponse.json({ detail: "Internal server error" }, { status: 500 });
   }
 }
@@ -37,8 +36,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     });
     return new NextResponse(null, { status: 204 });
   } catch (error) {
-    if (error instanceof BackendApiError)
-      return NextResponse.json({ detail: error.message }, { status: error.status });
+    if (error instanceof BackendApiError) return backendErrorResponse(error);
     return NextResponse.json({ detail: "Internal server error" }, { status: 500 });
   }
 }

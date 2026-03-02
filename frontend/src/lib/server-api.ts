@@ -71,3 +71,12 @@ export function getAuthHeaders(authHeader: string | null): Record<string, string
   }
   return { Authorization: authHeader };
 }
+
+/**
+ * Build a Response from a BackendApiError, forwarding the actual FastAPI
+ * error body (e.g. { detail: "..." }) rather than a generic message string.
+ */
+export function backendErrorResponse(error: BackendApiError): Response {
+  const body = error.data ?? { detail: error.message };
+  return Response.json(body, { status: error.status });
+}

@@ -21,18 +21,23 @@ export default function AccountsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editAccount, setEditAccount] = useState<FinancialAccount | null>(null);
   const [balanceAccount, setBalanceAccount] = useState<FinancialAccount | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAccounts();
   }, [fetchAccounts]);
 
   const handleCreate = async (data: Partial<FinancialAccount>) => {
-    await createAccount(data);
+    setFormError(null);
+    const result = await createAccount(data);
+    if (!result) throw new Error("Failed to create account");
   };
 
   const handleEdit = async (data: Partial<FinancialAccount>) => {
     if (!editAccount) return;
-    await updateAccount(editAccount.id, data);
+    setFormError(null);
+    const result = await updateAccount(editAccount.id, data);
+    if (!result) throw new Error("Failed to update account");
   };
 
   const handleDelete = async (account: FinancialAccount) => {

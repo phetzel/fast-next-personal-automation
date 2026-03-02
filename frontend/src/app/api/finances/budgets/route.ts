@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { BackendApiError, backendFetch } from "@/lib/server-api";
+import { BackendApiError, backendErrorResponse, backendFetch } from "@/lib/server-api";
 
 function auth(request: NextRequest) {
   return request.cookies.get("access_token")?.value;
@@ -15,8 +15,7 @@ export async function GET(request: NextRequest) {
     });
     return NextResponse.json(data);
   } catch (error) {
-    if (error instanceof BackendApiError)
-      return NextResponse.json({ detail: error.message }, { status: error.status });
+    if (error instanceof BackendApiError) return backendErrorResponse(error);
     return NextResponse.json({ detail: "Internal server error" }, { status: 500 });
   }
 }
@@ -33,8 +32,7 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
-    if (error instanceof BackendApiError)
-      return NextResponse.json({ detail: error.message }, { status: error.status });
+    if (error instanceof BackendApiError) return backendErrorResponse(error);
     return NextResponse.json({ detail: "Internal server error" }, { status: 500 });
   }
 }
