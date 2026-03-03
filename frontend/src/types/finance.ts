@@ -133,7 +133,7 @@ export interface TransactionUpdate {
 export interface Budget {
   id: string;
   user_id: string;
-  category: string;
+  category: string | null;
   month: number;
   year: number;
   amount_limit: number;
@@ -163,6 +163,7 @@ export interface RecurringExpense {
   is_active: boolean;
   auto_match: boolean;
   notes: string | null;
+  account_id: string | null;
   created_at: string;
   updated_at: string | null;
 }

@@ -56,6 +56,7 @@ const makeRecurring = (overrides?: Partial<RecurringExpense>): RecurringExpense 
   is_active: true,
   auto_match: true,
   notes: null,
+  account_id: null,
   created_at: new Date().toISOString(),
   updated_at: null,
   ...overrides,

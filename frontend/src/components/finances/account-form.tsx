@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ACCOUNT_TYPE_LABELS } from "@/types";
 import type { FinancialAccount } from "@/types";
 import { Button, Input, Label } from "@/components/ui";
@@ -42,6 +42,19 @@ export function AccountForm({ open, onClose, onSubmit, account }: AccountFormPro
     currency: account?.currency ?? "USD",
     notes: account?.notes ?? "",
   });
+
+  useEffect(() => {
+    if (open) {
+      setFormData({
+        name: account?.name ?? "",
+        institution: account?.institution ?? "",
+        account_type: account?.account_type ?? "checking",
+        currency: account?.currency ?? "USD",
+        notes: account?.notes ?? "",
+      });
+      setError(null);
+    }
+  }, [open, account]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

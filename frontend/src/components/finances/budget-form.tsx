@@ -40,8 +40,9 @@ export function BudgetForm({
   const isEdit = !!budget;
   const now = new Date();
   const [loading, setLoading] = useState(false);
+  const expenseCategories = categories.filter((c) => c.category_type === "expense");
   const [formData, setFormData] = useState({
-    category: budget?.category ?? "other",
+    category: budget?.category ?? null,
     month: budget?.month ?? defaultMonth ?? now.getMonth() + 1,
     year: budget?.year ?? defaultYear ?? now.getFullYear(),
     amount_limit: budget?.amount_limit?.toString() ?? "",
@@ -53,7 +54,7 @@ export function BudgetForm({
     setLoading(true);
     try {
       await onSubmit({
-        category: formData.category,
+        category: formData.category ?? null,
         month: Number(formData.month),
         year: Number(formData.year),
         amount_limit: parseFloat(formData.amount_limit),
@@ -73,16 +74,19 @@ export function BudgetForm({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="category">Category *</Label>
+            <Label htmlFor="category">Category</Label>
             <Select
-              value={formData.category}
-              onValueChange={(v) => setFormData((p) => ({ ...p, category: v }))}
+              value={formData.category ?? "__general__"}
+              onValueChange={(v) =>
+                setFormData((p) => ({ ...p, category: v === "__general__" ? null : v }))
+              }
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {categories.map((cat) => (
+                <SelectItem value="__general__">General (All Expenses)</SelectItem>
+                {expenseCategories.map((cat) => (
                   <SelectItem key={cat.slug} value={cat.slug}>
                     {cat.name}
                   </SelectItem>

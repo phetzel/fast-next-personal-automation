@@ -322,16 +322,18 @@ async def get_budgets_by_user(
 
 
 async def get_budget_by_category(
-    db: AsyncSession, user_id: UUID, category: str, month: int, year: int
+    db: AsyncSession, user_id: UUID, category: str | None, month: int, year: int
 ) -> Budget | None:
-    result = await db.execute(
-        select(Budget).where(
-            Budget.user_id == user_id,
-            Budget.category == category,
-            Budget.month == month,
-            Budget.year == year,
-        )
+    query = select(Budget).where(
+        Budget.user_id == user_id,
+        Budget.month == month,
+        Budget.year == year,
     )
+    if category is None:
+        query = query.where(Budget.category.is_(None))
+    else:
+        query = query.where(Budget.category == category)
+    result = await db.execute(query)
     return result.scalar_one_or_none()
 
 
@@ -437,6 +439,25 @@ async def get_active_recurring_count(db: AsyncSession, user_id: UUID) -> int:
         )
     )
     return result.scalar() or 0
+
+
+async def get_due_recurring_with_accounts(
+    db: AsyncSession, as_of_date: date
+) -> list[RecurringExpense]:
+    """Return active recurring expenses with account_id and next_due_date <= as_of_date.
+
+    Used by the daily worker to auto-deduct charges from linked accounts.
+    Only includes expenses that have both account_id and expected_amount set.
+    """
+    result = await db.execute(
+        select(RecurringExpense).where(
+            RecurringExpense.is_active == True,  # noqa: E712
+            RecurringExpense.account_id.is_not(None),
+            RecurringExpense.expected_amount.is_not(None),
+            RecurringExpense.next_due_date <= as_of_date,
+        )
+    )
+    return list(result.scalars().all())
 
 
 # ──────────────────────────── FinanceCategory ─────────────────────────────────

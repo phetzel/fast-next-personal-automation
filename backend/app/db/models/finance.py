@@ -223,7 +223,7 @@ class Budget(Base, TimestampMixin):
         index=True,
     )
 
-    category: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    category: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     month: Mapped[int] = mapped_column(nullable=False)  # 1-12
     year: Mapped[int] = mapped_column(nullable=False)
     amount_limit: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
@@ -265,8 +265,17 @@ class RecurringExpense(Base, TimestampMixin):
     auto_match: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Optional account link — when set, the daily worker auto-deducts on next_due_date
+    account_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("financial_accounts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # Relationships
     user: Mapped["User"] = relationship("User", lazy="selectin")
+    account: Mapped["FinancialAccount | None"] = relationship("FinancialAccount", lazy="selectin")
     transactions: Mapped[list["Transaction"]] = relationship(
         "Transaction", back_populates="recurring_expense", lazy="noload"
     )

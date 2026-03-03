@@ -2,18 +2,20 @@
 
 import { cn } from "@/lib/utils";
 import { BILLING_CYCLE_LABELS } from "@/types";
-import type { RecurringExpense } from "@/types";
+import type { FinancialAccount, RecurringExpense } from "@/types";
 import { CategoryBadge } from "./category-badge";
 import { Button } from "@/components/ui";
-import { Pencil, Trash2, CalendarClock, CheckCircle2 } from "lucide-react";
+import { Pencil, Trash2, CalendarClock, CheckCircle2, Landmark } from "lucide-react";
 
 interface RecurringExpenseRowProps {
   expense: RecurringExpense;
+  accounts?: FinancialAccount[];
   onEdit?: (expense: RecurringExpense) => void;
   onDelete?: (id: string) => void;
 }
 
-export function RecurringExpenseRow({ expense, onEdit, onDelete }: RecurringExpenseRowProps) {
+export function RecurringExpenseRow({ expense, accounts = [], onEdit, onDelete }: RecurringExpenseRowProps) {
+  const linkedAccount = expense.account_id ? accounts.find((a) => a.id === expense.account_id) : null;
   const isSeenThisMonth = expense.last_seen_date
     ? (() => {
         const d = new Date(expense.last_seen_date);
@@ -55,6 +57,12 @@ export function RecurringExpenseRow({ expense, onEdit, onDelete }: RecurringExpe
           <p className="font-medium">{expense.name}</p>
           {expense.merchant && expense.merchant !== expense.name && (
             <p className="text-muted-foreground text-xs">{expense.merchant}</p>
+          )}
+          {linkedAccount && (
+            <p className="text-muted-foreground flex items-center gap-1 text-xs mt-0.5">
+              <Landmark className="h-3 w-3" />
+              {linkedAccount.name}
+            </p>
           )}
         </div>
       </td>

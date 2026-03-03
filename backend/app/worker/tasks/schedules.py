@@ -2,6 +2,7 @@
 
 import logging
 
+from app.utils.billing_cycles import advance_billing_cycle
 from app.worker.taskiq_app import broker
 from app.worker.tasks.taskiq_examples import example_task
 
@@ -89,6 +90,101 @@ async def sync_all_email_sources() -> dict:
         f"{results['total_jobs_saved']} jobs saved"
     )
 
+    return results
+
+
+@broker.task(schedule=[{"cron": "0 0 * * *"}])  # Daily at midnight UTC
+async def process_due_recurring_expenses() -> dict:
+    """Auto-deduct due recurring expenses from their linked accounts.
+
+    Runs daily at midnight. For each active recurring expense that:
+    - Has an account_id set
+    - Has an expected_amount set
+    - Has next_due_date on or before today
+
+    The task will:
+    1. Create a debit transaction against the linked account
+    2. Deduct the amount from the account's current_balance
+    3. Advance next_due_date by one billing cycle
+    4. Set last_seen_date = today
+    """
+    from datetime import UTC, date, datetime
+
+    from app.db.models.finance import Transaction, TransactionSource, TransactionType
+    from app.db.session import get_db_context
+    from app.repositories import finance_repo
+
+    today = date.today()
+    results: dict = {"processed": 0, "skipped": 0, "errors": []}
+
+    async with get_db_context() as db:
+        due_expenses = await finance_repo.get_due_recurring_with_accounts(db, today)
+        logger.info("Found %d due recurring expenses to process", len(due_expenses))
+
+        for expense in due_expenses:
+            try:
+                # Create a debit transaction for the charge
+                tx = Transaction(
+                    user_id=expense.user_id,
+                    account_id=expense.account_id,
+                    recurring_expense_id=expense.id,
+                    amount=-expense.expected_amount,  # type: ignore[operator]
+                    description=expense.name,
+                    merchant=expense.merchant or expense.name,
+                    transaction_date=today,
+                    transaction_type=TransactionType.DEBIT.value,
+                    category=expense.category,
+                    source=TransactionSource.MANUAL.value,
+                    is_reviewed=True,
+                )
+                db.add(tx)
+
+                # Deduct from account balance (if account exists and has a balance)
+                account = await finance_repo.get_account_by_id(db, expense.account_id)  # type: ignore[arg-type]
+                if account and account.current_balance is not None:
+                    await finance_repo.update_account(
+                        db,
+                        account=account,
+                        update_data={
+                            "current_balance": account.current_balance - expense.expected_amount,
+                            "balance_updated_at": datetime.now(UTC),
+                        },
+                    )
+
+                # Advance next_due_date and mark last seen
+                new_due = advance_billing_cycle(expense.next_due_date, expense.billing_cycle)  # type: ignore[arg-type]
+                await finance_repo.update_recurring(
+                    db,
+                    recurring=expense,
+                    update_data={
+                        "next_due_date": new_due,
+                        "last_seen_date": today,
+                    },
+                )
+
+                await db.flush()
+                results["processed"] += 1
+                logger.info(
+                    "Processed recurring expense '%s' (user=%s, amount=%s, next_due=%s)",
+                    expense.name,
+                    expense.user_id,
+                    expense.expected_amount,
+                    new_due,
+                )
+
+            except Exception as e:
+                error_msg = f"{expense.name} (id={expense.id}): {e}"
+                logger.exception("Error processing recurring expense %s", expense.id)
+                results["errors"].append(error_msg)
+                results["skipped"] += 1
+
+        await db.commit()
+
+    logger.info(
+        "Recurring expense processing complete: %d processed, %d skipped",
+        results["processed"],
+        results["skipped"],
+    )
     return results
 
 
