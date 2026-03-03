@@ -117,3 +117,47 @@ class CalendarOccurrencesResponse(BaseModel):
     )
     start_date: datetime = Field(..., description="Start of requested date range")
     end_date: datetime = Field(..., description="End of requested date range")
+
+
+class CalendarRunEvent(BaseModel):
+    """A single past pipeline run formatted as a calendar event."""
+
+    id: str = Field(..., description="Event ID (run_{run_id})")
+    run_id: str = Field(..., description="Pipeline run UUID")
+    title: str = Field(..., description="Display title (pipeline name + status)")
+    pipeline_name: str = Field(..., description="Pipeline name")
+    start: datetime = Field(..., description="Run start time")
+    end: datetime = Field(..., description="Run end time (or start + estimated duration)")
+    all_day: bool = Field(default=False)
+    color: EventColor | None = Field(None, description="Task color if linked, else null")
+    status: str = Field(..., description="Run status: success, error, running, etc.")
+    trigger_type: str = Field(..., description="How the run was triggered")
+    scheduled_task_id: str | None = Field(None, description="Linked scheduled task ID if any")
+    duration_ms: int | None = Field(None, description="Run duration in milliseconds")
+
+
+class CalendarRunsResponse(BaseModel):
+    """Response containing past pipeline runs as calendar events."""
+
+    events: list[CalendarRunEvent] = Field(..., description="Past runs as calendar events")
+    start_date: datetime = Field(..., description="Start of requested date range")
+    end_date: datetime = Field(..., description="End of requested date range")
+
+
+class SystemTask(BaseModel):
+    """A hardcoded system cron task (not user-manageable)."""
+
+    id: str = Field(..., description="Stable identifier for the system task")
+    name: str = Field(..., description="Display name")
+    description: str = Field(..., description="What this task does")
+    cron_expression: str = Field(..., description="Cron schedule (UTC)")
+    timezone: str = Field(default="UTC")
+    is_system: bool = Field(default=True)
+    last_run_at: datetime | None = Field(None, description="Last known execution time")
+    next_run_at: datetime | None = Field(None, description="Next scheduled execution time")
+
+
+class SystemTasksResponse(BaseModel):
+    """Response containing system (hardcoded) cron tasks."""
+
+    tasks: list[SystemTask] = Field(..., description="System cron tasks")

@@ -2,6 +2,11 @@
 
 Syncs financial transactions from connected Gmail accounts by parsing
 bank alerts, billing emails, and subscription receipts.
+
+Lookback strategy:
+- On first run (no prior successful run): uses `lookback_hours` as the window
+- On subsequent runs: uses the last successful run's completion time as the
+  cutoff, ensuring no gaps and no redundant re-scanning of old emails.
 """
 
 import logging
@@ -10,9 +15,11 @@ from typing import ClassVar
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from app.clients.gmail import GmailClient
 from app.core.config import settings
+from app.db.models.pipeline_run import PipelineRun, PipelineRunStatus
 from app.db.session import get_db_context
 from app.pipelines.action_base import ActionPipeline, ActionResult, PipelineContext
 from app.pipelines.registry import register_pipeline
@@ -49,7 +56,10 @@ class FinanceEmailSyncInput(BaseModel):
         default=72,
         ge=1,
         le=720,
-        description="How many hours back to scan for financial emails.",
+        description=(
+            "Initial sync window in hours. Used only when no prior successful sync exists. "
+            "On subsequent runs the last successful run's completion time is used automatically."
+        ),
     )
     source_id: UUID | None = Field(
         default=None,
@@ -64,6 +74,10 @@ class FinanceEmailSyncOutput(BaseModel):
     transactions_imported: int = 0
     duplicates_skipped: int = 0
     sources_synced: int = 0
+    lookback_from: str | None = Field(
+        default=None,
+        description="ISO datetime of the earliest email scanned (cutoff used for this run).",
+    )
     errors: list[str] = Field(default_factory=list)
 
 
@@ -88,6 +102,28 @@ class FinanceEmailSyncPipeline(ActionPipeline[FinanceEmailSyncInput, FinanceEmai
     description = "Scan Gmail for bank alerts and receipts to import financial transactions"
     tags: ClassVar[list[str]] = ["finances", "email", "ai"]
     area: ClassVar[str | None] = "finances"
+
+    async def _get_last_sync_cutoff(self, db, user_id: UUID, fallback_hours: int) -> datetime:
+        """Return cutoff datetime for email scanning.
+
+        Uses the last successful pipeline run's completion time so each run
+        picks up exactly where the previous one left off. Falls back to
+        `fallback_hours` ago on the first run.
+        """
+        result = await db.execute(
+            select(PipelineRun)
+            .where(
+                PipelineRun.pipeline_name == "finance_email_sync",
+                PipelineRun.user_id == user_id,
+                PipelineRun.status == PipelineRunStatus.SUCCESS,
+            )
+            .order_by(PipelineRun.completed_at.desc())
+            .limit(1)
+        )
+        last_run = result.scalar_one_or_none()
+        if last_run and last_run.completed_at:
+            return last_run.completed_at
+        return datetime.now(UTC) - timedelta(hours=fallback_hours)
 
     async def execute(
         self,
@@ -120,7 +156,9 @@ class FinanceEmailSyncPipeline(ActionPipeline[FinanceEmailSyncInput, FinanceEmai
                     ),
                 )
 
-            cutoff = datetime.now(UTC) - timedelta(hours=input.lookback_hours)
+            cutoff = await self._get_last_sync_cutoff(db, context.user_id, input.lookback_hours)
+            output.lookback_from = cutoff.isoformat()
+            logger.info("Finance email sync cutoff: %s (user=%s)", cutoff.isoformat(), context.user_id)
 
             for source in sources:
                 try:

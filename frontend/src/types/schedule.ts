@@ -88,3 +88,51 @@ export interface CalendarOccurrencesResponse {
   start_date: string;
   end_date: string;
 }
+
+/**
+ * A past pipeline run formatted as a calendar event.
+ */
+export interface CalendarRunEvent {
+  id: string;
+  run_id: string;
+  title: string;
+  pipeline_name: string;
+  start: string;
+  end: string;
+  all_day: boolean;
+  color: EventColor | null;
+  status: string;
+  trigger_type: string;
+  scheduled_task_id: string | null;
+  duration_ms: number | null;
+}
+
+/**
+ * Response containing past pipeline runs as calendar events.
+ */
+export interface CalendarRunsResponse {
+  events: CalendarRunEvent[];
+  start_date: string;
+  end_date: string;
+}
+
+/**
+ * A hardcoded system cron task (not user-manageable).
+ */
+export interface SystemTask {
+  id: string;
+  name: string;
+  description: string;
+  cron_expression: string;
+  timezone: string;
+  is_system: boolean;
+  last_run_at: string | null;
+  next_run_at: string | null;
+}
+
+/**
+ * Response containing system cron tasks.
+ */
+export interface SystemTasksResponse {
+  tasks: SystemTask[];
+}

@@ -35,7 +35,13 @@ import {
   Textarea,
   Switch,
 } from "@/components/ui";
-import type { ScheduledTask, ScheduledTaskCreate, CalendarOccurrence } from "@/types";
+import type {
+  ScheduledTask,
+  ScheduledTaskCreate,
+  CalendarOccurrence,
+  CalendarRunEvent,
+  SystemTask,
+} from "@/types";
 import {
   Calendar,
   Clock,
@@ -45,6 +51,7 @@ import {
   PlayCircle,
   PauseCircle,
   AlertCircle,
+  Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -77,6 +84,8 @@ export default function SchedulesPage() {
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [recurringOccurrences, setRecurringOccurrences] = useState<CalendarOccurrence[]>([]);
+  const [pastRunEvents, setPastRunEvents] = useState<CalendarRunEvent[]>([]);
+  const [systemTasks, setSystemTasks] = useState<SystemTask[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<ScheduledTask | null>(null);
   const [formData, setFormData] = useState<ScheduledTaskCreate>({
@@ -93,28 +102,42 @@ export default function SchedulesPage() {
   useEffect(() => {
     fetchSchedules();
     fetchPipelines();
+
+    // Fetch system tasks once on mount
+    fetch("/api/schedules/system-tasks")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.tasks) setSystemTasks(data.tasks); })
+      .catch(() => {});
   }, [fetchPipelines, fetchSchedules]);
+
+  const toDateStr = (d: Date) => d.toISOString().split("T")[0];
 
   const refreshOccurrences = useCallback(async () => {
     const start = startOfMonth(addMonths(currentDate, -1));
     const end = endOfMonth(addMonths(currentDate, 1));
+
+    // Fetch future scheduled occurrences
     fetchOccurrences(start, end);
 
-    // Also fetch recurring expense calendar occurrences
-    try {
-      const toDateStr = (d: Date) => d.toISOString().split("T")[0];
-      const qs = new URLSearchParams({
-        start_date: toDateStr(start),
-        end_date: toDateStr(end),
-      });
-      const res = await fetch(`/api/finances/recurring/calendar?${qs}`);
-      if (res.ok) {
-        const data = await res.json();
-        setRecurringOccurrences(data.occurrences ?? []);
-      }
-    } catch {
-      // Non-fatal: calendar still works without recurring events
-    }
+    // Fetch past pipeline runs as calendar events
+    const runsQs = new URLSearchParams({
+      start_date: start.toISOString(),
+      end_date: end.toISOString(),
+    });
+    fetch(`/api/schedules/runs-calendar?${runsQs}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.events) setPastRunEvents(data.events); })
+      .catch(() => {});
+
+    // Fetch recurring expense calendar occurrences
+    const recurringQs = new URLSearchParams({
+      start_date: toDateStr(start),
+      end_date: toDateStr(end),
+    });
+    fetch(`/api/finances/recurring/calendar?${recurringQs}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.occurrences) setRecurringOccurrences(data.occurrences); })
+      .catch(() => {});
   }, [currentDate, fetchOccurrences]);
 
   // Fetch occurrences when date range changes
@@ -122,17 +145,34 @@ export default function SchedulesPage() {
     refreshOccurrences();
   }, [refreshOccurrences]);
 
-  // Convert occurrences to CalendarEvent format (pipeline + recurring)
+  // Convert occurrences to CalendarEvent format
   const calendarEvents: CalendarEvent[] = useMemo(() => {
-    const pipelineEvents = occurrences.map((occ: CalendarOccurrence) => ({
-      id: occ.id,
-      title: occ.title,
-      description: occ.description || undefined,
-      start: new Date(occ.start),
-      end: new Date(occ.end),
-      allDay: occ.all_day,
-      color: (occ.color as EventColor) || "sky",
+    const now = new Date();
+
+    // Future scheduled occurrences (only show upcoming ones)
+    const futureOccurrenceEvents = occurrences
+      .filter((occ: CalendarOccurrence) => new Date(occ.start) >= now)
+      .map((occ: CalendarOccurrence) => ({
+        id: occ.id,
+        title: occ.title,
+        description: occ.description || undefined,
+        start: new Date(occ.start),
+        end: new Date(occ.end),
+        allDay: occ.all_day,
+        color: (occ.color as EventColor) || "sky",
+      }));
+
+    // Past actual run events
+    const pastEvents = pastRunEvents.map((run: CalendarRunEvent) => ({
+      id: run.id,
+      title: run.title,
+      start: new Date(run.start),
+      end: new Date(run.end),
+      allDay: run.all_day,
+      color: (run.color as EventColor) || ("sky" as EventColor),
     }));
+
+    // Recurring expense occurrences
     const recurringEvents = recurringOccurrences.map((occ: CalendarOccurrence) => ({
       id: occ.id,
       title: occ.title,
@@ -142,8 +182,9 @@ export default function SchedulesPage() {
       allDay: occ.all_day,
       color: "rose" as EventColor,
     }));
-    return [...pipelineEvents, ...recurringEvents];
-  }, [occurrences, recurringOccurrences]);
+
+    return [...futureOccurrenceEvents, ...pastEvents, ...recurringEvents];
+  }, [occurrences, pastRunEvents, recurringOccurrences]);
 
   const handleCalendarCreate = (_startTime?: Date) => {
     openNewScheduleDialog();
@@ -153,6 +194,10 @@ export default function SchedulesPage() {
     // Recurring expense events navigate to the recurring page
     if (event.id.startsWith("recurring_")) {
       router.push(ROUTES.FINANCES_RECURRING);
+      return;
+    }
+    // Past run events — no action (read-only history)
+    if (event.id.startsWith("run_")) {
       return;
     }
     const occurrence = occurrences.find((o) => o.id === event.id);
@@ -165,8 +210,8 @@ export default function SchedulesPage() {
   };
 
   const handleEventDelete = async (eventId: string) => {
-    // Recurring expense events can't be deleted from this page
-    if (eventId.startsWith("recurring_")) return;
+    // Past runs and recurring expense events can't be deleted from this page
+    if (eventId.startsWith("recurring_") || eventId.startsWith("run_")) return;
     const occurrence = occurrences.find((o) => o.id === eventId);
     if (occurrence) {
       const confirmed = window.confirm(
@@ -276,8 +321,24 @@ export default function SchedulesPage() {
         </div>
       )}
 
-      {/* Calendar */}
+      {/* Calendar — past = actual runs, future = scheduled occurrences */}
       <Card className="overflow-hidden">
+        <CardHeader className="pb-2">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              Past runs (success)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-rose-500" />
+              Past runs (failed)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-sky-400 opacity-60" />
+              Scheduled (upcoming)
+            </span>
+          </div>
+        </CardHeader>
         <CardContent className="p-0">
           <div className="h-[600px]">
             <EventCalendar
@@ -391,6 +452,53 @@ export default function SchedulesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* System Tasks — read-only hardcoded crons */}
+      {systemTasks.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-muted-foreground" />
+              System Tasks
+            </CardTitle>
+            <CardDescription>
+              Automated tasks managed by the system — not user-configurable
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {systemTasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="flex items-center justify-between rounded-lg border border-dashed bg-muted/30 p-4"
+                >
+                  <div className="flex items-center gap-4">
+                    <Lock className="h-4 w-4 text-muted-foreground/60 shrink-0" />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-muted-foreground">{task.name}</span>
+                        <Badge variant="outline" className="text-xs">System</Badge>
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground/70">
+                        <span>{describeCron(task.cron_expression) ?? task.cron_expression}</span>
+                        <span>|</span>
+                        <span>{task.timezone}</span>
+                        {task.next_run_at && (
+                          <>
+                            <span>|</span>
+                            <span>Next: {new Date(task.next_run_at).toLocaleString()}</span>
+                          </>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground/60">{task.description}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

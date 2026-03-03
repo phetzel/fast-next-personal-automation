@@ -1,10 +1,17 @@
-"""Taskiq scheduled tasks (cron-like)."""
+"""Taskiq scheduled tasks (cron-like).
+
+System crons (hardcoded, not user-manageable):
+  - process_due_recurring_expenses: daily at midnight UTC
+
+User-scheduled pipelines (via ScheduledTask / calendar UI):
+  - email_sync_jobs: users schedule their own sync frequency
+  - finance_email_sync: users schedule their own sync frequency
+"""
 
 import logging
 
 from app.utils.billing_cycles import advance_billing_cycle
 from app.worker.taskiq_app import broker
-from app.worker.tasks.taskiq_examples import example_task
 
 logger = logging.getLogger(__name__)
 
@@ -12,28 +19,13 @@ logger = logging.getLogger(__name__)
 # These are picked up by the scheduler
 
 
-@broker.task(schedule=[{"cron": "* * * * *"}])  # Every minute
-async def scheduled_example() -> dict:
-    """PLACEHOLDER EXAMPLE - Scheduled task that runs every minute.
-
-    This is an example scheduled task demonstrating cron-based scheduling.
-    Copy and modify this for your own scheduled tasks.
-
-    This task is intentionally kept as a reference example and can be safely
-    disabled or deleted if not needed.
-    """
-    result = await example_task.kiq("scheduled")
-    return {"scheduled": True, "task_id": str(result.task_id)}
-
-
-@broker.task(schedule=[{"cron": "0 * * * *"}])  # Every hour (at minute 0)
+@broker.task  # No built-in schedule — users schedule this via the calendar UI
 async def sync_all_email_sources() -> dict:
     """Sync job emails for all active email sources.
 
-    This task runs every hour (matches EMAIL_SYNC_INTERVAL_MINUTES=60) and:
-    1. Fetches all active EmailSource records
-    2. For each source, runs the email_sync_jobs pipeline
-    3. Logs results and any errors
+    This task can be called manually or via a user-created ScheduledTask.
+    It is no longer run automatically — users control the schedule via
+    the Schedules page (Pipelines → email_sync_jobs).
 
     Returns:
         Dict with sync results summary
@@ -188,12 +180,3 @@ async def process_due_recurring_expenses() -> dict:
     return results
 
 
-# Alternative: Define schedules in scheduler source
-# The scheduler will read these when started with --source flag
-SCHEDULES = [
-    {
-        "task": "app.worker.tasks.taskiq_examples:example_task",
-        "cron": "*/5 * * * *",  # Every 5 minutes
-        "args": ["periodic-5min"],
-    },
-]
