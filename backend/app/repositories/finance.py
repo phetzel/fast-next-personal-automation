@@ -462,26 +462,6 @@ async def get_due_recurring_with_accounts(
 
 # ──────────────────────────── FinanceCategory ─────────────────────────────────
 
-_DEFAULT_CATEGORIES = [
-    # Income
-    ("Salary", "salary", "income", "#4ade80"),
-    ("Freelance", "freelance", "income", "#34d399"),
-    ("Investment Returns", "investment_returns", "income", "#10b981"),
-    ("Refunds", "refunds", "income", "#6ee7b7"),
-    # Expenses
-    ("Housing", "housing", "expense", "#818cf8"),
-    ("Utilities", "utilities", "expense", "#a78bfa"),
-    ("Groceries", "groceries", "expense", "#f87171"),
-    ("Dining", "dining", "expense", "#fb923c"),
-    ("Transportation", "transportation", "expense", "#facc15"),
-    ("Healthcare", "healthcare", "expense", "#38bdf8"),
-    ("Entertainment", "entertainment", "expense", "#e879f9"),
-    ("Shopping", "shopping", "expense", "#f472b6"),
-    ("Subscriptions", "subscriptions", "expense", "#94a3b8"),
-    ("Travel", "travel", "expense", "#2dd4bf"),
-    ("Other", "other", "expense", "#6b7280"),
-]
-
 
 async def get_categories_by_user(
     db: AsyncSession, user_id: UUID, active_only: bool = True
@@ -560,21 +540,3 @@ async def delete_category(db: AsyncSession, category_id: UUID, user_id: UUID) ->
     return True
 
 
-async def create_default_categories(db: AsyncSession, user_id: UUID) -> list[FinanceCategory]:
-    """Seed the default 15 categories for a new user."""
-    created: list[FinanceCategory] = []
-    for i, (name, slug, cat_type, color) in enumerate(_DEFAULT_CATEGORIES):
-        cat = FinanceCategory(
-            user_id=user_id,
-            name=name,
-            slug=slug,
-            category_type=cat_type,
-            color=color,
-            sort_order=i,
-        )
-        db.add(cat)
-        created.append(cat)
-    await db.flush()
-    for cat in created:
-        await db.refresh(cat)
-    return created

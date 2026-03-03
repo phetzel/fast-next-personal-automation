@@ -246,7 +246,7 @@ class FinanceService:
         # Load user's categories from DB
         user_categories = await finance_repo.get_categories_by_user(self.db, user_id)
         if not user_categories:
-            user_categories = await finance_repo.create_default_categories(self.db, user_id)
+            return 0, 0
         valid_categories = [c.slug for c in user_categories]
         categories_str = ", ".join(f"{c.slug} ({c.name})" for c in user_categories)
 
@@ -426,10 +426,7 @@ Transactions:
     async def list_categories(
         self, user_id: UUID, active_only: bool = True
     ) -> list[FinanceCategory]:
-        categories = await finance_repo.get_categories_by_user(self.db, user_id, active_only)
-        if not categories:
-            categories = await finance_repo.create_default_categories(self.db, user_id)
-        return categories
+        return await finance_repo.get_categories_by_user(self.db, user_id, active_only)
 
     async def create_category(self, user_id: UUID, data: FinanceCategoryCreate) -> FinanceCategory:
         slug = data.name.lower().replace(" ", "_").replace("-", "_")
