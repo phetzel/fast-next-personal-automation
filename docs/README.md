@@ -80,7 +80,6 @@ personal_automations/
 - ✅ **Observability** - Logfire integration for tracing
 - ✅ **Background Tasks** - Taskiq for async job processing
 - ✅ **Webhooks** - Event-driven integrations
-- ✅ **Finance Tracking** - Accounts, transactions, budgets, recurring expenses, custom categories, CSV import, AI categorization, and nightly auto-deduct for subscription expenses
 
 ## Getting Started
 
