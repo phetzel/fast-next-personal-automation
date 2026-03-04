@@ -51,38 +51,47 @@ export function RecurringExpenseRow({ expense, accounts = [], onEdit, onDelete }
   };
 
   return (
-    <tr className={cn("group border-b hover:bg-muted/40 transition-colors", !expense.is_active && "opacity-60")}>
-      <td className="py-3 pr-4">
-        <div>
-          <p className="font-medium">{expense.name}</p>
-          {expense.merchant && expense.merchant !== expense.name && (
-            <p className="text-muted-foreground text-xs">{expense.merchant}</p>
-          )}
-          {linkedAccount && (
-            <p className="text-muted-foreground flex items-center gap-1 text-xs mt-0.5">
-              <Landmark className="h-3 w-3" />
-              {linkedAccount.name}
-            </p>
-          )}
-        </div>
+    <tr className={cn("border-b hover:bg-muted/40 transition-colors", !expense.is_active && "opacity-60")}>
+      {/* Name */}
+      <td className="py-3 pl-6 pr-4">
+        <p className="font-medium">{expense.name}</p>
+        {expense.merchant && expense.merchant !== expense.name && (
+          <p className="text-muted-foreground text-xs mt-0.5">{expense.merchant}</p>
+        )}
       </td>
 
+      {/* Account */}
+      <td className="py-3 pr-4">
+        {linkedAccount ? (
+          <span className="text-sm text-muted-foreground flex items-center gap-1">
+            <Landmark className="h-3.5 w-3.5 flex-shrink-0" />
+            {linkedAccount.name}
+          </span>
+        ) : (
+          <span className="text-muted-foreground text-sm">—</span>
+        )}
+      </td>
+
+      {/* Category */}
       <td className="py-3 pr-4">
         {expense.category ? (
           <CategoryBadge category={expense.category} />
         ) : (
-          <span className="text-muted-foreground text-xs">—</span>
+          <span className="text-muted-foreground text-sm">—</span>
         )}
       </td>
 
-      <td className="py-3 pr-4 tabular-nums font-medium">
+      {/* Amount */}
+      <td className="py-3 pr-4 text-right tabular-nums font-medium">
         {formatAmount(expense.expected_amount)}
       </td>
 
+      {/* Cycle */}
       <td className="py-3 pr-4 text-muted-foreground text-sm">
         {BILLING_CYCLE_LABELS[expense.billing_cycle]}
       </td>
 
+      {/* Next Due */}
       <td className="py-3 pr-4">
         <span
           className={cn(
@@ -99,24 +108,26 @@ export function RecurringExpenseRow({ expense, accounts = [], onEdit, onDelete }
         </span>
       </td>
 
+      {/* Last Seen */}
       <td className="py-3 pr-4">
         {isSeenThisMonth ? (
-          <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+          <span className="flex items-center gap-1 text-sm text-emerald-600 dark:text-emerald-400">
             <CheckCircle2 className="h-3.5 w-3.5" />
             Seen this month
           </span>
         ) : expense.last_seen_date ? (
-          <span className="text-muted-foreground flex items-center gap-1 text-xs">
+          <span className="text-muted-foreground flex items-center gap-1 text-sm">
             <CalendarClock className="h-3.5 w-3.5" />
             {formatDate(expense.last_seen_date)}
           </span>
         ) : (
-          <span className="text-muted-foreground text-xs">Never</span>
+          <span className="text-muted-foreground text-sm">Never</span>
         )}
       </td>
 
-      <td className="py-3 pl-1">
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      {/* Actions — always visible */}
+      <td className="py-3 pr-6">
+        <div className="flex items-center justify-end gap-1">
           {onEdit && (
             <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => onEdit(expense)}>
               <Pencil className="h-3.5 w-3.5" />
