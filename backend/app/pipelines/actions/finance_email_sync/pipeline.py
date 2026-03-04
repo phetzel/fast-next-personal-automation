@@ -158,7 +158,9 @@ class FinanceEmailSyncPipeline(ActionPipeline[FinanceEmailSyncInput, FinanceEmai
 
             cutoff = await self._get_last_sync_cutoff(db, context.user_id, input.lookback_hours)
             output.lookback_from = cutoff.isoformat()
-            logger.info("Finance email sync cutoff: %s (user=%s)", cutoff.isoformat(), context.user_id)
+            logger.info(
+                "Finance email sync cutoff: %s (user=%s)", cutoff.isoformat(), context.user_id
+            )
 
             for source in sources:
                 try:

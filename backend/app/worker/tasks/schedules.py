@@ -178,5 +178,3 @@ async def process_due_recurring_expenses() -> dict:
         results["skipped"],
     )
     return results
-
-

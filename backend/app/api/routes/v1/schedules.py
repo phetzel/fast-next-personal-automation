@@ -160,9 +160,7 @@ async def get_runs_calendar(
 
     events: list[CalendarRunEvent] = []
     for run in runs:
-        scheduled_task_id = (
-            run.run_metadata.get("scheduled_task_id") if run.run_metadata else None
-        )
+        scheduled_task_id = run.run_metadata.get("scheduled_task_id") if run.run_metadata else None
 
         # Prefer the linked task's color; fall back to status color; then null
         if scheduled_task_id and scheduled_task_id in task_color_map:
