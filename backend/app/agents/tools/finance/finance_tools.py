@@ -382,13 +382,12 @@ async def update_transaction_category(
     if not tx:
         return {"success": False, "error": "Transaction not found"}
 
-    from app.db.models.finance import TransactionCategory
-
-    valid = [c.value for c in TransactionCategory]
-    if category not in valid:
+    user_categories = await finance_repo.get_categories_by_user(db, user_id)
+    valid_slugs = [c.slug for c in user_categories]
+    if valid_slugs and category not in valid_slugs:
         return {
             "success": False,
-            "error": f"Invalid category '{category}'. Valid options: {', '.join(valid)}",
+            "error": f"Invalid category '{category}'. Valid options: {', '.join(valid_slugs)}",
         }
 
     update_data: dict = {"category": category, "category_confidence": 1.0}

@@ -129,6 +129,73 @@ Job profiles include contact info fields for cover letter generation:
 | GET | `/email/sources/{id}/messages` | List processed messages |
 | GET | `/email/config` | Get email config (supported senders) |
 
+### Finances
+
+All finance endpoints are prefixed with `/finances`.
+
+#### Accounts
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/finances/accounts` | List user's financial accounts |
+| POST | `/finances/accounts` | Create account |
+| GET | `/finances/accounts/{id}` | Get account |
+| PATCH | `/finances/accounts/{id}` | Update account |
+| DELETE | `/finances/accounts/{id}` | Delete account |
+| PATCH | `/finances/accounts/{id}/balance` | Manually adjust balance |
+| GET | `/finances/stats` | Overview stats (net worth, income, expenses) |
+
+#### Transactions
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/finances/transactions` | List transactions (filterable by account, category, date range, type) |
+| POST | `/finances/transactions` | Create transaction |
+| GET | `/finances/transactions/{id}` | Get transaction |
+| PATCH | `/finances/transactions/{id}` | Update transaction |
+| DELETE | `/finances/transactions/{id}` | Delete transaction |
+| POST | `/finances/transactions/import-csv` | Bulk import from CSV |
+| POST | `/finances/transactions/categorize` | AI-categorize uncategorized transactions |
+| POST | `/finances/transactions/{id}/review` | Mark transaction as reviewed |
+
+#### Budgets
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/finances/budgets` | List budgets for a month/year |
+| GET | `/finances/budgets/status` | Budget status with spent/remaining amounts |
+| POST | `/finances/budgets` | Create budget (category optional — omit for a general all-expenses budget) |
+| PATCH | `/finances/budgets/{id}` | Update budget |
+| DELETE | `/finances/budgets/{id}` | Delete budget |
+
+#### Recurring Expenses
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/finances/recurring` | List recurring expenses |
+| POST | `/finances/recurring` | Create recurring expense |
+| PATCH | `/finances/recurring/{id}` | Update recurring expense |
+| DELETE | `/finances/recurring/{id}` | Delete recurring expense |
+| GET | `/finances/recurring/calendar` | Expand recurring expenses into calendar occurrences for a date range |
+
+Recurring expenses support an optional `account_id` field. When set, a nightly worker task (`process_due_recurring_expenses`, cron `0 0 * * *`) automatically creates a debit transaction and deducts the amount from the linked account balance on the due date, then advances the next due date by one billing cycle.
+
+#### Categories
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/finances/categories` | List user's custom categories |
+| POST | `/finances/categories` | Create category |
+| PATCH | `/finances/categories/{id}` | Update category |
+| DELETE | `/finances/categories/{id}` | Delete category |
+
+#### Finance Pipelines
+
+| Pipeline | Description |
+|----------|-------------|
+| `finance_email_sync` | Sync financial transaction emails from connected Gmail accounts |
+| `finance_categorize` | AI-categorize uncategorized transactions in bulk |
+
 ### Pipelines
 
 | Method | Endpoint | Description |

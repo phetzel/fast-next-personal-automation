@@ -88,9 +88,9 @@ class FinanceCategory(Base, TimestampMixin):
 class FinancialAccount(Base, TimestampMixin):
     """A financial account (bank account, credit card, investment, etc.)."""
 
-    __tablename__ = "financial_accounts"
+    __tablename__ = "finance_accounts"
     __table_args__ = (
-        UniqueConstraint("user_id", "name", name="financial_accounts_user_id_name_key"),
+        UniqueConstraint("user_id", "name", name="finance_accounts_user_id_name_key"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -132,11 +132,11 @@ class Transaction(Base, TimestampMixin):
     raw_email_id: Gmail message ID used for deduplication of email-parsed transactions
     """
 
-    __tablename__ = "transactions"
+    __tablename__ = "finance_transactions"
     __table_args__ = (
         # Partial unique index: only enforce uniqueness on raw_email_id when it's not null
         Index(
-            "transactions_user_id_raw_email_id_idx",
+            "finance_transactions_user_id_raw_email_id_idx",
             "user_id",
             "raw_email_id",
             unique=True,
@@ -153,13 +153,13 @@ class Transaction(Base, TimestampMixin):
     )
     account_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("financial_accounts.id", ondelete="SET NULL"),
+        ForeignKey("finance_accounts.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
     recurring_expense_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("recurring_expenses.id", ondelete="SET NULL"),
+        ForeignKey("finance_recurring_expenses.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
@@ -204,14 +204,26 @@ class Transaction(Base, TimestampMixin):
 class Budget(Base, TimestampMixin):
     """A monthly spending budget for a specific category."""
 
-    __tablename__ = "budgets"
+    __tablename__ = "finance_budgets"
     __table_args__ = (
-        UniqueConstraint(
+        # Partial indexes mirror the DB: one non-null-category budget per user/month/year,
+        # and at most one null-category (general) budget per user/month/year.
+        Index(
+            "finance_budgets_user_id_category_month_year_idx",
             "user_id",
             "category",
             "month",
             "year",
-            name="budgets_user_id_category_month_year_key",
+            unique=True,
+            postgresql_where=sa_text("category IS NOT NULL"),
+        ),
+        Index(
+            "finance_budgets_user_id_month_year_general_idx",
+            "user_id",
+            "month",
+            "year",
+            unique=True,
+            postgresql_where=sa_text("category IS NULL"),
         ),
     )
 
@@ -223,7 +235,7 @@ class Budget(Base, TimestampMixin):
         index=True,
     )
 
-    category: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    category: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     month: Mapped[int] = mapped_column(nullable=False)  # 1-12
     year: Mapped[int] = mapped_column(nullable=False)
     amount_limit: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
@@ -242,7 +254,7 @@ class RecurringExpense(Base, TimestampMixin):
     Used to track expected recurring payments and auto-link matching transactions.
     """
 
-    __tablename__ = "recurring_expenses"
+    __tablename__ = "finance_recurring_expenses"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
@@ -265,8 +277,17 @@ class RecurringExpense(Base, TimestampMixin):
     auto_match: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Optional account link — when set, the daily worker auto-deducts on next_due_date
+    account_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("finance_accounts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # Relationships
     user: Mapped["User"] = relationship("User", lazy="selectin")
+    account: Mapped["FinancialAccount | None"] = relationship("FinancialAccount", lazy="selectin")
     transactions: Mapped[list["Transaction"]] = relationship(
         "Transaction", back_populates="recurring_expense", lazy="noload"
     )

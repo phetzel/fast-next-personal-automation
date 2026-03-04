@@ -133,7 +133,7 @@ export default function FinancesOverviewPage() {
                   return (
                     <div key={bs.budget.id} className="rounded-lg border p-3 space-y-2">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium capitalize">{bs.budget.category.replace("_", " ")}</span>
+                        <span className="font-medium capitalize">{(bs.budget.category ?? "General").replace("_", " ")}</span>
                         <span className={cn("text-xs", bs.is_over_budget ? "text-destructive" : "text-muted-foreground")}>
                           {formatCurrency(bs.spent_amount)} / {formatCurrency(bs.budget.amount_limit)}
                         </span>

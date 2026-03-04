@@ -246,7 +246,7 @@ class FinanceService:
         # Load user's categories from DB
         user_categories = await finance_repo.get_categories_by_user(self.db, user_id)
         if not user_categories:
-            user_categories = await finance_repo.create_default_categories(self.db, user_id)
+            return 0, 0
         valid_categories = [c.slug for c in user_categories]
         categories_str = ", ".join(f"{c.slug} ({c.name})" for c in user_categories)
 
@@ -342,12 +342,19 @@ Transactions:
 
         spending = await finance_repo.get_spending_by_category(self.db, user_id, month, year)
 
+        total_expenses = sum(spending.values()) if spending else Decimal("0")
+
         results = []
         for budget in budgets:
             from app.schemas.finance import BudgetResponse
 
             budget_response = BudgetResponse.model_validate(budget)
-            spent = spending.get(budget.category, Decimal("0"))
+            # null category = general budget covering all expenses
+            spent = (
+                total_expenses
+                if budget.category is None
+                else spending.get(budget.category, Decimal("0"))
+            )
             remaining = budget.amount_limit - spent
             results.append(
                 BudgetStatusResponse(
@@ -380,6 +387,8 @@ Transactions:
     async def create_recurring(
         self, user_id: UUID, data: RecurringExpenseCreate
     ) -> RecurringExpense:
+        if data.account_id:
+            await self.get_account(user_id, data.account_id)
         return await finance_repo.create_recurring(self.db, user_id=user_id, **data.model_dump())
 
     async def list_recurring(
@@ -398,6 +407,8 @@ Transactions:
         update_data = data.model_dump(exclude_unset=True)
         if not update_data:
             return recurring
+        if update_data.get("account_id"):
+            await self.get_account(user_id, update_data["account_id"])
         return await finance_repo.update_recurring(
             self.db, recurring=recurring, update_data=update_data
         )
@@ -415,10 +426,7 @@ Transactions:
     async def list_categories(
         self, user_id: UUID, active_only: bool = True
     ) -> list[FinanceCategory]:
-        categories = await finance_repo.get_categories_by_user(self.db, user_id, active_only)
-        if not categories:
-            categories = await finance_repo.create_default_categories(self.db, user_id)
-        return categories
+        return await finance_repo.get_categories_by_user(self.db, user_id, active_only)
 
     async def create_category(self, user_id: UUID, data: FinanceCategoryCreate) -> FinanceCategory:
         slug = data.name.lower().replace(" ", "_").replace("-", "_")

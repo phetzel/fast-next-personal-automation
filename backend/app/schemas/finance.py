@@ -157,7 +157,9 @@ class TransactionFilters(BaseSchema):
 
 
 class BudgetBase(BaseSchema):
-    category: str = Field(description="Category slug e.g. 'dining'")
+    category: str | None = Field(
+        default=None, description="Category slug e.g. 'dining', or null for all expenses"
+    )
     month: int = Field(ge=1, le=12)
     year: int = Field(ge=2000, le=2100)
     amount_limit: Decimal = Field(gt=0)
@@ -201,6 +203,7 @@ class RecurringExpenseBase(BaseSchema):
     is_active: bool = True
     auto_match: bool = True
     notes: str | None = None
+    account_id: UUID | None = None
 
 
 class RecurringExpenseCreate(RecurringExpenseBase):
@@ -218,6 +221,7 @@ class RecurringExpenseUpdate(BaseSchema):
     is_active: bool | None = None
     auto_match: bool | None = None
     notes: str | None = None
+    account_id: UUID | None = None
 
 
 class RecurringExpenseResponse(RecurringExpenseBase, TimestampSchema):

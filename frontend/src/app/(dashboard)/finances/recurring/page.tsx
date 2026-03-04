@@ -17,6 +17,8 @@ export default function RecurringPage() {
     deleteRecurring,
     categories,
     fetchCategories,
+    accounts,
+    fetchAccounts,
   } = useFinances();
 
   const [showForm, setShowForm] = useState(false);
@@ -26,7 +28,8 @@ export default function RecurringPage() {
   useEffect(() => {
     fetchRecurring(false); // fetch all including inactive
     fetchCategories();
-  }, [fetchRecurring, fetchCategories]);
+    fetchAccounts();
+  }, [fetchRecurring, fetchCategories, fetchAccounts]);
 
   const displayed = showInactive
     ? recurringExpenses
@@ -136,6 +139,7 @@ export default function RecurringPage() {
                     <RecurringExpenseRow
                       key={expense.id}
                       expense={expense}
+                      accounts={accounts}
                       onEdit={(e) => {
                         setEditExpense(e);
                         setShowForm(true);
@@ -159,6 +163,7 @@ export default function RecurringPage() {
         onSubmit={editExpense ? handleEdit : handleCreate}
         expense={editExpense}
         categories={categories}
+        accounts={accounts}
       />
     </div>
   );

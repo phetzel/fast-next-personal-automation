@@ -49,6 +49,7 @@ export const ROUTES = {
   FINANCES_BUDGETS: "/finances/budgets",
   FINANCES_RECURRING: "/finances/recurring",
   FINANCES_CATEGORIES: "/finances/categories",
+  FINANCES_PIPELINES: "/finances/pipelines",
   FINANCES_ASSISTANT: "/finances/assistant",
   // Schedules route
   SCHEDULES: "/schedules",

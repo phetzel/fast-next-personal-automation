@@ -322,16 +322,18 @@ async def get_budgets_by_user(
 
 
 async def get_budget_by_category(
-    db: AsyncSession, user_id: UUID, category: str, month: int, year: int
+    db: AsyncSession, user_id: UUID, category: str | None, month: int, year: int
 ) -> Budget | None:
-    result = await db.execute(
-        select(Budget).where(
-            Budget.user_id == user_id,
-            Budget.category == category,
-            Budget.month == month,
-            Budget.year == year,
-        )
+    query = select(Budget).where(
+        Budget.user_id == user_id,
+        Budget.month == month,
+        Budget.year == year,
     )
+    if category is None:
+        query = query.where(Budget.category.is_(None))
+    else:
+        query = query.where(Budget.category == category)
+    result = await db.execute(query)
     return result.scalar_one_or_none()
 
 
@@ -439,27 +441,26 @@ async def get_active_recurring_count(db: AsyncSession, user_id: UUID) -> int:
     return result.scalar() or 0
 
 
-# ──────────────────────────── FinanceCategory ─────────────────────────────────
+async def get_due_recurring_with_accounts(
+    db: AsyncSession, as_of_date: date
+) -> list[RecurringExpense]:
+    """Return active recurring expenses with account_id and next_due_date <= as_of_date.
 
-_DEFAULT_CATEGORIES = [
-    # Income
-    ("Salary", "salary", "income", "#4ade80"),
-    ("Freelance", "freelance", "income", "#34d399"),
-    ("Investment Returns", "investment_returns", "income", "#10b981"),
-    ("Refunds", "refunds", "income", "#6ee7b7"),
-    # Expenses
-    ("Housing", "housing", "expense", "#818cf8"),
-    ("Utilities", "utilities", "expense", "#a78bfa"),
-    ("Groceries", "groceries", "expense", "#f87171"),
-    ("Dining", "dining", "expense", "#fb923c"),
-    ("Transportation", "transportation", "expense", "#facc15"),
-    ("Healthcare", "healthcare", "expense", "#38bdf8"),
-    ("Entertainment", "entertainment", "expense", "#e879f9"),
-    ("Shopping", "shopping", "expense", "#f472b6"),
-    ("Subscriptions", "subscriptions", "expense", "#94a3b8"),
-    ("Travel", "travel", "expense", "#2dd4bf"),
-    ("Other", "other", "expense", "#6b7280"),
-]
+    Used by the daily worker to auto-deduct charges from linked accounts.
+    Only includes expenses that have both account_id and expected_amount set.
+    """
+    result = await db.execute(
+        select(RecurringExpense).where(
+            RecurringExpense.is_active == True,  # noqa: E712
+            RecurringExpense.account_id.is_not(None),
+            RecurringExpense.expected_amount.is_not(None),
+            RecurringExpense.next_due_date <= as_of_date,
+        )
+    )
+    return list(result.scalars().all())
+
+
+# ──────────────────────────── FinanceCategory ─────────────────────────────────
 
 
 async def get_categories_by_user(
@@ -537,23 +538,3 @@ async def delete_category(db: AsyncSession, category_id: UUID, user_id: UUID) ->
     await db.delete(category)
     await db.flush()
     return True
-
-
-async def create_default_categories(db: AsyncSession, user_id: UUID) -> list[FinanceCategory]:
-    """Seed the default 15 categories for a new user."""
-    created: list[FinanceCategory] = []
-    for i, (name, slug, cat_type, color) in enumerate(_DEFAULT_CATEGORIES):
-        cat = FinanceCategory(
-            user_id=user_id,
-            name=name,
-            slug=slug,
-            category_type=cat_type,
-            color=color,
-            sort_order=i,
-        )
-        db.add(cat)
-        created.append(cat)
-    await db.flush()
-    for cat in created:
-        await db.refresh(cat)
-    return created

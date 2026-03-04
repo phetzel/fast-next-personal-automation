@@ -13,6 +13,7 @@ frontend/src/
 │   ├── (dashboard)/       # Dashboard layout group
 │   │   ├── chat/          # AI chat page
 │   │   ├── dashboard/     # Dashboard page
+│   │   ├── finances/      # Finance area pages
 │   │   └── profile/       # Profile page
 │   ├── api/               # API routes (proxy to backend)
 │   ├── auth/callback/     # OAuth callback handler
@@ -20,9 +21,10 @@ frontend/src/
 │   ├── page.tsx           # Home page
 │   └── providers.tsx      # React context providers
 ├── components/
-│   ├── areas/             # Area dashboard cards (Jobs, etc.)
+│   ├── areas/             # Area dashboard cards (Jobs, Finances, etc.)
 │   ├── auth/              # Auth components
 │   ├── chat/              # Chat components
+│   ├── finances/          # Finance area components
 │   ├── jobs/              # Jobs area components
 │   ├── layout/            # Header, Sidebar
 │   ├── pipelines/         # Pipeline execution components
@@ -53,6 +55,14 @@ frontend/src/
 | `/jobs/resumes` | `jobs/resumes/page.tsx` | Resume management |
 | `/jobs/search` | `jobs/search/page.tsx` | Job search pipelines |
 | `/jobs/chat` | `jobs/chat/page.tsx` | Jobs-specific AI chat |
+| `/finances` | `finances/page.tsx` | Finance overview (net worth, budget status, spending) |
+| `/finances/accounts` | `finances/accounts/page.tsx` | Financial accounts list |
+| `/finances/transactions` | `finances/transactions/page.tsx` | Transaction list with filters |
+| `/finances/recurring` | `finances/recurring/page.tsx` | Recurring expenses + billing calendar |
+| `/finances/budgets` | `finances/budgets/page.tsx` | Budget management |
+| `/finances/categories` | `finances/categories/page.tsx` | Custom category management |
+| `/finances/pipelines` | `finances/pipelines/page.tsx` | Finance automation pipelines |
+| `/finances/assistant` | `finances/assistant/page.tsx` | Finance-specific AI assistant |
 
 ## State Management
 
@@ -315,6 +325,34 @@ const {
   availableAreas,
   availableTags,
 } = usePipelines({ area: "jobs" });
+```
+
+### useFinances
+
+Manages all finance data — accounts, transactions, budgets, recurring expenses, and categories:
+
+```typescript
+import { useFinances } from "@/hooks";
+
+const {
+  // Accounts
+  accounts, fetchAccounts, createAccount, updateAccount, deleteAccount,
+  // Transactions
+  transactions, fetchTransactions, createTransaction, updateTransaction, deleteTransaction,
+  importCSV, categorizeTransactions,
+  // Budgets
+  budgets, budgetStatus, fetchBudgets, fetchBudgetStatus, createBudget, updateBudget, deleteBudget,
+  // Recurring expenses
+  recurringExpenses, recurringCalendar,
+  fetchRecurring, fetchRecurringCalendar,
+  createRecurring, updateRecurring, deleteRecurring,
+  // Categories
+  categories, fetchCategories, createCategory, updateCategory, deleteCategory,
+  // Stats
+  stats, fetchStats,
+  // State
+  isLoading, error,
+} = useFinances();
 ```
 
 ## Components
