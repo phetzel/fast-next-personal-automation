@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BILLING_CYCLE_LABELS } from "@/types";
 import type { BillingCycle, FinanceCategory, FinancialAccount, RecurringExpense } from "@/types";
 import { Button, Input, Label } from "@/components/ui";
@@ -42,8 +42,25 @@ export function RecurringForm({ open, onClose, onSubmit, expense, categories = [
     next_due_date: expense?.next_due_date ?? "",
     auto_match: expense?.auto_match ?? true,
     notes: expense?.notes ?? "",
-    account_id: expense?.account_id ?? null as string | null,
+    account_id: (expense?.account_id ?? null) as string | null,
   });
+
+  // Reset form when the dialog opens or the target expense changes
+  useEffect(() => {
+    if (open) {
+      setFormData({
+        name: expense?.name ?? "",
+        merchant: expense?.merchant ?? "",
+        category: expense?.category ?? "",
+        expected_amount: expense?.expected_amount?.toString() ?? "",
+        billing_cycle: expense?.billing_cycle ?? ("monthly" as BillingCycle),
+        next_due_date: expense?.next_due_date ?? "",
+        auto_match: expense?.auto_match ?? true,
+        notes: expense?.notes ?? "",
+        account_id: (expense?.account_id ?? null) as string | null,
+      });
+    }
+  }, [open, expense]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

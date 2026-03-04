@@ -110,11 +110,10 @@ export default function SchedulesPage() {
       .catch(() => {});
   }, [fetchPipelines, fetchSchedules]);
 
-  const toDateStr = (d: Date) => d.toISOString().split("T")[0];
-
   const refreshOccurrences = useCallback(async () => {
     const start = startOfMonth(addMonths(currentDate, -1));
     const end = endOfMonth(addMonths(currentDate, 1));
+    const toDateStr = (d: Date) => d.toISOString().split("T")[0];
 
     // Fetch future scheduled occurrences
     fetchOccurrences(start, end);
@@ -125,7 +124,7 @@ export default function SchedulesPage() {
       end_date: end.toISOString(),
     });
     fetch(`/api/schedules/runs-calendar?${runsQs}`)
-      .then((r) => r.ok ? r.json() : null)
+      .then((r) => (r.ok ? r.json() : null))
       .then((data) => { if (data?.events) setPastRunEvents(data.events); })
       .catch(() => {});
 
@@ -135,7 +134,7 @@ export default function SchedulesPage() {
       end_date: toDateStr(end),
     });
     fetch(`/api/finances/recurring/calendar?${recurringQs}`)
-      .then((r) => r.ok ? r.json() : null)
+      .then((r) => (r.ok ? r.json() : null))
       .then((data) => { if (data?.occurrences) setRecurringOccurrences(data.occurrences); })
       .catch(() => {});
   }, [currentDate, fetchOccurrences]);
@@ -326,16 +325,16 @@ export default function SchedulesPage() {
         <CardHeader className="pb-2">
           <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
-              Past runs (success)
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-rose-500" />
-              Past runs (failed)
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-muted-foreground/60" />
+              Past runs (colored by task or status)
             </span>
             <span className="flex items-center gap-1.5">
               <span className="inline-block h-2.5 w-2.5 rounded-full bg-sky-400 opacity-60" />
-              Scheduled (upcoming)
+              Upcoming scheduled runs
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-rose-400" />
+              Recurring expenses
             </span>
           </div>
         </CardHeader>

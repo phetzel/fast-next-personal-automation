@@ -100,13 +100,13 @@ async def process_due_recurring_expenses() -> dict:
     3. Advance next_due_date by one billing cycle
     4. Set last_seen_date = today
     """
-    from datetime import UTC, date, datetime
+    from datetime import UTC, datetime
 
     from app.db.models.finance import Transaction, TransactionSource, TransactionType
     from app.db.session import get_db_context
     from app.repositories import finance_repo
 
-    today = date.today()
+    today = datetime.now(UTC).date()
     results: dict = {"processed": 0, "skipped": 0, "errors": []}
 
     async with get_db_context() as db:

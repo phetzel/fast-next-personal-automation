@@ -206,12 +206,24 @@ class Budget(Base, TimestampMixin):
 
     __tablename__ = "finance_budgets"
     __table_args__ = (
-        UniqueConstraint(
+        # Partial indexes mirror the DB: one non-null-category budget per user/month/year,
+        # and at most one null-category (general) budget per user/month/year.
+        Index(
+            "finance_budgets_user_id_category_month_year_idx",
             "user_id",
             "category",
             "month",
             "year",
-            name="finance_budgets_user_id_category_month_year_key",
+            unique=True,
+            postgresql_where=sa_text("category IS NOT NULL"),
+        ),
+        Index(
+            "finance_budgets_user_id_month_year_general_idx",
+            "user_id",
+            "month",
+            "year",
+            unique=True,
+            postgresql_where=sa_text("category IS NULL"),
         ),
     )
 

@@ -61,7 +61,8 @@ frontend/src/
 | `/finances/recurring` | `finances/recurring/page.tsx` | Recurring expenses + billing calendar |
 | `/finances/budgets` | `finances/budgets/page.tsx` | Budget management |
 | `/finances/categories` | `finances/categories/page.tsx` | Custom category management |
-| `/finances/chat` | `finances/chat/page.tsx` | Finance-specific AI chat |
+| `/finances/pipelines` | `finances/pipelines/page.tsx` | Finance automation pipelines |
+| `/finances/assistant` | `finances/assistant/page.tsx` | Finance-specific AI assistant |
 
 ## State Management
 

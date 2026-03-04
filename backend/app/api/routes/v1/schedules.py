@@ -126,16 +126,20 @@ async def get_runs_calendar(
 
     # Build a map of scheduled_task_id → color for quick lookup
     task_color_map: dict[str, str | None] = {}
-    scheduled_task_ids = {
+    raw_task_ids = {
         run.run_metadata.get("scheduled_task_id")
         for run in runs
         if run.run_metadata and run.run_metadata.get("scheduled_task_id")
     }
-    if scheduled_task_ids:
+    valid_task_ids: set[UUID] = set()
+    for tid in raw_task_ids:
+        try:
+            valid_task_ids.add(UUID(str(tid)))
+        except (ValueError, TypeError):
+            logger.warning("Ignoring invalid scheduled_task_id in run metadata: %r", tid)
+    if valid_task_ids:
         tasks_result = await db.execute(
-            select(ScheduledTask).where(
-                ScheduledTask.id.in_([UUID(tid) for tid in scheduled_task_ids])
-            )
+            select(ScheduledTask).where(ScheduledTask.id.in_(list(valid_task_ids)))
         )
         for task in tasks_result.scalars().all():
             task_color_map[str(task.id)] = task.color
@@ -203,7 +207,7 @@ async def get_runs_calendar(
 
 
 @router.get("/system-tasks", response_model=SystemTasksResponse)
-async def get_system_tasks() -> SystemTasksResponse:
+async def get_system_tasks(current_user: CurrentUser) -> SystemTasksResponse:
     """Get hardcoded system cron tasks.
 
     These tasks run automatically and cannot be edited or deleted by users.
