@@ -72,7 +72,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 ### 6. Run database migrations
 
 ```bash
-docker exec -it personal_automations_backend alembic upgrade head
+docker exec -it personal_automations_backend personal_automations db upgrade
 ```
 
 ### 7. Create admin user
@@ -96,7 +96,7 @@ git pull
 docker compose -f docker-compose.prod.yml up -d --build
 
 # Run any new migrations
-docker exec -it personal_automations_backend alembic upgrade head
+docker exec -it personal_automations_backend personal_automations db upgrade
 ```
 
 ## Useful Commands
@@ -182,9 +182,8 @@ docker logs personal_automations_db
 ### Migration errors
 ```bash
 # Check current migration state
-docker exec -it personal_automations_backend alembic current
+docker exec -it personal_automations_backend personal_automations db current
 
 # View migration history
-docker exec -it personal_automations_backend alembic history
+docker exec -it personal_automations_backend personal_automations db history
 ```
-

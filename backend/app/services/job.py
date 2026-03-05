@@ -37,6 +37,8 @@ class IngestionResult:
     jobs_saved: int = 0
     duplicates_skipped: int = 0
     high_scoring: int = 0  # Jobs with score >= min_score
+    qa_jobs_checked: int = 0  # External scores compared against internal QA analysis
+    qa_large_score_drift: int = 0  # QA comparisons with large score drift
     saved_jobs: list[Job] | None = None  # Optionally include saved job objects
 
 
@@ -154,6 +156,9 @@ class JobService:
         min_score: float = 7.0,
         save_all: bool = False,
         search_terms: str | None = None,
+        external_analysis_by_url: dict[str, dict[str, Any]] | None = None,
+        qa_with_internal_analysis: bool = False,
+        qa_score_drift_threshold: float = 2.0,
     ) -> IngestionResult:
         """Ingest jobs from any source with optional AI analysis.
 
@@ -175,11 +180,15 @@ class JobService:
             min_score: Minimum score to save (ignored if save_all=True)
             save_all: If True, save all jobs regardless of score
             search_terms: Search terms used to find these jobs
+            external_analysis_by_url: Optional external per-job analysis keyed by job_url
+            qa_with_internal_analysis: If true, compare external scores with internal QA analysis
+            qa_score_drift_threshold: Score delta threshold counted as QA drift
 
         Returns:
             IngestionResult with counts and optionally saved job objects
         """
         result = IngestionResult(jobs_received=len(jobs))
+        external_analysis_by_url = external_analysis_by_url or {}
 
         if not jobs:
             return result
@@ -196,19 +205,74 @@ class JobService:
         if not new_jobs:
             return result
 
-        # Step 2: Optionally analyze with AI
+        # Step 2: Prefer external analysis, then fallback to optional internal AI analysis
         analyzed_jobs: list[tuple[RawJob, dict | None]] = []
 
-        if resume_text:
-            # Import here to avoid circular imports
-            from app.pipelines.actions.job_search.analyzer import (
-                JobAnalysis,
-                analyze_job,
-            )
+        for raw_job in new_jobs:
+            external_analysis = external_analysis_by_url.get(raw_job.job_url)
+            if external_analysis is not None:
+                external_score = None
+                external_reasoning = None
+                if isinstance(external_analysis, dict):
+                    external_score_raw = external_analysis.get("relevance_score")
+                    if isinstance(external_score_raw, (int, float)) and not isinstance(
+                        external_score_raw, bool
+                    ):
+                        external_score = float(external_score_raw)
+                    external_reasoning_raw = external_analysis.get("reasoning")
+                    if external_reasoning_raw is None or isinstance(external_reasoning_raw, str):
+                        external_reasoning = external_reasoning_raw
 
-            for raw_job in new_jobs:
+                if external_score is not None:
+                    analyzed_jobs.append(
+                        (
+                            raw_job,
+                            {
+                                "relevance_score": external_score,
+                                "reasoning": external_reasoning,
+                            },
+                        )
+                    )
+                    result.jobs_analyzed += 1
+                    if external_score >= min_score:
+                        result.high_scoring += 1
+
+                    # Optional QA: run internal analysis for comparison, but keep external values.
+                    if qa_with_internal_analysis and resume_text:
+                        # Import here to avoid circular imports.
+                        from app.pipelines.actions.job_search.analyzer import (
+                            JobAnalysis,
+                            analyze_job,
+                        )
+
+                        try:
+                            qa_analysis: JobAnalysis = await analyze_job(
+                                raw_job, resume_text, target_roles, preferences
+                            )
+                            result.qa_jobs_checked += 1
+                            if (
+                                abs(qa_analysis.relevance_score - external_score)
+                                >= qa_score_drift_threshold
+                            ):
+                                result.qa_large_score_drift += 1
+                        except Exception as e:
+                            logger.warning(f"Failed QA analysis for job '{raw_job.title}': {e}")
+                    continue
+
+                logger.warning(
+                    "Invalid external analysis payload for job '%s'; falling back to internal analysis",
+                    raw_job.job_url,
+                )
+
+            if resume_text:
+                # Import here to avoid circular imports.
+                from app.pipelines.actions.job_search.analyzer import (
+                    JobAnalysis,
+                    analyze_job,
+                )
+
                 try:
-                    # RawJob inherits from ScrapedJob, so it can be used directly
+                    # RawJob inherits from ScrapedJob, so it can be used directly.
                     analysis: JobAnalysis = await analyze_job(
                         raw_job, resume_text, target_roles, preferences
                     )
@@ -222,16 +286,14 @@ class JobService:
                         )
                     )
                     result.jobs_analyzed += 1
-
                     if analysis.relevance_score >= min_score:
                         result.high_scoring += 1
-
                 except Exception as e:
                     logger.warning(f"Failed to analyze job '{raw_job.title}': {e}")
                     analyzed_jobs.append((raw_job, None))
-        else:
-            # No analysis - just pass through
-            analyzed_jobs = [(job, None) for job in new_jobs]
+            else:
+                # No analysis available - pass through.
+                analyzed_jobs.append((raw_job, None))
 
         # Step 3: Filter and save jobs
         jobs_to_save: list[dict] = []
@@ -277,7 +339,8 @@ class JobService:
             f"Ingested {result.jobs_received} jobs: "
             f"{result.duplicates_skipped} duplicates, "
             f"{result.jobs_analyzed} analyzed, "
-            f"{result.jobs_saved} saved"
+            f"{result.jobs_saved} saved, "
+            f"{result.qa_jobs_checked} QA-compared"
         )
 
         return result

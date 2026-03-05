@@ -165,6 +165,40 @@ async def service_endpoint(api_key: ValidAPIKey):
     return {"status": "ok"}
 ```
 
+## Integration Tokens (OpenClaw)
+
+OpenClaw ingestion uses scoped per-user integration tokens, separate from the global API key.
+
+### Purpose
+
+- Global API key: currently used by generic pipeline webhook routes.
+- Integration token: least-privilege machine token tied to one user and explicit scopes.
+
+### Current scope and routes
+
+- Supported scope: `jobs:ingest`
+- Header name: `X-Integration-Token`
+- Current route using it: `POST /api/v1/integrations/openclaw/jobs/ingest`
+- Payload supports optional external analysis fields per job: `relevance_score`, `reasoning`
+- Optional `qa_with_internal_analysis` can run internal profile analysis as comparison only
+
+### Lifecycle
+
+1. Authenticated user creates token:
+   - `POST /api/v1/integrations/openclaw/tokens`
+2. Plaintext token (`oct_...`) is returned once; only hash is stored server-side.
+3. OpenClaw sends token in `X-Integration-Token` when calling ingest route.
+4. User can revoke token:
+   - `DELETE /api/v1/integrations/openclaw/tokens/{token_id}`
+
+### Example request
+
+```http
+POST /api/v1/integrations/openclaw/jobs/ingest
+X-Integration-Token: oct_your_token_here
+Content-Type: application/json
+```
+
 ## Role-Based Access Control
 
 ### Roles
@@ -295,4 +329,3 @@ CORS_ORIGINS=["http://localhost:3000"]
 1. Verify Google OAuth credentials are correct
 2. Check redirect URI matches exactly
 3. Ensure Google+ API is enabled
-

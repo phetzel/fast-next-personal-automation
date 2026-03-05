@@ -227,6 +227,39 @@ Recurring expenses support an optional `account_id` field. When set, a nightly w
 | POST | `/schedules/{id}/toggle` | Enable/disable task (or invert when `enabled` is omitted) |
 | GET | `/schedules/occurrences` | Expand cron schedules into calendar occurrences for a date range |
 
+### Integrations (OpenClaw)
+
+All integration endpoints are prefixed with `/integrations/openclaw`.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/integrations/openclaw/tokens` | Create a scoped integration token (shown once) |
+| GET | `/integrations/openclaw/tokens` | List current user's integration tokens |
+| DELETE | `/integrations/openclaw/tokens/{token_id}` | Revoke an integration token |
+| POST | `/integrations/openclaw/jobs/ingest` | Ingest jobs from OpenClaw using `X-Integration-Token` |
+
+Authentication model:
+- Token management (`/tokens`) uses standard user JWT auth (`Authorization: Bearer ...`).
+- Ingestion (`/jobs/ingest`) uses machine token auth (`X-Integration-Token: oct_...`).
+- Each integration token is owned by one user, and ingested jobs are written for that user.
+- Current supported scope is `jobs:ingest`.
+
+`/jobs/ingest` reuses the internal job ingestion service for:
+- URL deduplication by `job_url` per user
+- External score/reasoning passthrough (`relevance_score`, `reasoning`) when provided
+- Optional internal AI scoring fallback with a profile resume (`analyze_with_profile`)
+- Score filtering (`min_score`) or forced save (`save_all`)
+- Persisting jobs with `ingestion_source="manual"` for source tracking
+
+Current payload limits/behavior:
+- `jobs` minimum length: `1` (request validation)
+- `jobs` maximum length: currently not enforced at API schema level
+- If a job has external `relevance_score`, that score is stored directly
+- If external scores are missing, internal analysis can fill scores when profile resume context is available
+- `analyze_with_profile=true` tries `profile_id` (if provided) or default profile
+- `qa_with_internal_analysis=true` runs internal analysis as QA comparison while still storing external scores
+- If no profile resume text is available, ingestion still works but skips analysis
+
 ### Area Agents
 
 | Method | Endpoint | Description |

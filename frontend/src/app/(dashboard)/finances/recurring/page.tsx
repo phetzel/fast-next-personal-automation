@@ -125,13 +125,14 @@ export default function RecurringPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-muted-foreground px-6 pb-3 pt-0 text-left font-medium">Name</th>
-                    <th className="text-muted-foreground pb-3 pr-4 text-left font-medium">Category</th>
-                    <th className="text-muted-foreground pb-3 pr-4 text-right font-medium">Amount</th>
-                    <th className="text-muted-foreground pb-3 pr-4 text-left font-medium">Cycle</th>
-                    <th className="text-muted-foreground pb-3 pr-4 text-left font-medium">Next Due</th>
-                    <th className="text-muted-foreground pb-3 pr-4 text-left font-medium">Last Seen</th>
-                    <th className="pb-3" />
+                    <th className="text-muted-foreground pl-6 pr-4 pb-3 pt-0 text-left font-medium w-[20%]">Name</th>
+                    <th className="text-muted-foreground pr-4 pb-3 text-left font-medium">Account</th>
+                    <th className="text-muted-foreground pr-4 pb-3 text-left font-medium">Category</th>
+                    <th className="text-muted-foreground pr-4 pb-3 text-right font-medium">Amount</th>
+                    <th className="text-muted-foreground pr-4 pb-3 text-left font-medium">Cycle</th>
+                    <th className="text-muted-foreground pr-4 pb-3 text-left font-medium">Next Due</th>
+                    <th className="text-muted-foreground pr-4 pb-3 text-left font-medium">Last Seen</th>
+                    <th className="text-muted-foreground pr-6 pb-3 text-right font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>

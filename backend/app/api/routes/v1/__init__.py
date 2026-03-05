@@ -23,6 +23,7 @@ from app.api.routes.v1 import email_syncs
 from app.api.routes.v1 import email_destinations
 from app.api.routes.v1 import schedules
 from app.api.routes.v1 import finances
+from app.api.routes.v1 import integrations
 
 v1_router = APIRouter()
 
@@ -84,3 +85,6 @@ v1_router.include_router(schedules.router, prefix="/schedules", tags=["schedules
 
 # Finance routes (accounts, transactions, budgets, recurring expenses)
 v1_router.include_router(finances.router, prefix="/finances", tags=["finances"])
+
+# Integration routes (external automation providers)
+v1_router.include_router(integrations.router, prefix="/integrations", tags=["integrations"])

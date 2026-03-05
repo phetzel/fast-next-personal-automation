@@ -14,8 +14,15 @@ interface RecurringExpenseRowProps {
   onDelete?: (id: string) => void;
 }
 
-export function RecurringExpenseRow({ expense, accounts = [], onEdit, onDelete }: RecurringExpenseRowProps) {
-  const linkedAccount = expense.account_id ? accounts.find((a) => a.id === expense.account_id) : null;
+export function RecurringExpenseRow({
+  expense,
+  accounts = [],
+  onEdit,
+  onDelete,
+}: RecurringExpenseRowProps) {
+  const linkedAccount = expense.account_id
+    ? accounts.find((a) => a.id === expense.account_id)
+    : null;
   const isSeenThisMonth = expense.last_seen_date
     ? (() => {
         const d = new Date(expense.last_seen_date);
@@ -33,9 +40,7 @@ export function RecurringExpenseRow({ expense, accounts = [], onEdit, onDelete }
       })()
     : false;
 
-  const isPastDue = expense.next_due_date
-    ? new Date(expense.next_due_date) < new Date()
-    : false;
+  const isPastDue = expense.next_due_date ? new Date(expense.next_due_date) < new Date() : false;
 
   const formatAmount = (amount: number | null) => {
     if (amount === null) return "—";
@@ -51,38 +56,52 @@ export function RecurringExpenseRow({ expense, accounts = [], onEdit, onDelete }
   };
 
   return (
-    <tr className={cn("group border-b hover:bg-muted/40 transition-colors", !expense.is_active && "opacity-60")}>
-      <td className="py-3 pr-4">
-        <div>
-          <p className="font-medium">{expense.name}</p>
-          {expense.merchant && expense.merchant !== expense.name && (
-            <p className="text-muted-foreground text-xs">{expense.merchant}</p>
-          )}
-          {linkedAccount && (
-            <p className="text-muted-foreground flex items-center gap-1 text-xs mt-0.5">
-              <Landmark className="h-3 w-3" />
-              {linkedAccount.name}
-            </p>
-          )}
-        </div>
+    <tr
+      className={cn(
+        "hover:bg-muted/40 border-b transition-colors",
+        !expense.is_active && "opacity-60"
+      )}
+    >
+      {/* Name */}
+      <td className="py-3 pr-4 pl-6">
+        <p className="font-medium">{expense.name}</p>
+        {expense.merchant && expense.merchant !== expense.name && (
+          <p className="text-muted-foreground mt-0.5 text-xs">{expense.merchant}</p>
+        )}
       </td>
 
+      {/* Account */}
+      <td className="py-3 pr-4">
+        {linkedAccount ? (
+          <span className="text-muted-foreground flex items-center gap-1 text-sm">
+            <Landmark className="h-3.5 w-3.5 flex-shrink-0" />
+            {linkedAccount.name}
+          </span>
+        ) : (
+          <span className="text-muted-foreground text-sm">—</span>
+        )}
+      </td>
+
+      {/* Category */}
       <td className="py-3 pr-4">
         {expense.category ? (
           <CategoryBadge category={expense.category} />
         ) : (
-          <span className="text-muted-foreground text-xs">—</span>
+          <span className="text-muted-foreground text-sm">—</span>
         )}
       </td>
 
-      <td className="py-3 pr-4 tabular-nums font-medium">
+      {/* Amount */}
+      <td className="py-3 pr-4 text-right font-medium tabular-nums">
         {formatAmount(expense.expected_amount)}
       </td>
 
-      <td className="py-3 pr-4 text-muted-foreground text-sm">
+      {/* Cycle */}
+      <td className="text-muted-foreground py-3 pr-4 text-sm">
         {BILLING_CYCLE_LABELS[expense.billing_cycle]}
       </td>
 
+      {/* Next Due */}
       <td className="py-3 pr-4">
         <span
           className={cn(
@@ -90,8 +109,8 @@ export function RecurringExpenseRow({ expense, accounts = [], onEdit, onDelete }
             isPastDue && !isSeenThisMonth
               ? "text-destructive font-medium"
               : isDueSoon
-              ? "text-amber-600 dark:text-amber-400 font-medium"
-              : "text-muted-foreground"
+                ? "font-medium text-amber-600 dark:text-amber-400"
+                : "text-muted-foreground"
           )}
         >
           {formatDate(expense.next_due_date)}
@@ -99,26 +118,34 @@ export function RecurringExpenseRow({ expense, accounts = [], onEdit, onDelete }
         </span>
       </td>
 
+      {/* Last Seen */}
       <td className="py-3 pr-4">
         {isSeenThisMonth ? (
-          <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+          <span className="flex items-center gap-1 text-sm text-emerald-600 dark:text-emerald-400">
             <CheckCircle2 className="h-3.5 w-3.5" />
             Seen this month
           </span>
         ) : expense.last_seen_date ? (
-          <span className="text-muted-foreground flex items-center gap-1 text-xs">
+          <span className="text-muted-foreground flex items-center gap-1 text-sm">
             <CalendarClock className="h-3.5 w-3.5" />
             {formatDate(expense.last_seen_date)}
           </span>
         ) : (
-          <span className="text-muted-foreground text-xs">Never</span>
+          <span className="text-muted-foreground text-sm">Never</span>
         )}
       </td>
 
-      <td className="py-3 pl-1">
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      {/* Actions — always visible */}
+      <td className="py-3 pr-6">
+        <div className="flex items-center justify-end gap-1">
           {onEdit && (
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => onEdit(expense)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={() => onEdit(expense)}
+              aria-label="Edit recurring expense"
+            >
               <Pencil className="h-3.5 w-3.5" />
             </Button>
           )}
@@ -128,6 +155,7 @@ export function RecurringExpenseRow({ expense, accounts = [], onEdit, onDelete }
               size="sm"
               className="text-destructive hover:text-destructive h-7 w-7 p-0"
               onClick={() => onDelete(expense.id)}
+              aria-label="Delete recurring expense"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>

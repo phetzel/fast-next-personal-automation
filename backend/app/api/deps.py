@@ -41,6 +41,7 @@ from app.services.story import StoryService
 from app.services.project import ProjectService
 from app.services.email import EmailService
 from app.services.scheduled_task import ScheduledTaskService
+from app.services.integration_token import IntegrationTokenService
 
 
 def get_user_service(db: DBSession) -> UserService:
@@ -135,6 +136,14 @@ def get_scheduled_task_service(db: DBSession) -> ScheduledTaskService:
 
 
 ScheduledTaskSvc = Annotated[ScheduledTaskService, Depends(get_scheduled_task_service)]
+
+
+def get_integration_token_service(db: DBSession) -> IntegrationTokenService:
+    """Create IntegrationTokenService instance with database session."""
+    return IntegrationTokenService(db)
+
+
+IntegrationTokenSvc = Annotated[IntegrationTokenService, Depends(get_integration_token_service)]
 
 
 from app.services.finance_service import FinanceService
@@ -369,3 +378,23 @@ async def verify_api_key(
 
 
 ValidAPIKey = Annotated[str, Depends(verify_api_key)]
+
+
+openclaw_token_header = APIKeyHeader(name="X-Integration-Token", auto_error=False)
+
+
+async def verify_openclaw_token(
+    token: Annotated[str | None, Depends(openclaw_token_header)],
+    integration_token_service: IntegrationTokenSvc,
+):
+    """Verify OpenClaw integration token and required scope."""
+    if token is None:
+        raise AuthenticationError(message="Integration token header missing")
+    return await integration_token_service.verify_openclaw_token(
+        token, required_scope=IntegrationScope.JOBS_INGEST.value
+    )
+
+
+from app.db.models.integration_token import IntegrationScope, IntegrationToken
+
+OpenClawToken = Annotated[IntegrationToken, Depends(verify_openclaw_token)]

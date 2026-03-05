@@ -17,6 +17,7 @@ from app.db.models.email_sync import EmailSync
 from app.db.models.email_destination import EmailDestination
 from app.db.models.email_message_destination import EmailMessageDestination
 from app.db.models.scheduled_task import ScheduledTask
+from app.db.models.integration_token import IntegrationToken, IntegrationScope
 from app.db.models.finance import (
     FinancialAccount,
     Transaction,
@@ -52,6 +53,8 @@ __all__ = [
     "EmailDestination",
     "EmailMessageDestination",
     "ScheduledTask",
+    "IntegrationToken",
+    "IntegrationScope",
     "FinancialAccount",
     "Transaction",
     "Budget",
