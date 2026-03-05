@@ -29,6 +29,8 @@ from app.services.project import ProjectService
 
 from app.services.scheduled_task import ScheduledTaskService
 
+from app.services.integration_token import IntegrationTokenService
+
 __all__ = [
     "BaseService",
     "PrimaryEntityService",
@@ -43,4 +45,5 @@ __all__ = [
     "StoryService",
     "ProjectService",
     "ScheduledTaskService",
+    "IntegrationTokenService",
 ]

@@ -227,6 +227,22 @@ Recurring expenses support an optional `account_id` field. When set, a nightly w
 | POST | `/schedules/{id}/toggle` | Enable/disable task (or invert when `enabled` is omitted) |
 | GET | `/schedules/occurrences` | Expand cron schedules into calendar occurrences for a date range |
 
+### Integrations (OpenClaw)
+
+All integration endpoints are prefixed with `/integrations/openclaw`.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/integrations/openclaw/tokens` | Create a scoped integration token (shown once) |
+| GET | `/integrations/openclaw/tokens` | List current user's integration tokens |
+| DELETE | `/integrations/openclaw/tokens/{token_id}` | Revoke an integration token |
+| POST | `/integrations/openclaw/jobs/ingest` | Ingest jobs from OpenClaw using `X-Integration-Token` |
+
+`/jobs/ingest` reuses the internal job ingestion service for:
+- URL deduplication
+- Optional AI scoring with a profile resume
+- Score filtering / save-all behavior
+
 ### Area Agents
 
 | Method | Endpoint | Description |

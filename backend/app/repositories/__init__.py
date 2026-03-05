@@ -31,6 +31,8 @@ from app.repositories import email_destination as email_destination_repo
 
 from app.repositories import scheduled_task as scheduled_task_repo
 
+from app.repositories import integration_token as integration_token_repo
+
 from app.repositories import finance as finance_repo
 
 __all__ = [
@@ -49,5 +51,6 @@ __all__ = [
     "email_sync_repo",
     "email_destination_repo",
     "scheduled_task_repo",
+    "integration_token_repo",
     "finance_repo",
 ]
