@@ -8,8 +8,9 @@ Create Date: 2026-03-04 13:00:00.000000
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision: str = "integration_tokens_001"
 down_revision: str | None = "rename_finance_tables_001"
@@ -35,13 +36,10 @@ def upgrade() -> None:
         sa.UniqueConstraint("token_hash", name=op.f("integration_tokens_token_hash_key")),
     )
     op.create_index(op.f("integration_tokens_user_id_idx"), "integration_tokens", ["user_id"], unique=False)
-    op.create_index(op.f("integration_tokens_token_hash_idx"), "integration_tokens", ["token_hash"], unique=False)
     op.create_index(op.f("integration_tokens_is_active_idx"), "integration_tokens", ["is_active"], unique=False)
 
 
 def downgrade() -> None:
     op.drop_index(op.f("integration_tokens_is_active_idx"), table_name="integration_tokens")
-    op.drop_index(op.f("integration_tokens_token_hash_idx"), table_name="integration_tokens")
     op.drop_index(op.f("integration_tokens_user_id_idx"), table_name="integration_tokens")
     op.drop_table("integration_tokens")
-

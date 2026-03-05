@@ -390,7 +390,9 @@ async def verify_openclaw_token(
     """Verify OpenClaw integration token and required scope."""
     if token is None:
         raise AuthenticationError(message="Integration token header missing")
-    return await integration_token_service.verify_openclaw_token(token, required_scope="jobs:ingest")
+    return await integration_token_service.verify_openclaw_token(
+        token, required_scope="jobs:ingest"
+    )
 
 
 from app.db.models.integration_token import IntegrationToken

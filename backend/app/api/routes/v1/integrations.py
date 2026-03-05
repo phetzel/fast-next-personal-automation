@@ -99,6 +99,15 @@ async def ingest_openclaw_jobs(
     preferences: dict | None = None
     analysis_enabled = False
     min_score = payload.min_score if payload.min_score is not None else 7.0
+    external_analysis_by_url = {
+        job.job_url: {
+            "relevance_score": job.relevance_score,
+            "reasoning": job.reasoning,
+        }
+        for job in payload.jobs
+        if job.relevance_score is not None
+    }
+    external_analysis_used = bool(external_analysis_by_url)
 
     if payload.analyze_with_profile:
         if payload.profile_id:
@@ -120,6 +129,11 @@ async def ingest_openclaw_jobs(
             analysis_enabled = True
             if payload.min_score is None:
                 min_score = profile.min_score_threshold or 7.0
+
+    if payload.qa_with_internal_analysis and not resume_text:
+        raise ValidationError(
+            message="QA analysis requested but no profile resume text is available"
+        )
 
     raw_jobs = [
         RawJob(
@@ -149,6 +163,8 @@ async def ingest_openclaw_jobs(
         min_score=min_score,
         save_all=payload.save_all,
         search_terms=payload.search_terms,
+        external_analysis_by_url=external_analysis_by_url,
+        qa_with_internal_analysis=payload.qa_with_internal_analysis,
     )
     await db.commit()
 
@@ -159,9 +175,12 @@ async def ingest_openclaw_jobs(
         duplicates_skipped=ingestion.duplicates_skipped,
         high_scoring=ingestion.high_scoring,
         analysis_enabled=analysis_enabled,
+        external_analysis_used=external_analysis_used,
+        qa_with_internal_analysis=payload.qa_with_internal_analysis,
+        qa_jobs_checked=ingestion.qa_jobs_checked,
+        qa_large_score_drift=ingestion.qa_large_score_drift,
         profile_id=profile.id if profile else None,
         profile_name=profile.name if profile else None,
         token_id=openclaw_token.id,
         token_name=openclaw_token.name,
     )
-

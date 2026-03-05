@@ -41,7 +41,9 @@ async def create(
 
 async def get_by_hash(db: AsyncSession, token_hash: str) -> IntegrationToken | None:
     """Get an integration token by hash."""
-    result = await db.execute(select(IntegrationToken).where(IntegrationToken.token_hash == token_hash))
+    result = await db.execute(
+        select(IntegrationToken).where(IntegrationToken.token_hash == token_hash)
+    )
     return result.scalar_one_or_none()
 
 
@@ -95,4 +97,3 @@ async def revoke(
     await db.flush()
     await db.refresh(token)
     return token
-

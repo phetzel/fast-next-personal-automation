@@ -165,3 +165,86 @@ async def test_ingest_openclaw_jobs_profile_without_resume_returns_422(client) -
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+@pytest.mark.anyio
+async def test_ingest_openclaw_jobs_uses_external_analysis_payload(client, mock_db_session) -> None:
+    """External score/reasoning should be forwarded to unified ingestion service."""
+    user = _mock_user()
+    token = _mock_token(user.id)
+    job_service = SimpleNamespace(
+        ingest_jobs=AsyncMock(
+            return_value=IngestionResult(
+                jobs_received=1,
+                jobs_analyzed=1,
+                jobs_saved=1,
+                duplicates_skipped=0,
+                high_scoring=1,
+            )
+        )
+    )
+
+    app.dependency_overrides[verify_openclaw_token] = lambda: token
+    app.dependency_overrides[get_job_service] = lambda: job_service
+
+    response = await client.post(
+        "/api/v1/integrations/openclaw/jobs/ingest",
+        json={
+            "analyze_with_profile": False,
+            "jobs": [
+                {
+                    "title": "Backend Engineer",
+                    "company": "Acme",
+                    "job_url": "https://jobs.example.com/1",
+                    "source": "greenhouse",
+                    "relevance_score": 9.1,
+                    "reasoning": "Strong Python/FastAPI fit with relevant backend depth.",
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["jobs_analyzed"] == 1
+    assert data["external_analysis_used"] is True
+    assert data["qa_with_internal_analysis"] is False
+
+    kwargs = job_service.ingest_jobs.await_args.kwargs
+    assert kwargs["external_analysis_by_url"] == {
+        "https://jobs.example.com/1": {
+            "relevance_score": 9.1,
+            "reasoning": "Strong Python/FastAPI fit with relevant backend depth.",
+        }
+    }
+    assert kwargs["qa_with_internal_analysis"] is False
+    mock_db_session.commit.assert_awaited()
+
+
+@pytest.mark.anyio
+async def test_ingest_openclaw_jobs_requires_score_when_reasoning_present(client) -> None:
+    """Payload validation should reject reasoning without a relevance score."""
+    user = _mock_user()
+    token = _mock_token(user.id)
+    app.dependency_overrides[verify_openclaw_token] = lambda: token
+
+    response = await client.post(
+        "/api/v1/integrations/openclaw/jobs/ingest",
+        json={
+            "jobs": [
+                {
+                    "title": "Backend Engineer",
+                    "company": "Acme",
+                    "job_url": "https://jobs.example.com/1",
+                    "reasoning": "Great fit",
+                }
+            ]
+        },
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    if "error" in body:
+        assert body["error"]["code"] == "VALIDATION_ERROR"
+    else:
+        assert body["detail"]

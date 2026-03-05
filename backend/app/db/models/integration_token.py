@@ -30,9 +30,8 @@ class IntegrationToken(Base, TimestampMixin):
         index=True,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     scopes: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-

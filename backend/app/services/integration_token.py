@@ -34,11 +34,16 @@ class IntegrationTokenService:
     ) -> tuple[IntegrationToken, str]:
         """Create a new OpenClaw integration token and return plaintext once."""
         requested_scopes = scopes or [IntegrationScope.JOBS_INGEST.value]
-        invalid_scopes = [scope for scope in requested_scopes if scope not in _OPENCLAW_ALLOWED_SCOPES]
+        invalid_scopes = [
+            scope for scope in requested_scopes if scope not in _OPENCLAW_ALLOWED_SCOPES
+        ]
         if invalid_scopes:
             raise ValidationError(
                 message="Invalid integration token scopes requested",
-                details={"invalid_scopes": invalid_scopes, "allowed_scopes": sorted(_OPENCLAW_ALLOWED_SCOPES)},
+                details={
+                    "invalid_scopes": invalid_scopes,
+                    "allowed_scopes": sorted(_OPENCLAW_ALLOWED_SCOPES),
+                },
             )
 
         if expires_at and expires_at.tzinfo is None:
