@@ -1,6 +1,7 @@
 """Repository for integration token operations."""
 
 import hashlib
+import hmac
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -10,9 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.integration_token import IntegrationToken
 
 
-def hash_token(raw_token: str) -> str:
-    """Hash an integration token for secure storage/lookup."""
-    return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+def hash_token(raw_token: str, *, pepper: str) -> str:
+    """Hash an integration token for secure storage/lookup using a server-side pepper."""
+    return hmac.new(pepper.encode("utf-8"), raw_token.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 async def create(

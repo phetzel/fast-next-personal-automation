@@ -6,6 +6,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.exceptions import (
     AuthenticationError,
     AuthorizationError,
@@ -50,7 +51,10 @@ class IntegrationTokenService:
             expires_at = expires_at.replace(tzinfo=UTC)
 
         plaintext_token = f"oct_{secrets.token_urlsafe(32)}"
-        token_hash = integration_token_repo.hash_token(plaintext_token)
+        token_hash = integration_token_repo.hash_token(
+            plaintext_token,
+            pepper=settings.SECRET_KEY,
+        )
 
         token = await integration_token_repo.create(
             self.db,
@@ -80,7 +84,10 @@ class IntegrationTokenService:
         required_scope: str = IntegrationScope.JOBS_INGEST.value,
     ) -> IntegrationToken:
         """Validate a plaintext token and required scope."""
-        token_hash = integration_token_repo.hash_token(plaintext_token)
+        token_hash = integration_token_repo.hash_token(
+            plaintext_token,
+            pepper=settings.SECRET_KEY,
+        )
         token = await integration_token_repo.get_by_hash(self.db, token_hash)
         if token is None:
             raise AuthenticationError(message="Invalid integration token")

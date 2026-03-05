@@ -391,10 +391,10 @@ async def verify_openclaw_token(
     if token is None:
         raise AuthenticationError(message="Integration token header missing")
     return await integration_token_service.verify_openclaw_token(
-        token, required_scope="jobs:ingest"
+        token, required_scope=IntegrationScope.JOBS_INGEST.value
     )
 
 
-from app.db.models.integration_token import IntegrationToken
+from app.db.models.integration_token import IntegrationScope, IntegrationToken
 
 OpenClawToken = Annotated[IntegrationToken, Depends(verify_openclaw_token)]

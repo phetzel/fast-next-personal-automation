@@ -17,6 +17,13 @@ from app.main import app
 from app.services.job import IngestionResult
 
 
+@pytest.fixture(autouse=True)
+def clear_dependency_overrides() -> None:
+    """Ensure dependency overrides are reset between tests."""
+    yield
+    app.dependency_overrides.clear()
+
+
 def _mock_user() -> SimpleNamespace:
     now = datetime.now(UTC)
     return SimpleNamespace(

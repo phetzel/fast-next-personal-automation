@@ -211,33 +211,58 @@ class JobService:
         for raw_job in new_jobs:
             external_analysis = external_analysis_by_url.get(raw_job.job_url)
             if external_analysis is not None:
-                external_score = external_analysis["relevance_score"]
-                analyzed_jobs.append((raw_job, external_analysis))
-                result.jobs_analyzed += 1
-                if external_score >= min_score:
-                    result.high_scoring += 1
+                external_score = None
+                external_reasoning = None
+                if isinstance(external_analysis, dict):
+                    external_score_raw = external_analysis.get("relevance_score")
+                    if isinstance(external_score_raw, (int, float)) and not isinstance(
+                        external_score_raw, bool
+                    ):
+                        external_score = float(external_score_raw)
+                    external_reasoning_raw = external_analysis.get("reasoning")
+                    if external_reasoning_raw is None or isinstance(external_reasoning_raw, str):
+                        external_reasoning = external_reasoning_raw
 
-                # Optional QA: run internal analysis for comparison, but keep external values.
-                if qa_with_internal_analysis and resume_text:
-                    # Import here to avoid circular imports.
-                    from app.pipelines.actions.job_search.analyzer import (
-                        JobAnalysis,
-                        analyze_job,
-                    )
-
-                    try:
-                        qa_analysis: JobAnalysis = await analyze_job(
-                            raw_job, resume_text, target_roles, preferences
+                if external_score is not None:
+                    analyzed_jobs.append(
+                        (
+                            raw_job,
+                            {
+                                "relevance_score": external_score,
+                                "reasoning": external_reasoning,
+                            },
                         )
-                        result.qa_jobs_checked += 1
-                        if (
-                            abs(qa_analysis.relevance_score - external_score)
-                            >= qa_score_drift_threshold
-                        ):
-                            result.qa_large_score_drift += 1
-                    except Exception as e:
-                        logger.warning(f"Failed QA analysis for job '{raw_job.title}': {e}")
-                continue
+                    )
+                    result.jobs_analyzed += 1
+                    if external_score >= min_score:
+                        result.high_scoring += 1
+
+                    # Optional QA: run internal analysis for comparison, but keep external values.
+                    if qa_with_internal_analysis and resume_text:
+                        # Import here to avoid circular imports.
+                        from app.pipelines.actions.job_search.analyzer import (
+                            JobAnalysis,
+                            analyze_job,
+                        )
+
+                        try:
+                            qa_analysis: JobAnalysis = await analyze_job(
+                                raw_job, resume_text, target_roles, preferences
+                            )
+                            result.qa_jobs_checked += 1
+                            if (
+                                abs(qa_analysis.relevance_score - external_score)
+                                >= qa_score_drift_threshold
+                            ):
+                                result.qa_large_score_drift += 1
+                        except Exception as e:
+                            logger.warning(f"Failed QA analysis for job '{raw_job.title}': {e}")
+                    continue
+
+                logger.warning(
+                    "Invalid external analysis payload for job '%s'; falling back to internal analysis",
+                    raw_job.job_url,
+                )
 
             if resume_text:
                 # Import here to avoid circular imports.
