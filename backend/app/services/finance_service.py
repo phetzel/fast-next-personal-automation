@@ -55,7 +55,22 @@ class FinanceService:
     # ──────────────────── FinancialAccount ────────────────────────────────
 
     async def create_account(self, user_id: UUID, data: FinancialAccountCreate) -> FinancialAccount:
-        account = await finance_repo.create_account(self.db, user_id=user_id, **data.model_dump())
+        existing_accounts = await finance_repo.get_accounts_by_user(self.db, user_id)
+        is_default = data.is_default or not existing_accounts
+        if is_default and not data.is_active:
+            raise ValidationError(message="Default account must be active")
+
+        account_data = data.model_dump()
+        account_data["is_default"] = is_default
+        account = await finance_repo.create_account(
+            self.db,
+            user_id=user_id,
+            **account_data,
+        )
+        if is_default:
+            await finance_repo.clear_default_account(
+                self.db, user_id, exclude_account_id=account.id
+            )
         return account
 
     async def get_account(self, user_id: UUID, account_id: UUID) -> FinancialAccount:
@@ -76,11 +91,41 @@ class FinanceService:
         update_data = data.model_dump(exclude_unset=True)
         if not update_data:
             return account
-        return await finance_repo.update_account(self.db, account=account, update_data=update_data)
+
+        resulting_is_active = update_data.get("is_active", account.is_active)
+        resulting_is_default = update_data.get("is_default", account.is_default)
+
+        if resulting_is_default and not resulting_is_active:
+            raise ValidationError(message="Default account must be active")
+
+        was_default = account.is_default
+        updated_account = await finance_repo.update_account(
+            self.db, account=account, update_data=update_data
+        )
+
+        if updated_account.is_default:
+            await finance_repo.clear_default_account(
+                self.db, user_id, exclude_account_id=updated_account.id
+            )
+            return updated_account
+
+        if was_default:
+            replacement = await finance_repo.get_first_active_account_by_user(
+                self.db, user_id, exclude_account_id=updated_account.id
+            )
+            if replacement:
+                await finance_repo.set_default_account(self.db, user_id, replacement.id)
+
+        return updated_account
 
     async def delete_account(self, user_id: UUID, account_id: UUID) -> None:
         account = await self.get_account(user_id, account_id)
+        was_default = account.is_default
         await finance_repo.delete_account(self.db, account.id, user_id)
+        if was_default:
+            replacement = await finance_repo.get_first_active_account_by_user(self.db, user_id)
+            if replacement:
+                await finance_repo.set_default_account(self.db, user_id, replacement.id)
 
     async def update_balance(
         self, user_id: UUID, account_id: UUID, balance: Decimal

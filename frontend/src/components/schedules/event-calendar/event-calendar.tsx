@@ -12,12 +12,7 @@ import {
   subMonths,
   subWeeks,
 } from "date-fns";
-import {
-  ChevronDownIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  PlusIcon,
-} from "lucide-react";
+import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -74,9 +69,7 @@ export function EventCalendar({
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarView>(initialView);
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
-    null,
-  );
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
   // Add keyboard shortcuts for view switching
   useEffect(() => {
@@ -257,9 +250,7 @@ export function EventCalendar({
           <span aria-hidden="true" className="max-[479px]:hidden min-md:hidden">
             {format(currentDate, "MMMM d, yyyy")}
           </span>
-          <span className="max-md:hidden">
-            {format(currentDate, "EEE MMMM d, yyyy")}
-          </span>
+          <span className="max-md:hidden">{format(currentDate, "EEE MMMM d, yyyy")}</span>
         </>
       );
     }
@@ -288,46 +279,25 @@ export function EventCalendar({
       }
     >
       <CalendarDndProvider onEventUpdate={handleEventUpdate}>
-        <div
-          className={cn(
-            "flex items-center justify-between p-2 sm:p-4",
-            className,
-          )}
-        >
+        <div className={cn("flex items-center justify-between p-2 sm:p-4", className)}>
           <div className="flex items-center gap-1 sm:gap-4">
             <Button
               className="max-[479px]:aspect-square max-[479px]:p-0!"
               onClick={handleToday}
               variant="outline"
             >
-              <RiCalendarCheckLine
-                aria-hidden="true"
-                className="min-[480px]:hidden"
-                size={16}
-              />
+              <RiCalendarCheckLine aria-hidden="true" className="min-[480px]:hidden" size={16} />
               <span className="max-[479px]:sr-only">Today</span>
             </Button>
             <div className="flex items-center sm:gap-2">
-              <Button
-                aria-label="Previous"
-                onClick={handlePrevious}
-                size="icon"
-                variant="ghost"
-              >
+              <Button aria-label="Previous" onClick={handlePrevious} size="icon" variant="ghost">
                 <ChevronLeftIcon aria-hidden="true" size={16} />
               </Button>
-              <Button
-                aria-label="Next"
-                onClick={handleNext}
-                size="icon"
-                variant="ghost"
-              >
+              <Button aria-label="Next" onClick={handleNext} size="icon" variant="ghost">
                 <ChevronRightIcon aria-hidden="true" size={16} />
               </Button>
             </div>
-            <h2 className="font-semibold text-sm sm:text-lg md:text-xl">
-              {viewTitle}
-            </h2>
+            <h2 className="text-sm font-semibold sm:text-lg md:text-xl">{viewTitle}</h2>
           </div>
           <div className="flex items-center gap-2">
             <DropdownMenu>
@@ -341,11 +311,7 @@ export function EventCalendar({
                       {view.charAt(0).toUpperCase() + view.slice(1)}
                     </span>
                   </span>
-                  <ChevronDownIcon
-                    aria-hidden="true"
-                    className="-me-1 opacity-60"
-                    size={16}
-                  />
+                  <ChevronDownIcon aria-hidden="true" className="-me-1 opacity-60" size={16} />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-32">
@@ -375,11 +341,7 @@ export function EventCalendar({
               }}
               size="sm"
             >
-              <PlusIcon
-                aria-hidden="true"
-                className="sm:-ms-1 opacity-60"
-                size={16}
-              />
+              <PlusIcon aria-hidden="true" className="opacity-60 sm:-ms-1" size={16} />
               <span className="max-sm:sr-only">New event</span>
             </Button>
           </div>

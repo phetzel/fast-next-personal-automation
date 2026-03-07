@@ -41,7 +41,6 @@ export function useFinances() {
     setAccounts,
     setAccountsLoading,
     updateAccount,
-    removeAccount,
     setTransactions,
     setLoading,
     setError,
@@ -95,34 +94,39 @@ export function useFinances() {
   );
 
   const updateAccountData = useCallback(
-    async (accountId: string, data: Partial<FinancialAccount>): Promise<FinancialAccount | null> => {
+    async (
+      accountId: string,
+      data: Partial<FinancialAccount>
+    ): Promise<FinancialAccount | null> => {
       try {
         const account = await apiClient.patch<FinancialAccount>(
           `/finances/accounts/${accountId}`,
           data
         );
-        updateAccount(account);
+        const updated = await apiClient.get<FinancialAccount[]>("/finances/accounts");
+        setAccounts(updated);
         return account;
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to update account");
         return null;
       }
     },
-    [updateAccount, setError]
+    [setAccounts, setError]
   );
 
   const deleteAccount = useCallback(
     async (accountId: string): Promise<boolean> => {
       try {
         await apiClient.delete(`/finances/accounts/${accountId}`);
-        removeAccount(accountId);
+        const updated = await apiClient.get<FinancialAccount[]>("/finances/accounts");
+        setAccounts(updated);
         return true;
       } catch {
         setError("Failed to delete account");
         return false;
       }
     },
-    [removeAccount, setError]
+    [setAccounts, setError]
   );
 
   const updateBalance = useCallback(
@@ -238,10 +242,7 @@ export function useFinances() {
   const markReviewed = useCallback(
     async (txId: string): Promise<Transaction | null> => {
       try {
-        const tx = await apiClient.post<Transaction>(
-          `/finances/transactions/${txId}/review`,
-          {}
-        );
+        const tx = await apiClient.post<Transaction>(`/finances/transactions/${txId}/review`, {});
         updateTransaction(tx);
         return tx;
       } catch {
@@ -254,10 +255,7 @@ export function useFinances() {
   const importCSV = useCallback(
     async (data: CSVImportRequest): Promise<CSVImportResponse | null> => {
       try {
-        return await apiClient.post<CSVImportResponse>(
-          "/finances/transactions/import-csv",
-          data
-        );
+        return await apiClient.post<CSVImportResponse>("/finances/transactions/import-csv", data);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to import CSV");
         return null;
@@ -267,7 +265,10 @@ export function useFinances() {
   );
 
   const triggerCategorize = useCallback(
-    async (limit = 100, accountId?: string): Promise<{ categorized: number; failed: number } | null> => {
+    async (
+      limit = 100,
+      accountId?: string
+    ): Promise<{ categorized: number; failed: number } | null> => {
       try {
         return await apiClient.post("/finances/transactions/categorize", {
           limit,
@@ -362,7 +363,9 @@ export function useFinances() {
       try {
         const recurring = await apiClient.post<RecurringExpense>("/finances/recurring", data);
         // Re-fetch to avoid stale closure over the recurringExpenses list
-        const updated = await apiClient.get<RecurringExpense[]>("/finances/recurring?active_only=false");
+        const updated = await apiClient.get<RecurringExpense[]>(
+          "/finances/recurring?active_only=false"
+        );
         setRecurringExpenses(updated);
         return recurring;
       } catch {
@@ -469,10 +472,7 @@ export function useFinances() {
     [removeCategory, setError]
   );
 
-  const goToPage = useCallback(
-    (page: number) => setFilters({ page }),
-    [setFilters]
-  );
+  const goToPage = useCallback((page: number) => setFilters({ page }), [setFilters]);
 
   return {
     // State

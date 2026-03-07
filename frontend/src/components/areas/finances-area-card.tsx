@@ -6,14 +6,7 @@ import { Card, CardContent } from "@/components/ui";
 import { useFinances } from "@/hooks";
 import { ROUTES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import {
-  Wallet,
-  TrendingDown,
-  TrendingUp,
-  AlertCircle,
-  RefreshCw,
-  ArrowRight,
-} from "lucide-react";
+import { Wallet, TrendingDown, TrendingUp, AlertCircle, RefreshCw, ArrowRight } from "lucide-react";
 
 /**
  * Finances area card for the main dashboard.
@@ -118,7 +111,9 @@ export function FinancesAreaCard() {
           {stats && (
             <div className="border-border/50 mt-4 flex items-center justify-between border-t pt-4 text-sm">
               <span className="text-muted-foreground">
-                <span className="text-foreground font-medium">{stats.current_month_transactions}</span>{" "}
+                <span className="text-foreground font-medium">
+                  {stats.current_month_transactions}
+                </span>{" "}
                 transactions this month
               </span>
               {stats.active_recurring_count > 0 && (
@@ -140,7 +135,11 @@ function fmtShort(n: number): string {
   if (abs >= 1000) {
     return `$${(abs / 1000).toFixed(1)}k`;
   }
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(abs);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(abs);
 }
 
 interface StatPillProps {

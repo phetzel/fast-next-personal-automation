@@ -28,10 +28,7 @@ import {
   useCurrentTimeIndicator,
   WeekCellsHeight,
 } from "./index";
-import {
-  EndHour,
-  StartHour,
-} from "./constants";
+import { EndHour, StartHour } from "./constants";
 import { cn } from "@/lib/utils";
 
 interface WeekViewProps {
@@ -50,22 +47,14 @@ interface PositionedEvent {
   zIndex: number;
 }
 
-export function WeekView({
-  currentDate,
-  events,
-  onEventSelect,
-  onEventCreate,
-}: WeekViewProps) {
+export function WeekView({ currentDate, events, onEventSelect, onEventCreate }: WeekViewProps) {
   const days = useMemo(() => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
     const weekEnd = endOfWeek(currentDate, { weekStartsOn: 0 });
     return eachDayOfInterval({ end: weekEnd, start: weekStart });
   }, [currentDate]);
 
-  const weekStart = useMemo(
-    () => startOfWeek(currentDate, { weekStartsOn: 0 }),
-    [currentDate],
-  );
+  const weekStart = useMemo(() => startOfWeek(currentDate, { weekStartsOn: 0 }), [currentDate]);
 
   const hours = useMemo(() => {
     const dayStart = startOfDay(currentDate);
@@ -89,7 +78,7 @@ export function WeekView({
           (day) =>
             isSameDay(day, eventStart) ||
             isSameDay(day, eventEnd) ||
-            (day > eventStart && day < eventEnd),
+            (day > eventStart && day < eventEnd)
         );
       });
   }, [events, days]);
@@ -142,16 +131,11 @@ export function WeekView({
         const eventEnd = new Date(event.end);
 
         // Adjust start and end times if they're outside this day
-        const adjustedStart = isSameDay(day, eventStart)
-          ? eventStart
-          : dayStart;
-        const adjustedEnd = isSameDay(day, eventEnd)
-          ? eventEnd
-          : addHours(dayStart, 24);
+        const adjustedStart = isSameDay(day, eventStart) ? eventStart : dayStart;
+        const adjustedEnd = isSameDay(day, eventEnd) ? eventEnd : addHours(dayStart, 24);
 
         // Calculate top position and height
-        const startHour =
-          getHours(adjustedStart) + getMinutes(adjustedStart) / 60;
+        const startHour = getHours(adjustedStart) + getMinutes(adjustedStart) / 60;
         const endHour = getHours(adjustedEnd) + getMinutes(adjustedEnd) / 60;
 
         // Adjust the top calculation to account for the new start time
@@ -174,8 +158,8 @@ export function WeekView({
                 {
                   end: new Date(c.event.end),
                   start: new Date(c.event.start),
-                },
-              ),
+                }
+              )
             );
 
             if (!overlaps) {
@@ -217,20 +201,17 @@ export function WeekView({
   };
 
   const showAllDaySection = allDayEvents.length > 0;
-  const { currentTimePosition, currentTimeVisible } = useCurrentTimeIndicator(
-    currentDate,
-    "week",
-  );
+  const { currentTimePosition, currentTimeVisible } = useCurrentTimeIndicator(currentDate, "week");
 
   return (
     <div className="flex h-full flex-col" data-slot="week-view">
-      <div className="sticky top-0 z-30 grid grid-cols-8 border-border/70 border-b bg-background/80 backdrop-blur-md">
-        <div className="py-2 text-center text-muted-foreground/70 text-sm">
+      <div className="border-border/70 bg-background/80 sticky top-0 z-30 grid grid-cols-8 border-b backdrop-blur-md">
+        <div className="text-muted-foreground/70 py-2 text-center text-sm">
           <span className="max-[479px]:sr-only">{format(new Date(), "O")}</span>
         </div>
         {days.map((day) => (
           <div
-            className="py-2 text-center text-muted-foreground/70 text-sm data-today:font-medium data-today:text-foreground"
+            className="text-muted-foreground/70 data-today:text-foreground py-2 text-center text-sm data-today:font-medium"
             data-today={isToday(day) || undefined}
             key={day.toString()}
           >
@@ -243,10 +224,10 @@ export function WeekView({
       </div>
 
       {showAllDaySection && (
-        <div className="border-border/70 border-b bg-muted/50">
+        <div className="border-border/70 bg-muted/50 border-b">
           <div className="grid grid-cols-8">
-            <div className="relative border-border/70 border-r">
-              <span className="absolute bottom-0 left-0 h-6 w-16 max-w-full pe-2 text-right text-[10px] text-muted-foreground/70 sm:pe-4 sm:text-xs">
+            <div className="border-border/70 relative border-r">
+              <span className="text-muted-foreground/70 absolute bottom-0 left-0 h-6 w-16 max-w-full pe-2 text-right text-[10px] sm:pe-4 sm:text-xs">
                 All day
               </span>
             </div>
@@ -263,7 +244,7 @@ export function WeekView({
 
               return (
                 <div
-                  className="relative border-border/70 border-r p-1 last:border-r-0"
+                  className="border-border/70 relative border-r p-1 last:border-r-0"
                   data-today={isToday(day) || undefined}
                   key={day.toString()}
                 >
@@ -274,8 +255,7 @@ export function WeekView({
                     const isLastDay = isSameDay(day, eventEnd);
 
                     // Check if this is the first day in the current week view
-                    const isFirstVisibleDay =
-                      dayIndex === 0 && isBefore(eventStart, weekStart);
+                    const isFirstVisibleDay = dayIndex === 0 && isBefore(eventStart, weekStart);
                     const shouldShowTitle = isFirstDay || isFirstVisibleDay;
 
                     return (
@@ -290,10 +270,7 @@ export function WeekView({
                         {/* Show title if it's the first day of the event or the first visible day in the week */}
                         <div
                           aria-hidden={!shouldShowTitle}
-                          className={cn(
-                            "truncate",
-                            !shouldShowTitle && "invisible",
-                          )}
+                          className={cn("truncate", !shouldShowTitle && "invisible")}
                         >
                           {event.title}
                         </div>
@@ -308,14 +285,14 @@ export function WeekView({
       )}
 
       <div className="grid flex-1 grid-cols-8 overflow-hidden">
-        <div className="grid auto-cols-fr border-border/70 border-r">
+        <div className="border-border/70 grid auto-cols-fr border-r">
           {hours.map((hour, index) => (
             <div
-              className="relative min-h-[var(--week-cells-height)] border-border/70 border-b last:border-b-0"
+              className="border-border/70 relative min-h-[var(--week-cells-height)] border-b last:border-b-0"
               key={hour.toString()}
             >
               {index > 0 && (
-                <span className="-top-3 absolute left-0 flex h-6 w-16 max-w-full items-center justify-end bg-background pe-2 text-[10px] text-muted-foreground/70 sm:pe-4 sm:text-xs">
+                <span className="bg-background text-muted-foreground/70 absolute -top-3 left-0 flex h-6 w-16 max-w-full items-center justify-end pe-2 text-[10px] sm:pe-4 sm:text-xs">
                   {format(hour, "h a")}
                 </span>
               )}
@@ -325,7 +302,7 @@ export function WeekView({
 
         {days.map((day, dayIndex) => (
           <div
-            className="relative grid auto-cols-fr border-border/70 border-r last:border-r-0"
+            className="border-border/70 relative grid auto-cols-fr border-r last:border-r-0"
             data-today={isToday(day) || undefined}
             key={day.toString()}
           >
@@ -362,8 +339,8 @@ export function WeekView({
                 style={{ top: `${currentTimePosition}%` }}
               >
                 <div className="relative flex items-center">
-                  <div className="-left-1 absolute h-2 w-2 rounded-full bg-primary" />
-                  <div className="h-[2px] w-full bg-primary" />
+                  <div className="bg-primary absolute -left-1 h-2 w-2 rounded-full" />
+                  <div className="bg-primary h-[2px] w-full" />
                 </div>
               </div>
             )}
@@ -371,7 +348,7 @@ export function WeekView({
               const hourValue = getHours(hour);
               return (
                 <div
-                  className="relative min-h-[var(--week-cells-height)] border-border/70 border-b last:border-b-0"
+                  className="border-border/70 relative min-h-[var(--week-cells-height)] border-b last:border-b-0"
                   key={hour.toString()}
                 >
                   {/* Quarter-hour intervals */}
@@ -382,12 +359,9 @@ export function WeekView({
                         className={cn(
                           "absolute h-[calc(var(--week-cells-height)/4)] w-full",
                           quarter === 0 && "top-0",
-                          quarter === 1 &&
-                            "top-[calc(var(--week-cells-height)/4)]",
-                          quarter === 2 &&
-                            "top-[calc(var(--week-cells-height)/4*2)]",
-                          quarter === 3 &&
-                            "top-[calc(var(--week-cells-height)/4*3)]",
+                          quarter === 1 && "top-[calc(var(--week-cells-height)/4)]",
+                          quarter === 2 && "top-[calc(var(--week-cells-height)/4*2)]",
+                          quarter === 3 && "top-[calc(var(--week-cells-height)/4*3)]"
                         )}
                         date={day}
                         id={`week-cell-${day.toISOString()}-${quarterHourTime}`}

@@ -52,6 +52,7 @@ export interface FinancialAccount {
   currency: string;
   current_balance: number | null;
   balance_updated_at: string | null;
+  is_default: boolean;
   is_active: boolean;
   notes: string | null;
   created_at: string;

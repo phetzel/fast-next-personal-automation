@@ -14,6 +14,7 @@ const makeAccount = (overrides?: Partial<FinancialAccount>): FinancialAccount =>
   currency: "USD",
   current_balance: 1000,
   balance_updated_at: null,
+  is_default: false,
   is_active: true,
   notes: null,
   created_at: new Date().toISOString(),
@@ -245,10 +246,9 @@ describe("Finance Store", () => {
   });
 
   it("should remove a recurring expense by id", () => {
-    useFinanceStore.getState().setRecurringExpenses([
-      makeRecurring({ id: "r1" }),
-      makeRecurring({ id: "r2" }),
-    ]);
+    useFinanceStore
+      .getState()
+      .setRecurringExpenses([makeRecurring({ id: "r1" }), makeRecurring({ id: "r2" })]);
     useFinanceStore.getState().removeRecurring("r1");
     expect(useFinanceStore.getState().recurringExpenses).toHaveLength(1);
     expect(useFinanceStore.getState().recurringExpenses[0].id).toBe("r2");

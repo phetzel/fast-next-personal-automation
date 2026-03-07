@@ -136,7 +136,9 @@ export function CSVImportModal({ open, onClose, onImport, accounts = [] }: CSVIm
             <div className="rounded-lg bg-emerald-500/10 p-4">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                <p className="font-medium text-emerald-700 dark:text-emerald-400">Import Complete</p>
+                <p className="font-medium text-emerald-700 dark:text-emerald-400">
+                  Import Complete
+                </p>
               </div>
               <ul className="mt-2 space-y-1 text-sm text-emerald-700 dark:text-emerald-400">
                 <li>✓ {result.imported} transactions imported</li>
@@ -158,7 +160,7 @@ export function CSVImportModal({ open, onClose, onImport, accounts = [] }: CSVIm
           )}
 
           {error && (
-            <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3">
+            <div className="bg-destructive/10 flex items-center gap-2 rounded-lg p-3">
               <AlertCircle className="text-destructive h-4 w-4 shrink-0" />
               <p className="text-destructive text-sm">{error}</p>
             </div>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ACCOUNT_TYPE_LABELS } from "@/types";
 import type { FinancialAccount } from "@/types";
-import { Button, Input, Label } from "@/components/ui";
+import { Button, Checkbox, Input, Label } from "@/components/ui";
 import {
   Dialog,
   DialogContent,
@@ -28,7 +28,7 @@ interface AccountFormProps {
 
 const accountTypes = Object.entries(ACCOUNT_TYPE_LABELS) as [
   FinancialAccount["account_type"],
-  string
+  string,
 ][];
 
 export function AccountForm({ open, onClose, onSubmit, account }: AccountFormProps) {
@@ -40,6 +40,7 @@ export function AccountForm({ open, onClose, onSubmit, account }: AccountFormPro
     institution: account?.institution ?? "",
     account_type: account?.account_type ?? "checking",
     currency: account?.currency ?? "USD",
+    is_default: account?.is_default ?? false,
     notes: account?.notes ?? "",
   });
 
@@ -50,6 +51,7 @@ export function AccountForm({ open, onClose, onSubmit, account }: AccountFormPro
         institution: account?.institution ?? "",
         account_type: account?.account_type ?? "checking",
         currency: account?.currency ?? "USD",
+        is_default: account?.is_default ?? false,
         notes: account?.notes ?? "",
       });
       setError(null);
@@ -81,7 +83,7 @@ export function AccountForm({ open, onClose, onSubmit, account }: AccountFormPro
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit Account" : "Add Account"}</DialogTitle>
         </DialogHeader>
@@ -142,6 +144,19 @@ export function AccountForm({ open, onClose, onSubmit, account }: AccountFormPro
             />
           </div>
 
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={formData.is_default}
+              id="is_default"
+              onCheckedChange={(checked) =>
+                setFormData((p) => ({ ...p, is_default: checked === true }))
+              }
+            />
+            <Label htmlFor="is_default" className="cursor-pointer font-normal">
+              Use as default account for new transactions and recurring expenses
+            </Label>
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="notes">Notes</Label>
             <Input
@@ -152,9 +167,7 @@ export function AccountForm({ open, onClose, onSubmit, account }: AccountFormPro
             />
           </div>
 
-          {error && (
-            <p className="text-destructive text-sm">{error}</p>
-          )}
+          {error && <p className="text-destructive text-sm">{error}</p>}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>

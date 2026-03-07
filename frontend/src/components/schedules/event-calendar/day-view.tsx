@@ -23,10 +23,7 @@ import {
   useCurrentTimeIndicator,
   WeekCellsHeight,
 } from "./index";
-import {
-  EndHour,
-  StartHour,
-} from "./constants";
+import { EndHour, StartHour } from "./constants";
 import { cn } from "@/lib/utils";
 
 interface DayViewProps {
@@ -45,12 +42,7 @@ interface PositionedEvent {
   zIndex: number;
 }
 
-export function DayView({
-  currentDate,
-  events,
-  onEventSelect,
-  onEventCreate,
-}: DayViewProps) {
+export function DayView({ currentDate, events, onEventSelect, onEventCreate }: DayViewProps) {
   const hours = useMemo(() => {
     const dayStart = startOfDay(currentDate);
     return eachHourOfInterval({
@@ -70,9 +62,7 @@ export function DayView({
           (currentDate > eventStart && currentDate < eventEnd)
         );
       })
-      .sort(
-        (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime(),
-      );
+      .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
   }, [currentDate, events]);
 
   // Filter all-day events
@@ -121,16 +111,11 @@ export function DayView({
       const eventEnd = new Date(event.end);
 
       // Adjust start and end times if they're outside this day
-      const adjustedStart = isSameDay(currentDate, eventStart)
-        ? eventStart
-        : dayStart;
-      const adjustedEnd = isSameDay(currentDate, eventEnd)
-        ? eventEnd
-        : addHours(dayStart, 24);
+      const adjustedStart = isSameDay(currentDate, eventStart) ? eventStart : dayStart;
+      const adjustedEnd = isSameDay(currentDate, eventEnd) ? eventEnd : addHours(dayStart, 24);
 
       // Calculate top position and height
-      const startHour =
-        getHours(adjustedStart) + getMinutes(adjustedStart) / 60;
+      const startHour = getHours(adjustedStart) + getMinutes(adjustedStart) / 60;
       const endHour = getHours(adjustedEnd) + getMinutes(adjustedEnd) / 60;
 
       const top = (startHour - StartHour) * WeekCellsHeight;
@@ -149,8 +134,8 @@ export function DayView({
           const overlaps = col.some((c) =>
             areIntervalsOverlapping(
               { end: adjustedEnd, start: adjustedStart },
-              { end: new Date(c.event.end), start: new Date(c.event.start) },
-            ),
+              { end: new Date(c.event.end), start: new Date(c.event.start) }
+            )
           );
 
           if (!overlaps) {
@@ -189,22 +174,19 @@ export function DayView({
   };
 
   const showAllDaySection = allDayEvents.length > 0;
-  const { currentTimePosition, currentTimeVisible } = useCurrentTimeIndicator(
-    currentDate,
-    "day",
-  );
+  const { currentTimePosition, currentTimeVisible } = useCurrentTimeIndicator(currentDate, "day");
 
   return (
     <div className="contents" data-slot="day-view">
       {showAllDaySection && (
-        <div className="border-border/70 border-t bg-muted/50">
+        <div className="border-border/70 bg-muted/50 border-t">
           <div className="grid grid-cols-[3rem_1fr] sm:grid-cols-[4rem_1fr]">
             <div className="relative">
-              <span className="absolute bottom-0 left-0 h-6 w-16 max-w-full pe-2 text-right text-[10px] text-muted-foreground/70 sm:pe-4 sm:text-xs">
+              <span className="text-muted-foreground/70 absolute bottom-0 left-0 h-6 w-16 max-w-full pe-2 text-right text-[10px] sm:pe-4 sm:text-xs">
                 All day
               </span>
             </div>
-            <div className="relative border-border/70 border-r p-1 last:border-r-0">
+            <div className="border-border/70 relative border-r p-1 last:border-r-0">
               {allDayEvents.map((event) => {
                 const eventStart = new Date(event.start);
                 const eventEnd = new Date(event.end);
@@ -230,15 +212,15 @@ export function DayView({
         </div>
       )}
 
-      <div className="grid flex-1 grid-cols-[3rem_1fr] overflow-hidden border-border/70 border-t sm:grid-cols-[4rem_1fr]">
+      <div className="border-border/70 grid flex-1 grid-cols-[3rem_1fr] overflow-hidden border-t sm:grid-cols-[4rem_1fr]">
         <div>
           {hours.map((hour, index) => (
             <div
-              className="relative h-[var(--week-cells-height)] border-border/70 border-b last:border-b-0"
+              className="border-border/70 relative h-[var(--week-cells-height)] border-b last:border-b-0"
               key={hour.toString()}
             >
               {index > 0 && (
-                <span className="-top-3 absolute left-0 flex h-6 w-16 max-w-full items-center justify-end bg-background pe-2 text-[10px] text-muted-foreground/70 sm:pe-4 sm:text-xs">
+                <span className="bg-background text-muted-foreground/70 absolute -top-3 left-0 flex h-6 w-16 max-w-full items-center justify-end pe-2 text-[10px] sm:pe-4 sm:text-xs">
                   {format(hour, "h a")}
                 </span>
               )}
@@ -279,8 +261,8 @@ export function DayView({
               style={{ top: `${currentTimePosition}%` }}
             >
               <div className="relative flex items-center">
-                <div className="-left-1 absolute h-2 w-2 rounded-full bg-primary" />
-                <div className="h-[2px] w-full bg-primary" />
+                <div className="bg-primary absolute -left-1 h-2 w-2 rounded-full" />
+                <div className="bg-primary h-[2px] w-full" />
               </div>
             </div>
           )}
@@ -290,7 +272,7 @@ export function DayView({
             const hourValue = getHours(hour);
             return (
               <div
-                className="relative h-[var(--week-cells-height)] border-border/70 border-b last:border-b-0"
+                className="border-border/70 relative h-[var(--week-cells-height)] border-b last:border-b-0"
                 key={hour.toString()}
               >
                 {/* Quarter-hour intervals */}
@@ -301,12 +283,9 @@ export function DayView({
                       className={cn(
                         "absolute h-[calc(var(--week-cells-height)/4)] w-full",
                         quarter === 0 && "top-0",
-                        quarter === 1 &&
-                          "top-[calc(var(--week-cells-height)/4)]",
-                        quarter === 2 &&
-                          "top-[calc(var(--week-cells-height)/4*2)]",
-                        quarter === 3 &&
-                          "top-[calc(var(--week-cells-height)/4*3)]",
+                        quarter === 1 && "top-[calc(var(--week-cells-height)/4)]",
+                        quarter === 2 && "top-[calc(var(--week-cells-height)/4*2)]",
+                        quarter === 3 && "top-[calc(var(--week-cells-height)/4*3)]"
                       )}
                       date={currentDate}
                       id={`day-cell-${currentDate.toISOString()}-${quarterHourTime}`}

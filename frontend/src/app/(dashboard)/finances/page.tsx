@@ -92,12 +92,48 @@ export default function FinancesOverviewPage() {
 
       {/* Quick Actions */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <QuickLink href={ROUTES.FINANCES_TRANSACTIONS} icon={Receipt} label="Transactions" desc="View & manage all transactions" color="blue" />
-        <QuickLink href={ROUTES.FINANCES_ACCOUNTS} icon={Building2} label="Accounts" desc="Manage financial accounts" color="purple" />
-        <QuickLink href={ROUTES.FINANCES_BUDGETS} icon={PiggyBank} label="Budgets" desc="Track spending limits" color="green" />
-        <QuickLink href={ROUTES.FINANCES_RECURRING} icon={RefreshCw} label="Recurring" desc={`${stats?.active_recurring_count ?? 0} active subscriptions`} color="orange" />
-        <QuickLink href={ROUTES.FINANCES_ASSISTANT} icon={Bot} label="Assistant" desc="Ask about your finances" color="violet" />
-        <QuickLink href={ROUTES.PIPELINES} icon={Workflow} label="Run Email Sync" desc="Import transactions from email" color="cyan" />
+        <QuickLink
+          href={ROUTES.FINANCES_TRANSACTIONS}
+          icon={Receipt}
+          label="Transactions"
+          desc="View & manage all transactions"
+          color="blue"
+        />
+        <QuickLink
+          href={ROUTES.FINANCES_ACCOUNTS}
+          icon={Building2}
+          label="Accounts"
+          desc="Manage financial accounts"
+          color="purple"
+        />
+        <QuickLink
+          href={ROUTES.FINANCES_BUDGETS}
+          icon={PiggyBank}
+          label="Budgets"
+          desc="Track spending limits"
+          color="green"
+        />
+        <QuickLink
+          href={ROUTES.FINANCES_RECURRING}
+          icon={RefreshCw}
+          label="Recurring"
+          desc={`${stats?.active_recurring_count ?? 0} active subscriptions`}
+          color="orange"
+        />
+        <QuickLink
+          href={ROUTES.FINANCES_ASSISTANT}
+          icon={Bot}
+          label="Assistant"
+          desc="Ask about your finances"
+          color="violet"
+        />
+        <QuickLink
+          href={ROUTES.PIPELINES}
+          icon={Workflow}
+          label="Run Email Sync"
+          desc="Import transactions from email"
+          color="cyan"
+        />
       </div>
 
       <Separator />
@@ -127,21 +163,35 @@ export default function FinancesOverviewPage() {
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {budgetStatus.slice(0, 6).map((bs) => {
-                  const pct = bs.budget.amount_limit > 0
-                    ? Math.min((bs.spent_amount / bs.budget.amount_limit) * 100, 100)
-                    : 0;
+                  const pct =
+                    bs.budget.amount_limit > 0
+                      ? Math.min((bs.spent_amount / bs.budget.amount_limit) * 100, 100)
+                      : 0;
                   return (
-                    <div key={bs.budget.id} className="rounded-lg border p-3 space-y-2">
+                    <div key={bs.budget.id} className="space-y-2 rounded-lg border p-3">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium capitalize">{(bs.budget.category ?? "General").replace("_", " ")}</span>
-                        <span className={cn("text-xs", bs.is_over_budget ? "text-destructive" : "text-muted-foreground")}>
-                          {formatCurrency(bs.spent_amount)} / {formatCurrency(bs.budget.amount_limit)}
+                        <span className="font-medium capitalize">
+                          {(bs.budget.category ?? "General").replace("_", " ")}
+                        </span>
+                        <span
+                          className={cn(
+                            "text-xs",
+                            bs.is_over_budget ? "text-destructive" : "text-muted-foreground"
+                          )}
+                        >
+                          {formatCurrency(bs.spent_amount)} /{" "}
+                          {formatCurrency(bs.budget.amount_limit)}
                         </span>
                       </div>
-                      <div className="bg-muted h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-muted h-1.5 overflow-hidden rounded-full">
                         <div
-                          className={cn("h-full rounded-full transition-all",
-                            bs.is_over_budget ? "bg-destructive" : pct >= 80 ? "bg-amber-500" : "bg-emerald-500"
+                          className={cn(
+                            "h-full rounded-full transition-all",
+                            bs.is_over_budget
+                              ? "bg-destructive"
+                              : pct >= 80
+                                ? "bg-amber-500"
+                                : "bg-emerald-500"
                           )}
                           style={{ width: `${pct}%` }}
                         />
@@ -254,7 +304,7 @@ function QuickLink({
           <div className={cn("rounded-lg p-2.5", colors[color])}>
             <Icon className="h-5 w-5" />
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             <h3 className="font-semibold">{label}</h3>
             <p className="text-muted-foreground truncate text-sm">{desc}</p>
           </div>
