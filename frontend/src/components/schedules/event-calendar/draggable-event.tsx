@@ -5,11 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { differenceInDays } from "date-fns";
 import { useRef, useState } from "react";
 
-import {
-  type CalendarEvent,
-  EventItem,
-  useCalendarDnd,
-} from "./index";
+import { type CalendarEvent, EventItem, useCalendarDnd } from "./index";
 
 interface DraggableEventProps {
   event: CalendarEvent;
@@ -46,23 +42,21 @@ export function DraggableEvent({
   // Check if this is a multi-day event
   const eventStart = new Date(event.start);
   const eventEnd = new Date(event.end);
-  const isMultiDayEvent =
-    isMultiDay || event.allDay || differenceInDays(eventEnd, eventStart) >= 1;
+  const isMultiDayEvent = isMultiDay || event.allDay || differenceInDays(eventEnd, eventStart) >= 1;
 
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      data: {
-        dragHandlePosition,
-        event,
-        height: height || elementRef.current?.offsetHeight || null,
-        isFirstDay,
-        isLastDay,
-        isMultiDay: isMultiDayEvent,
-        multiDayWidth: multiDayWidth,
-        view,
-      },
-      id: `${event.id}-${view}`,
-    });
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    data: {
+      dragHandlePosition,
+      event,
+      height: height || elementRef.current?.offsetHeight || null,
+      isFirstDay,
+      isLastDay,
+      isMultiDay: isMultiDayEvent,
+      multiDayWidth: multiDayWidth,
+      view,
+    },
+    id: `${event.id}-${view}`,
+  });
 
   // Handle mouse down to track where on the event the user clicked
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -77,26 +71,18 @@ export function DraggableEvent({
 
   // Don't render if this event is being dragged
   if (isDragging || activeId === `${event.id}-${view}`) {
-    return (
-      <div
-        className="opacity-0"
-        ref={setNodeRef}
-        style={{ height: height || "auto" }}
-      />
-    );
+    return <div className="opacity-0" ref={setNodeRef} style={{ height: height || "auto" }} />;
   }
 
   const style = transform
     ? {
         height: height || "auto",
         transform: CSS.Translate.toString(transform),
-        width:
-          isMultiDayEvent && multiDayWidth ? `${multiDayWidth}%` : undefined,
+        width: isMultiDayEvent && multiDayWidth ? `${multiDayWidth}%` : undefined,
       }
     : {
         height: height || "auto",
-        width:
-          isMultiDayEvent && multiDayWidth ? `${multiDayWidth}%` : undefined,
+        width: isMultiDayEvent && multiDayWidth ? `${multiDayWidth}%` : undefined,
       };
 
   // Handle touch start to track where on the event the user touched

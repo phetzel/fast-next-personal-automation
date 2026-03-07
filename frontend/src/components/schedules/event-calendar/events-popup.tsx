@@ -4,10 +4,7 @@ import { format, isSameDay } from "date-fns";
 import { XIcon } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 
-import {
-  type CalendarEvent,
-  EventItem,
-} from "./index";
+import { type CalendarEvent, EventItem } from "./index";
 
 interface EventsPopupProps {
   date: Date;
@@ -17,22 +14,13 @@ interface EventsPopupProps {
   onEventSelect: (event: CalendarEvent) => void;
 }
 
-export function EventsPopup({
-  date,
-  events,
-  position,
-  onClose,
-  onEventSelect,
-}: EventsPopupProps) {
+export function EventsPopup({ date, events, position, onClose, onEventSelect }: EventsPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null);
 
   // Handle click outside to close popup
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        popupRef.current &&
-        !popupRef.current.contains(event.target as Node)
-      ) {
+      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
         onClose();
       }
     };
@@ -88,18 +76,18 @@ export function EventsPopup({
 
   return (
     <div
-      className="absolute z-50 max-h-96 w-80 overflow-auto rounded-md border bg-background shadow-lg"
+      className="bg-background absolute z-50 max-h-96 w-80 overflow-auto rounded-md border shadow-lg"
       ref={popupRef}
       style={{
         left: `${adjustedPosition.left}px`,
         top: `${adjustedPosition.top}px`,
       }}
     >
-      <div className="sticky top-0 flex items-center justify-between border-b bg-background p-3">
+      <div className="bg-background sticky top-0 flex items-center justify-between border-b p-3">
         <h3 className="font-medium">{format(date, "d MMMM yyyy")}</h3>
         <button
           aria-label="Close"
-          className="rounded-full p-1 hover:bg-muted"
+          className="hover:bg-muted rounded-full p-1"
           onClick={onClose}
           type="button"
         >
@@ -109,7 +97,7 @@ export function EventsPopup({
 
       <div className="space-y-2 p-3">
         {events.length === 0 ? (
-          <div className="py-2 text-muted-foreground text-sm">No events</div>
+          <div className="text-muted-foreground py-2 text-sm">No events</div>
         ) : (
           events.map((event) => {
             const eventStart = new Date(event.start);

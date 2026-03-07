@@ -88,14 +88,20 @@ export function TransactionTable({
             const account = tx.account_id ? accountMap[tx.account_id] : null;
 
             return (
-              <tr key={tx.id} className={cn("group hover:bg-muted/40 transition-colors", !tx.is_reviewed && "bg-amber-50/30 dark:bg-amber-500/5")}>
+              <tr
+                key={tx.id}
+                className={cn(
+                  "group hover:bg-muted/40 transition-colors",
+                  !tx.is_reviewed && "bg-amber-50/30 dark:bg-amber-500/5"
+                )}
+              >
                 <td className="py-2.5 pr-4 whitespace-nowrap">
                   {new Date(tx.transaction_date + "T00:00:00").toLocaleDateString("en-US", {
                     month: "short",
                     day: "numeric",
                   })}
                 </td>
-                <td className="py-2.5 pr-4 max-w-[240px]">
+                <td className="max-w-[240px] py-2.5 pr-4">
                   <p className="truncate font-medium">{tx.description}</p>
                   {tx.merchant && tx.merchant !== tx.description && (
                     <p className="text-muted-foreground truncate text-xs">{tx.merchant}</p>
@@ -104,18 +110,17 @@ export function TransactionTable({
                 <td className="py-2.5 pr-4">
                   <CategoryBadge category={tx.category} />
                 </td>
-                <td className="py-2.5 pr-4 text-muted-foreground">
-                  {account?.name ?? "—"}
-                </td>
+                <td className="text-muted-foreground py-2.5 pr-4">{account?.name ?? "—"}</td>
                 <td
                   className={cn(
-                    "py-2.5 pr-2 text-right font-semibold tabular-nums whitespace-nowrap",
+                    "py-2.5 pr-2 text-right font-semibold whitespace-nowrap tabular-nums",
                     isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
                   )}
                 >
-                  {isPositive ? "+" : ""}{formatted}
+                  {isPositive ? "+" : ""}
+                  {formatted}
                 </td>
-                <td className="py-2.5 px-2 text-center">
+                <td className="px-2 py-2.5 text-center">
                   <span
                     className="text-muted-foreground inline-flex items-center gap-1 text-xs"
                     title={sourceLabel[tx.source]}
@@ -124,7 +129,7 @@ export function TransactionTable({
                   </span>
                 </td>
                 <td className="py-2.5 pl-1">
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                     {onMarkReviewed && (
                       <Button
                         variant="ghost"

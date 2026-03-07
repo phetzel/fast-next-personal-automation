@@ -3,8 +3,19 @@
 import { cn } from "@/lib/utils";
 import { ACCOUNT_TYPE_LABELS } from "@/types";
 import type { FinancialAccount } from "@/types";
-import { Building2, CreditCard, TrendingUp, Landmark, AlertCircle, MoreHorizontal, Pencil, Trash2, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui";
+import {
+  Building2,
+  Check,
+  CreditCard,
+  TrendingUp,
+  Landmark,
+  AlertCircle,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  RefreshCw,
+} from "lucide-react";
+import { Badge, Button } from "@/components/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +29,7 @@ interface AccountCardProps {
   onEdit?: (account: FinancialAccount) => void;
   onDelete?: (account: FinancialAccount) => void;
   onUpdateBalance?: (account: FinancialAccount) => void;
+  onSetDefault?: (account: FinancialAccount) => void;
 }
 
 const accountTypeIcons = {
@@ -38,7 +50,13 @@ const accountTypeColors = {
   other: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
 };
 
-export function AccountCard({ account, onEdit, onDelete, onUpdateBalance }: AccountCardProps) {
+export function AccountCard({
+  account,
+  onEdit,
+  onDelete,
+  onUpdateBalance,
+  onSetDefault,
+}: AccountCardProps) {
   const Icon = accountTypeIcons[account.account_type] ?? Building2;
   const colorClass = accountTypeColors[account.account_type] ?? accountTypeColors.other;
 
@@ -60,7 +78,10 @@ export function AccountCard({ account, onEdit, onDelete, onUpdateBalance }: Acco
             <Icon className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="font-semibold leading-tight">{account.name}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="leading-tight font-semibold">{account.name}</h3>
+              {account.is_default && <Badge variant="secondary">Default</Badge>}
+            </div>
             <p className="text-muted-foreground text-sm">
               {ACCOUNT_TYPE_LABELS[account.account_type]}
               {account.institution && ` · ${account.institution}`}
@@ -76,6 +97,12 @@ export function AccountCard({ account, onEdit, onDelete, onUpdateBalance }: Acco
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {!account.is_default && onSetDefault && (
+              <DropdownMenuItem onClick={() => onSetDefault(account)}>
+                <Check className="mr-2 h-4 w-4" />
+                Make Default
+              </DropdownMenuItem>
+            )}
             {onUpdateBalance && (
               <DropdownMenuItem onClick={() => onUpdateBalance(account)}>
                 <RefreshCw className="mr-2 h-4 w-4" />
@@ -88,7 +115,7 @@ export function AccountCard({ account, onEdit, onDelete, onUpdateBalance }: Acco
                 Edit
               </DropdownMenuItem>
             )}
-            {(onEdit || onUpdateBalance) && onDelete && <DropdownMenuSeparator />}
+            {(onEdit || onUpdateBalance || onSetDefault) && onDelete && <DropdownMenuSeparator />}
             {onDelete && (
               <DropdownMenuItem
                 onClick={() => onDelete(account)}
@@ -103,7 +130,7 @@ export function AccountCard({ account, onEdit, onDelete, onUpdateBalance }: Acco
       </div>
 
       <div className="mt-4">
-        <p className="text-muted-foreground text-xs uppercase tracking-wider">Current Balance</p>
+        <p className="text-muted-foreground text-xs tracking-wider uppercase">Current Balance</p>
         <p
           className={cn(
             "mt-1 text-2xl font-bold tracking-tight",

@@ -193,7 +193,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <nav className="flex-1 space-y-0.5 p-3">
+    <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
       {/* General navigation */}
       {generalNavigation.map((item) => (
         <NavLink
@@ -256,7 +256,7 @@ export function Sidebar() {
       </aside>
 
       <Sheet open={isOpen} onOpenChange={close}>
-        <SheetContent side="left" className="w-72 p-0">
+        <SheetContent side="left" className="flex h-full w-72 flex-col p-0">
           <SheetHeader className="h-14 px-4">
             <SheetTitle>{"personal_automations"}</SheetTitle>
             <SheetClose onClick={close} />

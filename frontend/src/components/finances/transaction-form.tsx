@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FinanceCategory, FinancialAccount, Transaction } from "@/types";
 import { Button, Input, Label } from "@/components/ui";
 import {
@@ -37,25 +37,24 @@ export function TransactionForm({
 }: TransactionFormProps) {
   const isEdit = !!transaction;
   const [loading, setLoading] = useState(false);
-  const today = new Date().toISOString().split("T")[0];
+  const defaultAccountId =
+    accounts.find((account) => account.is_default && account.is_active)?.id ?? "";
 
-  const [formData, setFormData] = useState({
-    description: transaction?.description ?? "",
-    amount: transaction ? String(Math.abs(transaction.amount)) : "",
-    transaction_type: transaction?.transaction_type ?? "debit",
-    transaction_date: transaction?.transaction_date ?? today,
-    merchant: transaction?.merchant ?? "",
-    category: transaction?.category ?? "",
-    account_id: transaction?.account_id ?? "",
-    notes: transaction?.notes ?? "",
-  });
+  const [formData, setFormData] = useState(() => buildFormData(transaction, defaultAccountId));
+
+  useEffect(() => {
+    if (open) {
+      setFormData(buildFormData(transaction, defaultAccountId));
+    }
+  }, [open, transaction, defaultAccountId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     const rawAmount = parseFloat(formData.amount);
-    const amount = formData.transaction_type === "debit" ? -Math.abs(rawAmount) : Math.abs(rawAmount);
+    const amount =
+      formData.transaction_type === "debit" ? -Math.abs(rawAmount) : Math.abs(rawAmount);
 
     try {
       await onSubmit({
@@ -76,7 +75,7 @@ export function TransactionForm({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit Transaction" : "Add Transaction"}</DialogTitle>
         </DialogHeader>
@@ -110,17 +109,26 @@ export function TransactionForm({
               <Label htmlFor="type">Type *</Label>
               <Select
                 value={formData.transaction_type}
-                onValueChange={(v) => setFormData((p) => ({ ...p, transaction_type: v as Transaction["transaction_type"] }))}
+                onValueChange={(v) =>
+                  setFormData((p) => ({
+                    ...p,
+                    transaction_type: v as Transaction["transaction_type"],
+                  }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="debit">Expense (Debit)</SelectItem>
-                  <SelectItem value="credit">Income (Credit)</SelectItem>
-                  <SelectItem value="transfer">Transfer</SelectItem>
+                  <SelectItem value="debit">Expense (money out)</SelectItem>
+                  <SelectItem value="credit">Income (money in)</SelectItem>
+                  <SelectItem value="transfer">Transfer (label only)</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-muted-foreground text-xs">
+                Transfers are not double-entry yet. They currently save as a normal transaction with
+                a transfer label.
+              </p>
             </div>
           </div>
 
@@ -168,16 +176,20 @@ export function TransactionForm({
             <div className="space-y-1.5">
               <Label htmlFor="account_id">Account</Label>
               <Select
-                value={formData.account_id}
-                onValueChange={(v) => setFormData((p) => ({ ...p, account_id: v }))}
+                value={formData.account_id || "__none__"}
+                onValueChange={(v) =>
+                  setFormData((p) => ({ ...p, account_id: v === "__none__" ? "" : v }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select account..." />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="__none__">No account</SelectItem>
                   {accounts.map((acc) => (
                     <SelectItem key={acc.id} value={acc.id}>
                       {acc.name}
+                      {acc.is_default ? " (default)" : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -207,4 +219,18 @@ export function TransactionForm({
       </DialogContent>
     </Dialog>
   );
+}
+
+function buildFormData(transaction: Transaction | null | undefined, defaultAccountId: string) {
+  const today = new Date().toISOString().split("T")[0];
+  return {
+    description: transaction?.description ?? "",
+    amount: transaction ? String(Math.abs(transaction.amount)) : "",
+    transaction_type: transaction?.transaction_type ?? "debit",
+    transaction_date: transaction?.transaction_date ?? today,
+    merchant: transaction?.merchant ?? "",
+    category: transaction?.category ?? "",
+    account_id: transaction?.account_id ?? defaultAccountId,
+    notes: transaction?.notes ?? "",
+  };
 }

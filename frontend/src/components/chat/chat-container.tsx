@@ -63,13 +63,10 @@ function AuthenticatedChatContainer({ area, showAreaBanner }: AuthenticatedChatC
     setChatMessages(convertedMessages);
   }, [currentMessages, setChatMessages]);
 
-  const handleConversationCreated = useCallback(
-    () => {
-      // Refresh conversation list when a new conversation is created
-      fetchConversations();
-    },
-    [fetchConversations]
-  );
+  const handleConversationCreated = useCallback(() => {
+    // Refresh conversation list when a new conversation is created
+    fetchConversations();
+  }, [fetchConversations]);
 
   const { messages, isConnected, isProcessing, connect, disconnect, sendMessage, clearMessages } =
     useChat({

@@ -4,16 +4,8 @@ import { RiCalendarLine, RiDeleteBinLine } from "@remixicon/react";
 import { format, isBefore } from "date-fns";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type {
-  CalendarEvent,
-  EventColor,
-} from "./index";
-import {
-  DefaultEndHour,
-  DefaultStartHour,
-  EndHour,
-  StartHour,
-} from "./constants";
+import type { CalendarEvent, EventColor } from "./index";
+import { DefaultEndHour, DefaultStartHour, EndHour, StartHour } from "./constants";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -28,11 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -51,13 +39,7 @@ interface EventDialogProps {
   onDelete: (eventId: string) => void;
 }
 
-export function EventDialog({
-  event,
-  isOpen,
-  onClose,
-  onSave,
-  onDelete,
-}: EventDialogProps) {
+export function EventDialog({ event, isOpen, onClose, onSave, onDelete }: EventDialogProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState<Date>(new Date());
@@ -133,9 +115,7 @@ export function EventDialog({
     const end = new Date(endDate);
 
     if (!allDay) {
-      const [startHours = 0, startMinutes = 0] = startTime
-        .split(":")
-        .map(Number);
+      const [startHours = 0, startMinutes = 0] = startTime.split(":").map(Number);
       const [endHours = 0, endMinutes = 0] = endTime.split(":").map(Number);
 
       if (
@@ -144,9 +124,7 @@ export function EventDialog({
         endHours < StartHour ||
         endHours > EndHour
       ) {
-        setError(
-          `Selected time must be between ${StartHour}:00 and ${EndHour}:00`,
-        );
+        setError(`Selected time must be between ${StartHour}:00 and ${EndHour}:00`);
         return;
       }
 
@@ -235,24 +213,18 @@ export function EventDialog({
         <DialogHeader>
           <DialogTitle>{event?.id ? "Edit Event" : "Create Event"}</DialogTitle>
           <DialogDescription className="sr-only">
-            {event?.id
-              ? "Edit the details of this event"
-              : "Add a new event to your calendar"}
+            {event?.id ? "Edit the details of this event" : "Add a new event to your calendar"}
           </DialogDescription>
         </DialogHeader>
         {error && (
-          <div className="rounded-md bg-destructive/15 px-3 py-2 text-destructive text-sm">
+          <div className="bg-destructive/15 text-destructive rounded-md px-3 py-2 text-sm">
             {error}
           </div>
         )}
         <div className="grid gap-4 py-4">
           <div className="*:not-first:mt-1.5">
             <Label htmlFor="title">Title</Label>
-            <Input
-              id="title"
-              onChange={(e) => setTitle(e.target.value)}
-              value={title}
-            />
+            <Input id="title" onChange={(e) => setTitle(e.target.value)} value={title} />
           </div>
 
           <div className="*:not-first:mt-1.5">
@@ -272,23 +244,18 @@ export function EventDialog({
                 <PopoverTrigger asChild>
                   <Button
                     className={cn(
-                      "group w-full justify-between border-input bg-background px-3 font-normal outline-none outline-offset-0 hover:bg-background focus-visible:outline-[3px]",
-                      !startDate && "text-muted-foreground",
+                      "group border-input bg-background hover:bg-background w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
+                      !startDate && "text-muted-foreground"
                     )}
                     id="start-date"
                     variant={"outline"}
                   >
-                    <span
-                      className={cn(
-                        "truncate",
-                        !startDate && "text-muted-foreground",
-                      )}
-                    >
+                    <span className={cn("truncate", !startDate && "text-muted-foreground")}>
                       {startDate ? format(startDate, "PPP") : "Pick a date"}
                     </span>
                     <RiCalendarLine
                       aria-hidden="true"
-                      className="shrink-0 text-muted-foreground/80"
+                      className="text-muted-foreground/80 shrink-0"
                       size={16}
                     />
                   </Button>
@@ -340,23 +307,18 @@ export function EventDialog({
                 <PopoverTrigger asChild>
                   <Button
                     className={cn(
-                      "group w-full justify-between border-input bg-background px-3 font-normal outline-none outline-offset-0 hover:bg-background focus-visible:outline-[3px]",
-                      !endDate && "text-muted-foreground",
+                      "group border-input bg-background hover:bg-background w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
+                      !endDate && "text-muted-foreground"
                     )}
                     id="end-date"
                     variant={"outline"}
                   >
-                    <span
-                      className={cn(
-                        "truncate",
-                        !endDate && "text-muted-foreground",
-                      )}
-                    >
+                    <span className={cn("truncate", !endDate && "text-muted-foreground")}>
                       {endDate ? format(endDate, "PPP") : "Pick a date"}
                     </span>
                     <RiCalendarLine
                       aria-hidden="true"
-                      className="shrink-0 text-muted-foreground/80"
+                      className="text-muted-foreground/80 shrink-0"
                       size={16}
                     />
                   </Button>
@@ -409,16 +371,10 @@ export function EventDialog({
 
           <div className="*:not-first:mt-1.5">
             <Label htmlFor="location">Location</Label>
-            <Input
-              id="location"
-              onChange={(e) => setLocation(e.target.value)}
-              value={location}
-            />
+            <Input id="location" onChange={(e) => setLocation(e.target.value)} value={location} />
           </div>
           <fieldset className="space-y-4">
-            <legend className="font-medium text-foreground text-sm leading-none">
-              Etiquette
-            </legend>
+            <legend className="text-foreground text-sm leading-none font-medium">Etiquette</legend>
             <RadioGroup
               className="flex gap-1.5"
               defaultValue={colorOptions[0]?.value}
@@ -428,11 +384,7 @@ export function EventDialog({
               {colorOptions.map((colorOption) => (
                 <RadioGroupItem
                   aria-label={colorOption.label}
-                  className={cn(
-                    "size-6 shadow-none",
-                    colorOption.bgClass,
-                    colorOption.borderClass,
-                  )}
+                  className={cn("size-6 shadow-none", colorOption.bgClass, colorOption.borderClass)}
                   id={`color-${colorOption.value}`}
                   key={colorOption.value}
                   value={colorOption.value}
@@ -443,12 +395,7 @@ export function EventDialog({
         </div>
         <DialogFooter className="flex-row sm:justify-between">
           {event?.id && (
-            <Button
-              aria-label="Delete event"
-              onClick={handleDelete}
-              size="icon"
-              variant="outline"
-            >
+            <Button aria-label="Delete event" onClick={handleDelete} size="icon" variant="outline">
               <RiDeleteBinLine aria-hidden="true" size={16} />
             </Button>
           )}

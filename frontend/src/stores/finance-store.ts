@@ -124,8 +124,7 @@ export const useFinanceStore = create<FinanceStore>((set) => ({
   setTransactions: (transactions, total) => set({ transactions, total, error: null }),
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error }),
-  setFilters: (newFilters) =>
-    set((state) => ({ filters: { ...state.filters, ...newFilters } })),
+  setFilters: (newFilters) => set((state) => ({ filters: { ...state.filters, ...newFilters } })),
   resetFilters: () => set({ filters: defaultFilters }),
   setSelectedTransaction: (selectedTransaction) => set({ selectedTransaction }),
   updateTransaction: (updated) =>
@@ -159,9 +158,7 @@ export const useFinanceStore = create<FinanceStore>((set) => ({
   setRecurringLoading: (recurringLoading) => set({ recurringLoading }),
   updateRecurring: (updated) =>
     set((state) => ({
-      recurringExpenses: state.recurringExpenses.map((r) =>
-        r.id === updated.id ? updated : r
-      ),
+      recurringExpenses: state.recurringExpenses.map((r) => (r.id === updated.id ? updated : r)),
     })),
   removeRecurring: (recurringId) =>
     set((state) => ({

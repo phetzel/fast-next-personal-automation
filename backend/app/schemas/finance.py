@@ -52,6 +52,7 @@ class FinancialAccountBase(BaseSchema):
     account_type: AccountType = AccountType.CHECKING
     last_four: str | None = Field(default=None, max_length=4, description="Last 4 digits")
     currency: str = Field(default="USD", max_length=3)
+    is_default: bool = False
     is_active: bool = True
     notes: str | None = None
 
@@ -66,6 +67,7 @@ class FinancialAccountUpdate(BaseSchema):
     account_type: AccountType | None = None
     last_four: str | None = Field(default=None, max_length=4)
     currency: str | None = Field(default=None, max_length=3)
+    is_default: bool | None = None
     is_active: bool | None = None
     notes: str | None = None
 

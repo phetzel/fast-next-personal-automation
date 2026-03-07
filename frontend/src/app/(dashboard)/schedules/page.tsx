@@ -105,8 +105,10 @@ export default function SchedulesPage() {
 
     // Fetch system tasks once on mount
     fetch("/api/schedules/system-tasks")
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => { if (data?.tasks) setSystemTasks(data.tasks); })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.tasks) setSystemTasks(data.tasks);
+      })
       .catch(() => {});
   }, [fetchPipelines, fetchSchedules]);
 
@@ -125,7 +127,9 @@ export default function SchedulesPage() {
     });
     fetch(`/api/schedules/runs-calendar?${runsQs}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { if (data?.events) setPastRunEvents(data.events); })
+      .then((data) => {
+        if (data?.events) setPastRunEvents(data.events);
+      })
       .catch(() => {});
 
     // Fetch recurring expense calendar occurrences
@@ -135,7 +139,9 @@ export default function SchedulesPage() {
     });
     fetch(`/api/finances/recurring/calendar?${recurringQs}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { if (data?.occurrences) setRecurringOccurrences(data.occurrences); })
+      .then((data) => {
+        if (data?.occurrences) setRecurringOccurrences(data.occurrences);
+      })
       .catch(() => {});
   }, [currentDate, fetchOccurrences]);
 
@@ -185,7 +191,7 @@ export default function SchedulesPage() {
     return [...futureOccurrenceEvents, ...pastEvents, ...recurringEvents];
   }, [occurrences, pastRunEvents, recurringOccurrences]);
 
-  const handleCalendarCreate = (_startTime?: Date) => {
+  const handleCalendarCreate = () => {
     openNewScheduleDialog();
   };
 
@@ -314,7 +320,7 @@ export default function SchedulesPage() {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-destructive">
+        <div className="border-destructive/50 bg-destructive/10 text-destructive flex items-center gap-2 rounded-lg border p-4">
           <AlertCircle className="h-5 w-5" />
           <span>{error}</span>
         </div>
@@ -323,9 +329,9 @@ export default function SchedulesPage() {
       {/* Calendar — past = actual runs, future = scheduled occurrences */}
       <Card className="overflow-hidden">
         <CardHeader className="pb-2">
-          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+          <div className="text-muted-foreground flex flex-wrap items-center gap-4 text-sm">
             <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-muted-foreground/60" />
+              <span className="bg-muted-foreground/60 inline-block h-2.5 w-2.5 rounded-full" />
               Past runs (colored by task or status)
             </span>
             <span className="flex items-center gap-1.5">
@@ -366,12 +372,12 @@ export default function SchedulesPage() {
         <CardContent>
           {isLoading && schedules.length === 0 ? (
             <div className="flex justify-center py-8">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              <div className="border-primary h-8 w-8 animate-spin rounded-full border-4 border-t-transparent" />
             </div>
           ) : schedules.length === 0 ? (
             <div className="py-8 text-center">
-              <Calendar className="mx-auto h-12 w-12 text-muted-foreground/50" />
-              <p className="mt-4 text-muted-foreground">No scheduled tasks yet</p>
+              <Calendar className="text-muted-foreground/50 mx-auto h-12 w-12" />
+              <p className="text-muted-foreground mt-4">No scheduled tasks yet</p>
               <Button className="mt-4" onClick={openNewScheduleDialog} variant="outline">
                 <Plus className="mr-2 h-4 w-4" />
                 Create your first schedule
@@ -400,16 +406,14 @@ export default function SchedulesPage() {
                           {task.enabled ? "Active" : "Paused"}
                         </Badge>
                       </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                      <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                         <span>{describeCron(task.cron_expression) ?? task.cron_expression}</span>
                         <span>|</span>
                         <span>{task.pipeline_name}</span>
                         {task.next_run_at && (
                           <>
                             <span>|</span>
-                            <span>
-                              Next: {new Date(task.next_run_at).toLocaleString()}
-                            </span>
+                            <span>Next: {new Date(task.next_run_at).toLocaleString()}</span>
                           </>
                         )}
                       </div>
@@ -442,7 +446,7 @@ export default function SchedulesPage() {
                       onClick={() => handleDelete(task)}
                       title="Delete"
                     >
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                      <Trash2 className="text-destructive h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -457,7 +461,7 @@ export default function SchedulesPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Lock className="h-5 w-5 text-muted-foreground" />
+              <Lock className="text-muted-foreground h-5 w-5" />
               System Tasks
             </CardTitle>
             <CardDescription>
@@ -469,16 +473,18 @@ export default function SchedulesPage() {
               {systemTasks.map((task) => (
                 <div
                   key={task.id}
-                  className="flex items-center justify-between rounded-lg border border-dashed bg-muted/30 p-4"
+                  className="bg-muted/30 flex items-center justify-between rounded-lg border border-dashed p-4"
                 >
                   <div className="flex items-center gap-4">
-                    <Lock className="h-4 w-4 text-muted-foreground/60 shrink-0" />
+                    <Lock className="text-muted-foreground/60 h-4 w-4 shrink-0" />
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-muted-foreground">{task.name}</span>
-                        <Badge variant="outline" className="text-xs">System</Badge>
+                        <span className="text-muted-foreground font-medium">{task.name}</span>
+                        <Badge variant="outline" className="text-xs">
+                          System
+                        </Badge>
                       </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground/70">
+                      <div className="text-muted-foreground/70 mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                         <span>{describeCron(task.cron_expression) ?? task.cron_expression}</span>
                         <span>|</span>
                         <span>{task.timezone}</span>
@@ -489,7 +495,7 @@ export default function SchedulesPage() {
                           </>
                         )}
                       </div>
-                      <p className="mt-1 text-xs text-muted-foreground/60">{task.description}</p>
+                      <p className="text-muted-foreground/60 mt-1 text-xs">{task.description}</p>
                     </div>
                   </div>
                 </div>
@@ -503,9 +509,7 @@ export default function SchedulesPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {editingTask ? "Edit Schedule" : "Create Schedule"}
-            </DialogTitle>
+            <DialogTitle>{editingTask ? "Edit Schedule" : "Create Schedule"}</DialogTitle>
             <DialogDescription>
               {editingTask
                 ? "Update the scheduled task settings"
@@ -567,9 +571,9 @@ export default function SchedulesPage() {
                   {describeCron(formData.cron_expression)}
                 </p>
               ) : (
-                <p className="text-xs text-muted-foreground">
-                  Format: minute hour day-of-month month day-of-week (e.g.,{" "}
-                  <code>0 9 * * 1</code> = every Monday at 9am)
+                <p className="text-muted-foreground text-xs">
+                  Format: minute hour day-of-month month day-of-week (e.g., <code>0 9 * * 1</code> =
+                  every Monday at 9am)
                 </p>
               )}
             </div>
@@ -601,7 +605,9 @@ export default function SchedulesPage() {
                     key={color}
                     type="button"
                     className={`h-8 w-8 rounded-full border-2 transition-all ${
-                      formData.color === color ? "border-foreground scale-110" : "border-transparent"
+                      formData.color === color
+                        ? "border-foreground scale-110"
+                        : "border-transparent"
                     }`}
                     style={{
                       backgroundColor: `var(--color-${color}-500, #${

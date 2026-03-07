@@ -89,12 +89,7 @@ export default function TransactionsPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleCategorize}
-            disabled={categorizing}
-          >
+          <Button variant="outline" size="sm" onClick={handleCategorize} disabled={categorizing}>
             <Sparkles className="mr-2 h-4 w-4" />
             {categorizing ? "Categorizing..." : "AI Categorize"}
           </Button>
@@ -144,7 +139,7 @@ export default function TransactionsPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="border-t px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center justify-between border-t px-6 py-4">
               <p className="text-muted-foreground text-sm">
                 Page {page} of {totalPages} · {total} total
               </p>

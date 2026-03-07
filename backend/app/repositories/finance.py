@@ -42,9 +42,33 @@ async def get_accounts_by_user(db: AsyncSession, user_id: UUID) -> list[Financia
     result = await db.execute(
         select(FinancialAccount)
         .where(FinancialAccount.user_id == user_id)
-        .order_by(FinancialAccount.created_at.asc())
+        .order_by(FinancialAccount.is_default.desc(), FinancialAccount.created_at.asc())
     )
     return list(result.scalars().all())
+
+
+async def get_default_account_by_user(db: AsyncSession, user_id: UUID) -> FinancialAccount | None:
+    result = await db.execute(
+        select(FinancialAccount).where(
+            FinancialAccount.user_id == user_id,
+            FinancialAccount.is_default == True,  # noqa: E712
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_first_active_account_by_user(
+    db: AsyncSession, user_id: UUID, exclude_account_id: UUID | None = None
+) -> FinancialAccount | None:
+    query = select(FinancialAccount).where(
+        FinancialAccount.user_id == user_id,
+        FinancialAccount.is_active == True,  # noqa: E712
+    )
+    if exclude_account_id:
+        query = query.where(FinancialAccount.id != exclude_account_id)
+    query = query.order_by(FinancialAccount.created_at.asc()).limit(1)
+    result = await db.execute(query)
+    return result.scalar_one_or_none()
 
 
 async def create_account(db: AsyncSession, *, user_id: UUID, **kwargs) -> FinancialAccount:
@@ -60,6 +84,39 @@ async def update_account(
 ) -> FinancialAccount:
     for field, value in update_data.items():
         setattr(account, field, value)
+    db.add(account)
+    await db.flush()
+    await db.refresh(account)
+    return account
+
+
+async def clear_default_account(
+    db: AsyncSession, user_id: UUID, exclude_account_id: UUID | None = None
+) -> None:
+    query = select(FinancialAccount).where(
+        FinancialAccount.user_id == user_id,
+        FinancialAccount.is_default == True,  # noqa: E712
+    )
+    if exclude_account_id:
+        query = query.where(FinancialAccount.id != exclude_account_id)
+
+    result = await db.execute(query)
+    for account in result.scalars().all():
+        account.is_default = False
+        db.add(account)
+
+    await db.flush()
+
+
+async def set_default_account(
+    db: AsyncSession, user_id: UUID, account_id: UUID
+) -> FinancialAccount | None:
+    account = await get_account_by_id_and_user(db, account_id, user_id)
+    if not account:
+        return None
+
+    await clear_default_account(db, user_id, exclude_account_id=account.id)
+    account.is_default = True
     db.add(account)
     await db.flush()
     await db.refresh(account)

@@ -24,25 +24,20 @@ interface CategoryRowProps {
 
 function CategoryRow({ category, onEdit, onDelete }: CategoryRowProps) {
   return (
-    <div className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/40 transition-colors">
+    <div className="hover:bg-muted/40 flex items-center justify-between px-4 py-2.5 transition-colors">
       <div className="flex items-center gap-3">
         <ColorSwatch color={category.color} />
         <span className="text-sm font-medium">{category.name}</span>
-        <span className="font-mono text-xs text-muted-foreground">{category.slug}</span>
+        <span className="text-muted-foreground font-mono text-xs">{category.slug}</span>
       </div>
       <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 w-7 p-0"
-          onClick={() => onEdit(category)}
-        >
+        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => onEdit(category)}>
           <Pencil className="h-3.5 w-3.5" />
         </Button>
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+          className="text-destructive hover:text-destructive h-7 w-7 p-0"
           onClick={() => onDelete(category.id)}
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -129,14 +124,14 @@ export default function CategoriesPage() {
               <CardTitle className="flex items-center gap-2 text-base">
                 <Tag className="h-4 w-4 text-emerald-500" />
                 Income
-                <span className="ml-auto text-sm font-normal text-muted-foreground">
+                <span className="text-muted-foreground ml-auto text-sm font-normal">
                   {incomeCategories.length}
                 </span>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               {incomeCategories.length === 0 ? (
-                <p className="px-4 pb-4 text-sm text-muted-foreground">No income categories yet.</p>
+                <p className="text-muted-foreground px-4 pb-4 text-sm">No income categories yet.</p>
               ) : (
                 <div className="divide-y">
                   {incomeCategories
@@ -160,14 +155,16 @@ export default function CategoriesPage() {
               <CardTitle className="flex items-center gap-2 text-base">
                 <Tag className="h-4 w-4 text-rose-500" />
                 Expenses
-                <span className="ml-auto text-sm font-normal text-muted-foreground">
+                <span className="text-muted-foreground ml-auto text-sm font-normal">
                   {expenseCategories.length}
                 </span>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               {expenseCategories.length === 0 ? (
-                <p className="px-4 pb-4 text-sm text-muted-foreground">No expense categories yet.</p>
+                <p className="text-muted-foreground px-4 pb-4 text-sm">
+                  No expense categories yet.
+                </p>
               ) : (
                 <div className="divide-y">
                   {expenseCategories

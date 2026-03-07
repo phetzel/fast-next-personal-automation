@@ -30,37 +30,26 @@ interface RecurringFormProps {
 
 const billingCycles = Object.entries(BILLING_CYCLE_LABELS) as [BillingCycle, string][];
 
-export function RecurringForm({ open, onClose, onSubmit, expense, categories = [], accounts = [] }: RecurringFormProps) {
+export function RecurringForm({
+  open,
+  onClose,
+  onSubmit,
+  expense,
+  categories = [],
+  accounts = [],
+}: RecurringFormProps) {
   const isEdit = !!expense;
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    name: expense?.name ?? "",
-    merchant: expense?.merchant ?? "",
-    category: expense?.category ?? "",
-    expected_amount: expense?.expected_amount?.toString() ?? "",
-    billing_cycle: expense?.billing_cycle ?? ("monthly" as BillingCycle),
-    next_due_date: expense?.next_due_date ?? "",
-    auto_match: expense?.auto_match ?? true,
-    notes: expense?.notes ?? "",
-    account_id: (expense?.account_id ?? null) as string | null,
-  });
+  const defaultAccountId =
+    accounts.find((account) => account.is_default && account.is_active)?.id ?? null;
+  const [formData, setFormData] = useState(() => buildFormData(expense, defaultAccountId));
 
   // Reset form when the dialog opens or the target expense changes
   useEffect(() => {
     if (open) {
-      setFormData({
-        name: expense?.name ?? "",
-        merchant: expense?.merchant ?? "",
-        category: expense?.category ?? "",
-        expected_amount: expense?.expected_amount?.toString() ?? "",
-        billing_cycle: expense?.billing_cycle ?? ("monthly" as BillingCycle),
-        next_due_date: expense?.next_due_date ?? "",
-        auto_match: expense?.auto_match ?? true,
-        notes: expense?.notes ?? "",
-        account_id: (expense?.account_id ?? null) as string | null,
-      });
+      setFormData(buildFormData(expense, defaultAccountId));
     }
-  }, [open, expense]);
+  }, [open, expense, defaultAccountId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +74,7 @@ export function RecurringForm({ open, onClose, onSubmit, expense, categories = [
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit Recurring Expense" : "Add Recurring Expense"}</DialogTitle>
         </DialogHeader>
@@ -116,7 +105,9 @@ export function RecurringForm({ open, onClose, onSubmit, expense, categories = [
               <Label htmlFor="billing_cycle">Billing Cycle *</Label>
               <Select
                 value={formData.billing_cycle}
-                onValueChange={(v) => setFormData((p) => ({ ...p, billing_cycle: v as BillingCycle }))}
+                onValueChange={(v) =>
+                  setFormData((p) => ({ ...p, billing_cycle: v as BillingCycle }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -187,12 +178,15 @@ export function RecurringForm({ open, onClose, onSubmit, expense, categories = [
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">None (manual tracking only)</SelectItem>
-                  {accounts.filter((a) => a.is_active).map((account) => (
-                    <SelectItem key={account.id} value={account.id}>
-                      {account.name}
-                      {account.institution ? ` · ${account.institution}` : ""}
-                    </SelectItem>
-                  ))}
+                  {accounts
+                    .filter((a) => a.is_active)
+                    .map((account) => (
+                      <SelectItem key={account.id} value={account.id}>
+                        {account.name}
+                        {account.is_default ? " (default)" : ""}
+                        {account.institution ? ` · ${account.institution}` : ""}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               {formData.account_id && (
@@ -238,4 +232,21 @@ export function RecurringForm({ open, onClose, onSubmit, expense, categories = [
       </DialogContent>
     </Dialog>
   );
+}
+
+function buildFormData(
+  expense: RecurringExpense | null | undefined,
+  defaultAccountId: string | null
+) {
+  return {
+    name: expense?.name ?? "",
+    merchant: expense?.merchant ?? "",
+    category: expense?.category ?? "",
+    expected_amount: expense?.expected_amount?.toString() ?? "",
+    billing_cycle: expense?.billing_cycle ?? ("monthly" as BillingCycle),
+    next_due_date: expense?.next_due_date ?? "",
+    auto_match: expense?.auto_match ?? true,
+    notes: expense?.notes ?? "",
+    account_id: (expense?.account_id ?? defaultAccountId ?? null) as string | null,
+  };
 }

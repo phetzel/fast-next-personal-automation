@@ -38,6 +38,7 @@ class MockAccount:
         self.currency = "USD"
         self.current_balance = Decimal("1000.00")
         self.balance_updated_at = datetime.now(UTC)
+        self.is_default = True
         self.is_active = True
         self.notes = None
         self.created_at = datetime.now(UTC)
@@ -211,6 +212,7 @@ async def test_list_accounts(auth_client: AsyncClient, mock_account: MockAccount
     assert isinstance(data, list)
     assert len(data) == 1
     assert data[0]["name"] == mock_account.name
+    assert data[0]["is_default"] is True
 
 
 @pytest.mark.anyio

@@ -21,21 +21,18 @@ export default function AccountsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editAccount, setEditAccount] = useState<FinancialAccount | null>(null);
   const [balanceAccount, setBalanceAccount] = useState<FinancialAccount | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAccounts();
   }, [fetchAccounts]);
 
   const handleCreate = async (data: Partial<FinancialAccount>) => {
-    setFormError(null);
     const result = await createAccount(data);
     if (!result) throw new Error("Failed to create account");
   };
 
   const handleEdit = async (data: Partial<FinancialAccount>) => {
     if (!editAccount) return;
-    setFormError(null);
     const result = await updateAccount(editAccount.id, data);
     if (!result) throw new Error("Failed to update account");
   };
@@ -43,6 +40,10 @@ export default function AccountsPage() {
   const handleDelete = async (account: FinancialAccount) => {
     if (!confirm(`Delete "${account.name}"? This cannot be undone.`)) return;
     await deleteAccount(account.id);
+  };
+
+  const handleSetDefault = async (account: FinancialAccount) => {
+    await updateAccount(account.id, { is_default: true });
   };
 
   const handleUpdateBalance = async (balance: number) => {
@@ -60,10 +61,11 @@ export default function AccountsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Accounts</h1>
           <p className="text-muted-foreground">
-            {accounts.length} account{accounts.length !== 1 ? "s" : ""} ·{" "}
-            Net balance:{" "}
+            {accounts.length} account{accounts.length !== 1 ? "s" : ""} · Net balance:{" "}
             <span className={totalBalance >= 0 ? "text-emerald-600" : "text-destructive"}>
-              {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(totalBalance)}
+              {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
+                totalBalance
+              )}
             </span>
           </p>
         </div>
@@ -103,6 +105,7 @@ export default function AccountsPage() {
               }}
               onDelete={handleDelete}
               onUpdateBalance={(a) => setBalanceAccount(a)}
+              onSetDefault={handleSetDefault}
             />
           ))}
         </div>

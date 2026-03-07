@@ -80,7 +80,7 @@ export default function BudgetsPage() {
           <p className="text-muted-foreground">
             {budgetStatus.length} budget{budgetStatus.length !== 1 ? "s" : ""}
             {overBudgetCount > 0 && (
-              <span className="ml-2 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+              <span className="bg-destructive/10 text-destructive ml-2 rounded-full px-2 py-0.5 text-xs font-medium">
                 {overBudgetCount} over budget
               </span>
             )}

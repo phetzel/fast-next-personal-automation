@@ -14,19 +14,9 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { addMinutes, differenceInMinutes } from "date-fns";
-import {
-  createContext,
-  type ReactNode,
-  useContext,
-  useId,
-  useRef,
-  useState,
-} from "react";
+import { createContext, type ReactNode, useContext, useId, useRef, useState } from "react";
 
-import {
-  type CalendarEvent,
-  EventItem,
-} from "./index";
+import { type CalendarEvent, EventItem } from "./index";
 
 // Define the context type
 type CalendarDndContextType = {
@@ -68,15 +58,10 @@ interface CalendarDndProviderProps {
   onEventUpdate: (event: CalendarEvent) => void;
 }
 
-export function CalendarDndProvider({
-  children,
-  onEventUpdate,
-}: CalendarDndProviderProps) {
+export function CalendarDndProvider({ children, onEventUpdate }: CalendarDndProviderProps) {
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
-  const [activeView, setActiveView] = useState<"month" | "week" | "day" | null>(
-    null,
-  );
+  const [activeView, setActiveView] = useState<"month" | "week" | "day" | null>(null);
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [eventHeight, setEventHeight] = useState<number | null>(null);
   const [isMultiDay, setIsMultiDay] = useState(false);
@@ -113,7 +98,7 @@ export function CalendarDndProvider({
       activationConstraint: {
         distance: 5,
       },
-    }),
+    })
   );
 
   // Generate a stable ID for the DndContext
@@ -208,7 +193,7 @@ export function CalendarDndProvider({
             currentTime.getHours(),
             currentTime.getMinutes(),
             currentTime.getSeconds(),
-            currentTime.getMilliseconds(),
+            currentTime.getMilliseconds()
           );
         }
 
@@ -285,7 +270,7 @@ export function CalendarDndProvider({
           currentTime.getHours(),
           currentTime.getMinutes(),
           currentTime.getSeconds(),
-          currentTime.getMilliseconds(),
+          currentTime.getMilliseconds()
         );
       }
 
@@ -353,8 +338,7 @@ export function CalendarDndProvider({
             <div
               style={{
                 height: eventHeight ? `${eventHeight}px` : "auto",
-                width:
-                  isMultiDay && multiDayWidth ? `${multiDayWidth}%` : "100%",
+                width: isMultiDay && multiDayWidth ? `${multiDayWidth}%` : "100%",
                 // Remove the transform that was causing the shift
               }}
             >

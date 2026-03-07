@@ -5,11 +5,7 @@ import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import { differenceInMinutes, format, getMinutes, isPast } from "date-fns";
 import { useMemo } from "react";
 
-import {
-  type CalendarEvent,
-  getBorderRadiusClasses,
-  getEventColorClasses,
-} from "./index";
+import { type CalendarEvent, getBorderRadiusClasses, getEventColorClasses } from "./index";
 import { cn } from "@/lib/utils";
 
 // Using date-fns format with custom formatting:
@@ -54,7 +50,7 @@ function EventWrapper({
   const displayEnd = currentTime
     ? new Date(
         new Date(currentTime).getTime() +
-          (new Date(event.end).getTime() - new Date(event.start).getTime()),
+          (new Date(event.end).getTime() - new Date(event.start).getTime())
       )
     : new Date(event.end);
 
@@ -63,10 +59,10 @@ function EventWrapper({
   return (
     <button
       className={cn(
-        "flex size-full select-none overflow-hidden px-1 text-left font-medium outline-none backdrop-blur-md transition focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 data-dragging:cursor-grabbing data-past-event:line-through data-dragging:shadow-lg sm:px-2",
+        "focus-visible:border-ring focus-visible:ring-ring/50 flex size-full overflow-hidden px-1 text-left font-medium backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] data-dragging:cursor-grabbing data-dragging:shadow-lg data-past-event:line-through sm:px-2",
         getEventColorClasses(event.color),
         getBorderRadiusClasses(isFirstDay, isLastDay),
-        className,
+        className
       )}
       data-dragging={isDragging || undefined}
       data-past-event={isEventInPast || undefined}
@@ -126,7 +122,7 @@ export function EventItem({
     return currentTime
       ? new Date(
           new Date(currentTime).getTime() +
-            (new Date(event.end).getTime() - new Date(event.start).getTime()),
+            (new Date(event.end).getTime() - new Date(event.start).getTime())
         )
       : new Date(event.end);
   }, [currentTime, event.start, event.end]);
@@ -153,7 +149,7 @@ export function EventItem({
       <EventWrapper
         className={cn(
           "mt-[var(--event-gap)] h-[var(--event-height)] items-center text-[10px] sm:text-xs",
-          className,
+          className
         )}
         currentTime={currentTime}
         dndAttributes={dndAttributes}
@@ -187,7 +183,7 @@ export function EventItem({
           "py-1",
           durationMinutes < 45 ? "items-center" : "flex-col",
           view === "week" ? "text-[10px] sm:text-xs" : "text-xs",
-          className,
+          className
         )}
         currentTime={currentTime}
         dndAttributes={dndAttributes}
@@ -204,18 +200,14 @@ export function EventItem({
           <div className="truncate">
             {event.title}{" "}
             {showTime && (
-              <span className="opacity-70">
-                {formatTimeWithOptionalMinutes(displayStart)}
-              </span>
+              <span className="opacity-70">{formatTimeWithOptionalMinutes(displayStart)}</span>
             )}
           </div>
         ) : (
           <>
             <div className="truncate font-medium">{event.title}</div>
             {showTime && (
-              <div className="truncate font-normal opacity-70 sm:text-[11px]">
-                {getEventTime()}
-              </div>
+              <div className="truncate font-normal opacity-70 sm:text-[11px]">{getEventTime()}</div>
             )}
           </>
         )}
@@ -227,9 +219,9 @@ export function EventItem({
   return (
     <button
       className={cn(
-        "flex w-full flex-col gap-1 rounded p-2 text-left outline-none transition focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 data-past-event:line-through data-past-event:opacity-90",
+        "focus-visible:border-ring focus-visible:ring-ring/50 flex w-full flex-col gap-1 rounded p-2 text-left transition outline-none focus-visible:ring-[3px] data-past-event:line-through data-past-event:opacity-90",
         getEventColorClasses(eventColor),
-        className,
+        className
       )}
       data-past-event={isPast(new Date(event.end)) || undefined}
       onClick={onClick}
@@ -239,7 +231,7 @@ export function EventItem({
       {...dndListeners}
       {...dndAttributes}
     >
-      <div className="font-medium text-sm">{event.title}</div>
+      <div className="text-sm font-medium">{event.title}</div>
       <div className="text-xs opacity-70">
         {event.allDay ? (
           <span>All day</span>
@@ -256,9 +248,7 @@ export function EventItem({
           </>
         )}
       </div>
-      {event.description && (
-        <div className="my-1 text-xs opacity-90">{event.description}</div>
-      )}
+      {event.description && <div className="my-1 text-xs opacity-90">{event.description}</div>}
     </button>
   );
 }

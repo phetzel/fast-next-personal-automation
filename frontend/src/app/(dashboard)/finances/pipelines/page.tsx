@@ -46,9 +46,9 @@ export default function FinancePipelinesPage() {
             <li className="flex items-start gap-2">
               <Mail className="text-primary mt-0.5 h-4 w-4" />
               <span>
-                <strong className="text-foreground">Email Sync:</strong> Connects to your Gmail
-                and scans for bank alerts, receipts, and billing emails. AI extracts transaction
-                details and imports them — only scanning since your last sync.
+                <strong className="text-foreground">Email Sync:</strong> Connects to your Gmail and
+                scans for bank alerts, receipts, and billing emails. AI extracts transaction details
+                and imports them — only scanning since your last sync.
               </span>
             </li>
             <li className="flex items-start gap-2">

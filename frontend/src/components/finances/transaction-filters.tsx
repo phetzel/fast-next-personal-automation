@@ -19,7 +19,13 @@ interface TransactionFiltersProps {
   onReset: () => void;
 }
 
-export function TransactionFiltersBar({ filters, accounts, categories, onChange, onReset }: TransactionFiltersProps) {
+export function TransactionFiltersBar({
+  filters,
+  accounts,
+  categories,
+  onChange,
+  onReset,
+}: TransactionFiltersProps) {
   const hasActiveFilters =
     filters.category ||
     filters.account_id ||
@@ -83,7 +89,11 @@ export function TransactionFiltersBar({ filters, accounts, categories, onChange,
         <Select
           value={filters.transaction_type ?? "all"}
           onValueChange={(v) =>
-            onChange({ transaction_type: v === "all" ? undefined : (v as TransactionFilters["transaction_type"]), page: 1 })
+            onChange({
+              transaction_type:
+                v === "all" ? undefined : (v as TransactionFilters["transaction_type"]),
+              page: 1,
+            })
           }
         >
           <SelectTrigger className="h-9 w-36">
@@ -101,7 +111,10 @@ export function TransactionFiltersBar({ filters, accounts, categories, onChange,
         <Select
           value={filters.source ?? "all"}
           onValueChange={(v) =>
-            onChange({ source: v === "all" ? undefined : (v as TransactionFilters["source"]), page: 1 })
+            onChange({
+              source: v === "all" ? undefined : (v as TransactionFilters["source"]),
+              page: 1,
+            })
           }
         >
           <SelectTrigger className="h-9 w-36">

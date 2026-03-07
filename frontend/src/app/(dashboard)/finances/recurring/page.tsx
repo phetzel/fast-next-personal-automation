@@ -31,9 +31,7 @@ export default function RecurringPage() {
     fetchAccounts();
   }, [fetchRecurring, fetchCategories, fetchAccounts]);
 
-  const displayed = showInactive
-    ? recurringExpenses
-    : recurringExpenses.filter((e) => e.is_active);
+  const displayed = showInactive ? recurringExpenses : recurringExpenses.filter((e) => e.is_active);
 
   const inactiveCount = recurringExpenses.filter((e) => !e.is_active).length;
 
@@ -57,12 +55,18 @@ export default function RecurringPage() {
     .reduce((sum, e) => {
       const amount = e.expected_amount ?? 0;
       switch (e.billing_cycle) {
-        case "weekly": return sum + amount * 4.33;
-        case "biweekly": return sum + amount * 2.17;
-        case "monthly": return sum + amount;
-        case "quarterly": return sum + amount / 3;
-        case "annual": return sum + amount / 12;
-        default: return sum + amount;
+        case "weekly":
+          return sum + amount * 4.33;
+        case "biweekly":
+          return sum + amount * 2.17;
+        case "monthly":
+          return sum + amount;
+        case "quarterly":
+          return sum + amount / 3;
+        case "annual":
+          return sum + amount / 12;
+        default:
+          return sum + amount;
       }
     }, 0);
 
@@ -75,8 +79,8 @@ export default function RecurringPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Recurring Expenses</h1>
           <p className="text-muted-foreground">
-            {recurringExpenses.filter((e) => e.is_active).length} active ·{" "}
-            ~{fmt(totalMonthly)}/mo estimated
+            {recurringExpenses.filter((e) => e.is_active).length} active · ~{fmt(totalMonthly)}/mo
+            estimated
           </p>
         </div>
         <Button onClick={() => setShowForm(true)}>
@@ -92,11 +96,7 @@ export default function RecurringPage() {
             Subscriptions & Bills
           </CardTitle>
           {inactiveCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowInactive((v) => !v)}
-            >
+            <Button variant="ghost" size="sm" onClick={() => setShowInactive((v) => !v)}>
               {showInactive ? "Hide" : "Show"} {inactiveCount} inactive
             </Button>
           )}
@@ -109,7 +109,7 @@ export default function RecurringPage() {
               ))}
             </div>
           ) : displayed.length === 0 ? (
-            <div className="rounded-xl border border-dashed py-12 text-center mx-6 mb-6">
+            <div className="mx-6 mb-6 rounded-xl border border-dashed py-12 text-center">
               <RefreshCw className="text-muted-foreground mx-auto mb-3 h-10 w-10" />
               <p className="font-medium">No recurring expenses yet</p>
               <p className="text-muted-foreground mt-1 text-sm">
@@ -125,14 +125,28 @@ export default function RecurringPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-muted-foreground pl-6 pr-4 pb-3 pt-0 text-left font-medium w-[20%]">Name</th>
-                    <th className="text-muted-foreground pr-4 pb-3 text-left font-medium">Account</th>
-                    <th className="text-muted-foreground pr-4 pb-3 text-left font-medium">Category</th>
-                    <th className="text-muted-foreground pr-4 pb-3 text-right font-medium">Amount</th>
+                    <th className="text-muted-foreground w-[20%] pt-0 pr-4 pb-3 pl-6 text-left font-medium">
+                      Name
+                    </th>
+                    <th className="text-muted-foreground pr-4 pb-3 text-left font-medium">
+                      Account
+                    </th>
+                    <th className="text-muted-foreground pr-4 pb-3 text-left font-medium">
+                      Category
+                    </th>
+                    <th className="text-muted-foreground pr-4 pb-3 text-right font-medium">
+                      Amount
+                    </th>
                     <th className="text-muted-foreground pr-4 pb-3 text-left font-medium">Cycle</th>
-                    <th className="text-muted-foreground pr-4 pb-3 text-left font-medium">Next Due</th>
-                    <th className="text-muted-foreground pr-4 pb-3 text-left font-medium">Last Seen</th>
-                    <th className="text-muted-foreground pr-6 pb-3 text-right font-medium">Actions</th>
+                    <th className="text-muted-foreground pr-4 pb-3 text-left font-medium">
+                      Next Due
+                    </th>
+                    <th className="text-muted-foreground pr-4 pb-3 text-left font-medium">
+                      Last Seen
+                    </th>
+                    <th className="text-muted-foreground pr-6 pb-3 text-right font-medium">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>

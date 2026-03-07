@@ -15,9 +15,8 @@ interface BudgetProgressProps {
 export function BudgetProgress({ status, onEdit, onDelete }: BudgetProgressProps) {
   const { budget, spent_amount, remaining, is_over_budget, transactions_count } = status;
 
-  const pct = budget.amount_limit > 0
-    ? Math.min((spent_amount / budget.amount_limit) * 100, 100)
-    : 0;
+  const pct =
+    budget.amount_limit > 0 ? Math.min((spent_amount / budget.amount_limit) * 100, 100) : 0;
 
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
@@ -25,11 +24,11 @@ export function BudgetProgress({ status, onEdit, onDelete }: BudgetProgressProps
   const barColor = is_over_budget
     ? "bg-destructive"
     : pct >= 80
-    ? "bg-amber-500"
-    : "bg-emerald-500";
+      ? "bg-amber-500"
+      : "bg-emerald-500";
 
   return (
-    <div className="rounded-lg border p-4 space-y-3">
+    <div className="space-y-3 rounded-lg border p-4">
       <div className="flex items-center justify-between gap-2">
         <div>
           <CategoryBadge category={budget.category} size="md" />
@@ -37,7 +36,12 @@ export function BudgetProgress({ status, onEdit, onDelete }: BudgetProgressProps
         </div>
         <div className="flex items-center gap-1">
           {onEdit && (
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => onEdit(budget)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={() => onEdit(budget)}
+            >
               <Pencil className="h-3.5 w-3.5" />
             </Button>
           )}
@@ -56,14 +60,18 @@ export function BudgetProgress({ status, onEdit, onDelete }: BudgetProgressProps
 
       {/* Progress bar */}
       <div className="space-y-1">
-        <div className="bg-muted h-2 rounded-full overflow-hidden">
+        <div className="bg-muted h-2 overflow-hidden rounded-full">
           <div
             className={cn("h-full rounded-full transition-all", barColor)}
             style={{ width: `${pct}%` }}
           />
         </div>
         <div className="flex justify-between text-xs">
-          <span className={cn(is_over_budget ? "text-destructive font-medium" : "text-muted-foreground")}>
+          <span
+            className={cn(
+              is_over_budget ? "text-destructive font-medium" : "text-muted-foreground"
+            )}
+          >
             {fmt(spent_amount)} spent
           </span>
           <span className="text-muted-foreground">{fmt(budget.amount_limit)} budget</span>
@@ -73,7 +81,7 @@ export function BudgetProgress({ status, onEdit, onDelete }: BudgetProgressProps
       {/* Status */}
       <div className="flex items-center gap-2">
         {is_over_budget ? (
-          <span className="flex items-center gap-1 text-xs font-medium text-destructive">
+          <span className="text-destructive flex items-center gap-1 text-xs font-medium">
             <AlertTriangle className="h-3.5 w-3.5" />
             Over by {fmt(Math.abs(remaining))}
           </span>
@@ -81,7 +89,9 @@ export function BudgetProgress({ status, onEdit, onDelete }: BudgetProgressProps
           <span
             className={cn(
               "text-xs font-medium",
-              pct >= 80 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"
+              pct >= 80
+                ? "text-amber-600 dark:text-amber-400"
+                : "text-emerald-600 dark:text-emerald-400"
             )}
           >
             {fmt(remaining)} remaining
