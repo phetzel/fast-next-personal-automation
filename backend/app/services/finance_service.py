@@ -62,15 +62,13 @@ class FinanceService:
 
         account_data = data.model_dump()
         account_data["is_default"] = is_default
+        if is_default:
+            await finance_repo.clear_default_account(self.db, user_id)
         account = await finance_repo.create_account(
             self.db,
             user_id=user_id,
             **account_data,
         )
-        if is_default:
-            await finance_repo.clear_default_account(
-                self.db, user_id, exclude_account_id=account.id
-            )
         return account
 
     async def get_account(self, user_id: UUID, account_id: UUID) -> FinancialAccount:
@@ -98,10 +96,24 @@ class FinanceService:
         if resulting_is_default and not resulting_is_active:
             raise ValidationError(message="Default account must be active")
 
-        was_default = account.is_default
-        updated_account = await finance_repo.update_account(
-            self.db, account=account, update_data=update_data
+        requested_is_default = (
+            update_data.get("is_default") if "is_default" in update_data else None
         )
+        if requested_is_default is True:
+            update_data.pop("is_default", None)
+
+        was_default = account.is_default
+        updated_account = (
+            await finance_repo.update_account(self.db, account=account, update_data=update_data)
+            if update_data
+            else account
+        )
+
+        if requested_is_default is True:
+            promoted_account = await finance_repo.set_default_account(
+                self.db, user_id, updated_account.id
+            )
+            return promoted_account or updated_account
 
         if updated_account.is_default:
             await finance_repo.clear_default_account(

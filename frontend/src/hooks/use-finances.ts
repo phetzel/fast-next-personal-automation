@@ -41,6 +41,7 @@ export function useFinances() {
     setAccounts,
     setAccountsLoading,
     updateAccount,
+    removeAccount,
     setTransactions,
     setLoading,
     setError,
@@ -103,30 +104,44 @@ export function useFinances() {
           `/finances/accounts/${accountId}`,
           data
         );
-        const updated = await apiClient.get<FinancialAccount[]>("/finances/accounts");
-        setAccounts(updated);
+        updateAccount(account);
+
+        try {
+          const updated = await apiClient.get<FinancialAccount[]>("/finances/accounts");
+          setAccounts(updated);
+        } catch {
+          // Keep the local optimistic update if the refresh fails.
+        }
+
         return account;
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to update account");
         return null;
       }
     },
-    [setAccounts, setError]
+    [setAccounts, setError, updateAccount]
   );
 
   const deleteAccount = useCallback(
     async (accountId: string): Promise<boolean> => {
       try {
         await apiClient.delete(`/finances/accounts/${accountId}`);
-        const updated = await apiClient.get<FinancialAccount[]>("/finances/accounts");
-        setAccounts(updated);
+        removeAccount(accountId);
+
+        try {
+          const updated = await apiClient.get<FinancialAccount[]>("/finances/accounts");
+          setAccounts(updated);
+        } catch {
+          // The delete succeeded; keep the optimistic removal if refresh fails.
+        }
+
         return true;
       } catch {
         setError("Failed to delete account");
         return false;
       }
     },
-    [setAccounts, setError]
+    [removeAccount, setAccounts, setError]
   );
 
   const updateBalance = useCallback(

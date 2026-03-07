@@ -2,7 +2,7 @@
 
 from datetime import UTC, date
 from decimal import Decimal
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, call, patch
 from uuid import uuid4
 
 import pytest
@@ -204,6 +204,40 @@ class TestFinanceServiceAccounts:
             mock_repo.clear_default_account.assert_called_once()
 
     @pytest.mark.anyio
+    async def test_create_explicit_default_clears_existing_default_before_create(
+        self, service: FinanceService
+    ):
+        user_id = uuid4()
+        existing_default = MockAccount(user_id=user_id, is_default=True)
+        created_account = MockAccount(user_id=user_id, is_default=True, name="Savings")
+        data = FinancialAccountCreate(name="Savings", is_default=True)
+
+        with patch("app.services.finance_service.finance_repo") as mock_repo:
+            mock_repo.get_accounts_by_user = AsyncMock(return_value=[existing_default])
+            mock_repo.clear_default_account = AsyncMock()
+            mock_repo.create_account = AsyncMock(return_value=created_account)
+
+            result = await service.create_account(user_id, data)
+
+            assert result == created_account
+            assert mock_repo.mock_calls[:3] == [
+                call.get_accounts_by_user(service.db, user_id),
+                call.clear_default_account(service.db, user_id),
+                call.create_account(
+                    service.db,
+                    user_id=user_id,
+                    name="Savings",
+                    institution=None,
+                    account_type="checking",
+                    last_four=None,
+                    currency="USD",
+                    is_default=True,
+                    is_active=True,
+                    notes=None,
+                ),
+            ]
+
+    @pytest.mark.anyio
     async def test_update_default_account_requires_active_status(self, service: FinanceService):
         user_id = uuid4()
         account = MockAccount(user_id=user_id, is_default=False, is_active=True)
@@ -214,6 +248,32 @@ class TestFinanceServiceAccounts:
             pytest.raises(ValidationError),
         ):
             await service.update_account(user_id, account.id, data)
+
+    @pytest.mark.anyio
+    async def test_promoting_account_to_default_uses_set_default_account(
+        self, service: FinanceService
+    ):
+        user_id = uuid4()
+        account = MockAccount(user_id=user_id, is_default=False, is_active=True)
+        promoted_account = MockAccount(
+            account_id=account.id, user_id=user_id, is_default=True, is_active=True
+        )
+        data = FinancialAccountUpdate(name="Updated", is_default=True)
+
+        with (
+            patch.object(service, "get_account", AsyncMock(return_value=account)),
+            patch("app.services.finance_service.finance_repo") as mock_repo,
+        ):
+            mock_repo.update_account = AsyncMock(return_value=account)
+            mock_repo.set_default_account = AsyncMock(return_value=promoted_account)
+
+            result = await service.update_account(user_id, account.id, data)
+
+            assert result == promoted_account
+            mock_repo.update_account.assert_called_once_with(
+                service.db, account=account, update_data={"name": "Updated"}
+            )
+            mock_repo.set_default_account.assert_called_once_with(service.db, user_id, account.id)
 
     @pytest.mark.anyio
     async def test_deleting_default_account_promotes_replacement(self, service: FinanceService):
