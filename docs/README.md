@@ -11,6 +11,7 @@ Welcome to the documentation for **personal_automations** - a full-stack AI chat
 | [Frontend](./frontend.md) | Next.js frontend, components, and state management |
 | [AI Agent](./ai-agent.md) | PydanticAI agent setup, tools, and WebSocket streaming |
 | [Authentication](./authentication.md) | JWT, OAuth, and API key authentication |
+| [OpenClaw Job Ingest](./openclaw.md) | Scoped OpenClaw token flow and job ingest verification |
 | [Getting Started](./getting-started.md) | Setup and development guide |
 | [Deployment](./deployment.md) | Production deployment to DigitalOcean |
 
@@ -105,4 +106,3 @@ cd frontend && bun install && bun dev
 - Frontend: http://localhost:3000
 - API Docs: http://localhost:8000/docs
 - Admin Panel: http://localhost:8000/admin
-

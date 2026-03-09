@@ -29,14 +29,20 @@ def upgrade() -> None:
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
         sa.Column("last_used_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id", name=op.f("integration_tokens_pkey")),
         sa.UniqueConstraint("token_hash", name=op.f("integration_tokens_token_hash_key")),
     )
-    op.create_index(op.f("integration_tokens_user_id_idx"), "integration_tokens", ["user_id"], unique=False)
-    op.create_index(op.f("integration_tokens_is_active_idx"), "integration_tokens", ["is_active"], unique=False)
+    op.create_index(
+        op.f("integration_tokens_user_id_idx"), "integration_tokens", ["user_id"], unique=False
+    )
+    op.create_index(
+        op.f("integration_tokens_is_active_idx"), "integration_tokens", ["is_active"], unique=False
+    )
 
 
 def downgrade() -> None:

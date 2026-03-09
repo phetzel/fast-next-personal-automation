@@ -24,6 +24,7 @@ import {
   Building2,
   PiggyBank,
   Tag,
+  KeyRound,
   type LucideIcon,
 } from "lucide-react";
 import { useSidebarStore } from "@/stores";
@@ -98,7 +99,10 @@ const settingsNavigation: NavArea[] = [
     id: "settings",
     name: "Settings",
     icon: Settings,
-    children: [{ name: "Email Integration", href: ROUTES.SETTINGS_EMAIL, icon: Mail }],
+    children: [
+      { name: "Email Integration", href: ROUTES.SETTINGS_EMAIL, icon: Mail },
+      { name: "OpenClaw Jobs", href: ROUTES.SETTINGS_OPENCLAW, icon: KeyRound },
+    ],
   },
 ];
 

@@ -56,6 +56,7 @@ export const ROUTES = {
   // Settings routes
   SETTINGS: "/settings",
   SETTINGS_EMAIL: "/settings/email",
+  SETTINGS_OPENCLAW: "/settings/openclaw",
   // Other routes
   PROFILE: "/profile",
 } as const;

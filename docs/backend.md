@@ -243,6 +243,7 @@ Authentication model:
 - Ingestion (`/jobs/ingest`) uses machine token auth (`X-Integration-Token: oct_...`).
 - Each integration token is owned by one user, and ingested jobs are written for that user.
 - Current supported scope is `jobs:ingest`.
+- The web app exposes token management at `/settings/openclaw`.
 
 `/jobs/ingest` reuses the internal job ingestion service for:
 - URL deduplication by `job_url` per user
@@ -259,6 +260,8 @@ Current payload limits/behavior:
 - `analyze_with_profile=true` tries `profile_id` (if provided) or default profile
 - `qa_with_internal_analysis=true` runs internal analysis as QA comparison while still storing external scores
 - If no profile resume text is available, ingestion still works but skips analysis
+
+See [OpenClaw Job Ingest](./openclaw.md) for the exact end-to-end flow and the minimal OpenClaw skill.
 
 ### Area Agents
 

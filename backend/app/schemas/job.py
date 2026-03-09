@@ -29,7 +29,9 @@ class JobBase(BaseSchema):
         default=None, max_length=50, description="Source (linkedin, indeed, etc.)"
     )
     ingestion_source: str | None = Field(
-        default=None, max_length=20, description="How job was discovered (scrape, email, manual)"
+        default=None,
+        max_length=20,
+        description="How job was discovered (scrape, email, manual, openclaw)",
     )
     is_remote: bool | None = Field(default=None, description="Whether the job is remote")
     job_type: str | None = Field(
@@ -140,7 +142,8 @@ class JobFilters(BaseSchema):
     status: JobStatus | None = None
     source: str | None = None
     ingestion_source: str | None = Field(
-        default=None, description="Filter by how job was discovered (scrape, email, manual)"
+        default=None,
+        description="Filter by how job was discovered (scrape, email, manual, openclaw)",
     )
     min_score: float | None = Field(default=None, ge=0.0, le=10.0)
     max_score: float | None = Field(default=None, ge=0.0, le=10.0)

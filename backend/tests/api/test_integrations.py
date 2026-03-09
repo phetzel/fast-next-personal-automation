@@ -78,6 +78,42 @@ async def test_create_openclaw_token(client, mock_db_session) -> None:
 
 
 @pytest.mark.anyio
+async def test_list_openclaw_tokens(client) -> None:
+    """Listing tokens should return the current user's scoped tokens."""
+    user = _mock_user()
+    tokens = [_mock_token(user.id), _mock_token(user.id)]
+    token_service = SimpleNamespace(list_tokens_for_user=AsyncMock(return_value=tokens))
+
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_integration_token_service] = lambda: token_service
+
+    response = await client.get("/api/v1/integrations/openclaw/tokens")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 2
+    assert [item["id"] for item in data["items"]] == [str(token.id) for token in tokens]
+    token_service.list_tokens_for_user.assert_awaited_once_with(user.id)
+
+
+@pytest.mark.anyio
+async def test_revoke_openclaw_token(client, mock_db_session) -> None:
+    """Revoking a token should call the token service and commit."""
+    user = _mock_user()
+    token = _mock_token(user.id)
+    token_service = SimpleNamespace(revoke_token_for_user=AsyncMock(return_value=token))
+
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_integration_token_service] = lambda: token_service
+
+    response = await client.delete(f"/api/v1/integrations/openclaw/tokens/{token.id}")
+
+    assert response.status_code == 204
+    token_service.revoke_token_for_user.assert_awaited_once_with(token.id, user.id)
+    mock_db_session.commit.assert_awaited_once()
+
+
+@pytest.mark.anyio
 async def test_ingest_openclaw_jobs_success(client, mock_db_session) -> None:
     """Ingest endpoint should map jobs and call unified ingestion service."""
     user = _mock_user()
@@ -132,7 +168,7 @@ async def test_ingest_openclaw_jobs_success(client, mock_db_session) -> None:
     assert data["token_id"] == str(token.id)
     job_service.ingest_jobs.assert_awaited_once()
     kwargs = job_service.ingest_jobs.await_args.kwargs
-    assert kwargs["ingestion_source"] == "manual"
+    assert kwargs["ingestion_source"] == "openclaw"
     assert kwargs["user_id"] == token.user_id
     assert len(kwargs["jobs"]) == 2
     mock_db_session.commit.assert_awaited()
