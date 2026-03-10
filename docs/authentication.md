@@ -186,10 +186,13 @@ OpenClaw ingestion uses scoped per-user integration tokens, separate from the gl
 
 1. Authenticated user creates token:
    - `POST /api/v1/integrations/openclaw/tokens`
+   - Web UI: `/settings/openclaw`
 2. Plaintext token (`oct_...`) is returned once; only hash is stored server-side.
 3. OpenClaw sends token in `X-Integration-Token` when calling ingest route.
 4. User can revoke token:
    - `DELETE /api/v1/integrations/openclaw/tokens/{token_id}`
+
+For the full operator workflow and exact verification commands, see [OpenClaw Job Ingest](./openclaw.md).
 
 ### Example request
 

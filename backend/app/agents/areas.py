@@ -41,7 +41,7 @@ You have access to job-related tools and CRUD operations for jobs and profiles.
 ### Job Tools (prefixed with "jobs_")
 - jobs_list_jobs: Browse and filter saved job listings
 - jobs_get_job: Get full details of a specific job
-- jobs_update_job_status: Update job status (new, reviewed, applied, rejected, interviewing)
+- jobs_update_job_status: Update job status (new, prepped, reviewed, applied, interviewing, rejected)
 - jobs_get_job_stats: Get statistics about the job search
 - jobs_delete_job: Remove a job from the list
 

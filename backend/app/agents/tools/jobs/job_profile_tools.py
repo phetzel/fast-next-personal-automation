@@ -11,21 +11,9 @@ from uuid import UUID
 from pydantic_ai import RunContext
 from pydantic_ai.toolsets import FunctionToolset
 
+from app.agents.tools.jobs.helpers import get_db_and_user
 from app.repositories import job_profile as profile_repo
 from app.schemas.job_profile import JobProfileResponse, JobProfileSummary
-
-
-def _get_db_and_user(ctx: RunContext) -> tuple:
-    """Extract db session and user_id from context, with validation."""
-    if not ctx.deps.db:
-        return None, None, "Database session not available"
-    if not ctx.deps.user_id:
-        return None, None, "User not authenticated"
-    try:
-        user_id = UUID(ctx.deps.user_id)
-    except ValueError:
-        return None, None, "Invalid user ID"
-    return ctx.deps.db, user_id, None
 
 
 def _profile_to_summary(profile) -> dict:
@@ -58,7 +46,7 @@ async def list_profiles(ctx: RunContext) -> dict:
     Returns:
         List of profile summaries with basic info
     """
-    db, user_id, error = _get_db_and_user(ctx)
+    db, user_id, error = get_db_and_user(ctx)
     if error:
         return {"success": False, "error": error}
 
@@ -81,7 +69,7 @@ async def get_profile(ctx: RunContext, profile_id: str) -> dict:
     Returns:
         Full profile details including target roles, locations, and preferences
     """
-    db, user_id, error = _get_db_and_user(ctx)
+    db, user_id, error = get_db_and_user(ctx)
     if error:
         return {"success": False, "error": error}
 
@@ -110,7 +98,7 @@ async def get_default_profile(ctx: RunContext) -> dict:
     Returns:
         Default profile details or message if none is set
     """
-    db, user_id, error = _get_db_and_user(ctx)
+    db, user_id, error = get_db_and_user(ctx)
     if error:
         return {"success": False, "error": error}
 
@@ -154,7 +142,7 @@ async def create_profile(
     Returns:
         Created profile details
     """
-    db, user_id, error = _get_db_and_user(ctx)
+    db, user_id, error = get_db_and_user(ctx)
     if error:
         return {"success": False, "error": error}
 

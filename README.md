@@ -64,6 +64,7 @@ See the [`docs/`](./docs/) folder for detailed documentation:
 - [Frontend](./docs/frontend.md) — Components and state management
 - [AI Agent](./docs/ai-agent.md) — PydanticAI configuration
 - [Authentication](./docs/authentication.md) — JWT and OAuth
+- [OpenClaw Job Ingest](./docs/openclaw.md) — Scoped token flow and job ingest setup
 - [Deployment](./docs/deployment.md) — Production deployment
 
 ---

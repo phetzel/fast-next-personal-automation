@@ -155,7 +155,7 @@ async def ingest_openclaw_jobs(
     ingestion = await job_service.ingest_jobs(
         user_id=user_id,
         jobs=raw_jobs,
-        ingestion_source="manual",
+        ingestion_source="openclaw",
         profile_id=profile.id if profile else None,
         resume_text=resume_text,
         target_roles=target_roles,

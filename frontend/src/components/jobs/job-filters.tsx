@@ -44,6 +44,7 @@ const INGESTION_SOURCE_OPTIONS: { value: IngestionSource | "all"; label: string 
   { value: "all", label: "All Sources" },
   { value: "scrape", label: "Scraped" },
   { value: "email", label: "From Email" },
+  { value: "openclaw", label: "OpenClaw" },
   { value: "manual", label: "Manual" },
 ];
 

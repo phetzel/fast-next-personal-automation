@@ -3,9 +3,7 @@
 This module provides FunctionToolset tools for managing job listings
 through the AI assistant, enabling list, get, delete, and stats operations.
 
-Note: Status updates are handled by pipelines (job_prep), not directly
-by the agent. The agent can delete jobs (soft delete) but cannot arbitrarily
-change status.
+Provides list, get, update status, delete, and stats operations.
 """
 
 from uuid import UUID
@@ -13,23 +11,10 @@ from uuid import UUID
 from pydantic_ai import RunContext
 from pydantic_ai.toolsets import FunctionToolset
 
+from app.agents.tools.jobs.helpers import get_db_and_user
 from app.db.models.job import JobStatus
 from app.repositories import job as job_repo
 from app.schemas.job import JobFilters, JobResponse, JobSummary
-
-
-def _get_db_and_user(ctx: RunContext) -> tuple:
-    """Extract db session and user_id from context, with validation."""
-    if not ctx.deps.db:
-        return None, None, "Database session not available"
-    if not ctx.deps.user_id:
-        return None, None, "User not authenticated"
-    try:
-        user_id = UUID(ctx.deps.user_id)
-    except ValueError:
-        return None, None, "Invalid user ID"
-    return ctx.deps.db, user_id, None
-
 
 # Create the toolset
 jobs_toolset = FunctionToolset()
@@ -68,7 +53,7 @@ async def list_jobs(
     Returns:
         Dictionary with jobs list, total count, pagination info
     """
-    db, user_id, error = _get_db_and_user(ctx)
+    db, user_id, error = get_db_and_user(ctx)
     if error:
         return {"success": False, "error": error}
 
@@ -134,7 +119,7 @@ async def get_job(ctx: RunContext, job_id: str) -> dict:
     Returns:
         Full job details or error if not found
     """
-    db, user_id, error = _get_db_and_user(ctx)
+    db, user_id, error = get_db_and_user(ctx)
     if error:
         return {"success": False, "error": error}
 
@@ -163,7 +148,7 @@ async def get_job_stats(ctx: RunContext) -> dict:
     Returns:
         Dictionary with job statistics
     """
-    db, user_id, error = _get_db_and_user(ctx)
+    db, user_id, error = get_db_and_user(ctx)
     if error:
         return {"success": False, "error": error}
 
@@ -188,6 +173,65 @@ async def get_job_stats(ctx: RunContext) -> dict:
 
 
 @jobs_toolset.tool
+async def update_job_status(
+    ctx: RunContext,
+    job_id: str,
+    status: str,
+    notes: str | None = None,
+) -> dict:
+    """Update the status of a job in the user's workflow.
+
+    Use this when the user says they've reviewed a job, applied to it,
+    got an interview, or received a rejection.
+
+    Status flow: new → prepped → reviewed → applied → interviewing
+    Rejection (from employer): applied → rejected, or interviewing → rejected
+
+    Args:
+        job_id: The UUID of the job to update
+        status: New status. Options: new, prepped, reviewed, applied, interviewing, rejected
+        notes: Optional note to append to the job (e.g., "Applied via LinkedIn")
+
+    Returns:
+        Updated job summary or error
+    """
+    db, user_id, error = get_db_and_user(ctx)
+    if error:
+        return {"success": False, "error": error}
+
+    try:
+        job_uuid = UUID(job_id)
+    except ValueError:
+        return {"success": False, "error": f"Invalid job ID format: {job_id}"}
+
+    try:
+        job_status = JobStatus(status.lower())
+    except ValueError:
+        return {
+            "success": False,
+            "error": f"Invalid status '{status}'. Valid options: new, prepped, reviewed, applied, interviewing, rejected",
+        }
+
+    job = await job_repo.get_by_id_and_user(db, job_uuid, user_id)
+    if not job:
+        return {"success": False, "error": f"Job not found with ID: {job_id}"}
+
+    update_data: dict = {"status": job_status.value}
+    if notes:
+        existing = job.notes or ""
+        update_data["notes"] = f"{existing}\n\n{notes}".strip()
+
+    await job_repo.update(db, db_job=job, update_data=update_data)
+
+    return {
+        "success": True,
+        "message": f"Updated '{job.title}' at {job.company} to status: {job_status.value}",
+        "job_id": str(job.id),
+        "new_status": job_status.value,
+    }
+
+
+@jobs_toolset.tool
 async def delete_job(ctx: RunContext, job_id: str, reason: str | None = None) -> dict:
     """Delete a job the user is not interested in.
 
@@ -204,7 +248,7 @@ async def delete_job(ctx: RunContext, job_id: str, reason: str | None = None) ->
     Returns:
         Success confirmation or error
     """
-    db, user_id, error = _get_db_and_user(ctx)
+    db, user_id, error = get_db_and_user(ctx)
     if error:
         return {"success": False, "error": error}
 

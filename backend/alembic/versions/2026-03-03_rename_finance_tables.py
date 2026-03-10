@@ -29,35 +29,21 @@ def upgrade() -> None:
     op.execute("ALTER TABLE recurring_expenses RENAME TO finance_recurring_expenses")
 
     # ── Rename indexes: finance_accounts ──────────────────────────────────────
-    op.execute(
-        "ALTER INDEX financial_accounts_user_id_idx "
-        "RENAME TO finance_accounts_user_id_idx"
-    )
+    op.execute("ALTER INDEX financial_accounts_user_id_idx RENAME TO finance_accounts_user_id_idx")
 
     # ── Rename indexes: finance_transactions ──────────────────────────────────
+    op.execute("ALTER INDEX transactions_user_id_idx RENAME TO finance_transactions_user_id_idx")
     op.execute(
-        "ALTER INDEX transactions_user_id_idx "
-        "RENAME TO finance_transactions_user_id_idx"
-    )
-    op.execute(
-        "ALTER INDEX transactions_account_id_idx "
-        "RENAME TO finance_transactions_account_id_idx"
+        "ALTER INDEX transactions_account_id_idx RENAME TO finance_transactions_account_id_idx"
     )
     op.execute(
         "ALTER INDEX transactions_transaction_date_idx "
         "RENAME TO finance_transactions_transaction_date_idx"
     )
+    op.execute("ALTER INDEX transactions_category_idx RENAME TO finance_transactions_category_idx")
+    op.execute("ALTER INDEX transactions_source_idx RENAME TO finance_transactions_source_idx")
     op.execute(
-        "ALTER INDEX transactions_category_idx "
-        "RENAME TO finance_transactions_category_idx"
-    )
-    op.execute(
-        "ALTER INDEX transactions_source_idx "
-        "RENAME TO finance_transactions_source_idx"
-    )
-    op.execute(
-        "ALTER INDEX transactions_is_reviewed_idx "
-        "RENAME TO finance_transactions_is_reviewed_idx"
+        "ALTER INDEX transactions_is_reviewed_idx RENAME TO finance_transactions_is_reviewed_idx"
     )
     op.execute(
         "ALTER INDEX transactions_recurring_expense_id_idx "
@@ -69,14 +55,8 @@ def upgrade() -> None:
     )
 
     # ── Rename indexes: finance_budgets ───────────────────────────────────────
-    op.execute(
-        "ALTER INDEX budgets_user_id_idx "
-        "RENAME TO finance_budgets_user_id_idx"
-    )
-    op.execute(
-        "ALTER INDEX budgets_category_idx "
-        "RENAME TO finance_budgets_category_idx"
-    )
+    op.execute("ALTER INDEX budgets_user_id_idx RENAME TO finance_budgets_user_id_idx")
+    op.execute("ALTER INDEX budgets_category_idx RENAME TO finance_budgets_category_idx")
     op.execute(
         "ALTER INDEX budgets_user_id_category_month_year_idx "
         "RENAME TO finance_budgets_user_id_category_month_year_idx"
@@ -133,14 +113,8 @@ def downgrade() -> None:
         "ALTER INDEX finance_budgets_user_id_category_month_year_idx "
         "RENAME TO budgets_user_id_category_month_year_idx"
     )
-    op.execute(
-        "ALTER INDEX finance_budgets_category_idx "
-        "RENAME TO budgets_category_idx"
-    )
-    op.execute(
-        "ALTER INDEX finance_budgets_user_id_idx "
-        "RENAME TO budgets_user_id_idx"
-    )
+    op.execute("ALTER INDEX finance_budgets_category_idx RENAME TO budgets_category_idx")
+    op.execute("ALTER INDEX finance_budgets_user_id_idx RENAME TO budgets_user_id_idx")
 
     # ── Restore indexes: finance_transactions ─────────────────────────────────
     op.execute(
@@ -152,35 +126,21 @@ def downgrade() -> None:
         "RENAME TO transactions_recurring_expense_id_idx"
     )
     op.execute(
-        "ALTER INDEX finance_transactions_is_reviewed_idx "
-        "RENAME TO transactions_is_reviewed_idx"
+        "ALTER INDEX finance_transactions_is_reviewed_idx RENAME TO transactions_is_reviewed_idx"
     )
-    op.execute(
-        "ALTER INDEX finance_transactions_source_idx "
-        "RENAME TO transactions_source_idx"
-    )
-    op.execute(
-        "ALTER INDEX finance_transactions_category_idx "
-        "RENAME TO transactions_category_idx"
-    )
+    op.execute("ALTER INDEX finance_transactions_source_idx RENAME TO transactions_source_idx")
+    op.execute("ALTER INDEX finance_transactions_category_idx RENAME TO transactions_category_idx")
     op.execute(
         "ALTER INDEX finance_transactions_transaction_date_idx "
         "RENAME TO transactions_transaction_date_idx"
     )
     op.execute(
-        "ALTER INDEX finance_transactions_account_id_idx "
-        "RENAME TO transactions_account_id_idx"
+        "ALTER INDEX finance_transactions_account_id_idx RENAME TO transactions_account_id_idx"
     )
-    op.execute(
-        "ALTER INDEX finance_transactions_user_id_idx "
-        "RENAME TO transactions_user_id_idx"
-    )
+    op.execute("ALTER INDEX finance_transactions_user_id_idx RENAME TO transactions_user_id_idx")
 
     # ── Restore indexes: finance_accounts ─────────────────────────────────────
-    op.execute(
-        "ALTER INDEX finance_accounts_user_id_idx "
-        "RENAME TO financial_accounts_user_id_idx"
-    )
+    op.execute("ALTER INDEX finance_accounts_user_id_idx RENAME TO financial_accounts_user_id_idx")
 
     # ── Restore tables ────────────────────────────────────────────────────────
     op.execute("ALTER TABLE finance_recurring_expenses RENAME TO recurring_expenses")

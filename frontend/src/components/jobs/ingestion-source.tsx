@@ -1,6 +1,6 @@
 "use client";
 
-import { Mail, Search, PenLine, type LucideIcon } from "lucide-react";
+import { Mail, Search, PenLine, Bot, type LucideIcon } from "lucide-react";
 import type { IngestionSource } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +29,11 @@ export const INGESTION_SOURCE_CONFIG: Record<
     icon: PenLine,
     color: "text-purple-600 dark:text-purple-400",
     label: "Manual",
+  },
+  openclaw: {
+    icon: Bot,
+    color: "text-green-600 dark:text-green-400",
+    label: "OpenClaw",
   },
 };
 
