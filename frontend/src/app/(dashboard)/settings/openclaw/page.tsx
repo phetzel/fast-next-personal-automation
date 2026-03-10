@@ -165,7 +165,7 @@ export default function OpenClawSettingsPage() {
         \"company\": \"Example Co\",
         \"job_url\": \"https://jobs.example.com/backend-engineer\",
         \"location\": \"Remote\",
-        \"source\": \"manual\"
+        \"source\": \"linkedin\"
       }
     ],
     \"search_terms\": \"backend engineer remote\"

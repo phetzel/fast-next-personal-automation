@@ -47,20 +47,6 @@ Top-level optional: `search_terms`, `analyze_with_profile` (bool), `profile_id`,
 skills/personal_automations_openclaw_jobs/submit_jobs.sh payload.json
 ```
 
-## Quick Test
-
-```bash
-export APP_API_BASE_URL=http://localhost:8000
-export OPENCLAW_TOKEN=oct_your_token_here
-
-curl --fail-with-body -X POST "${APP_API_BASE_URL}/api/v1/integrations/openclaw/jobs/ingest" \
-  -H "Content-Type: application/json" \
-  -H "X-Integration-Token: ${OPENCLAW_TOKEN}" \
-  --data '{"jobs":[{"title":"Backend Engineer","company":"Example Co","job_url":"https://jobs.example.com/be"}]}'
-```
-
-Expected response includes `jobs_saved`, `duplicates_skipped`, `analysis_enabled`, `token_name`.
-
 ## Verify
 
 ```bash
