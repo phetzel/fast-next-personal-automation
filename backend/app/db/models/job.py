@@ -105,7 +105,7 @@ class Job(Base, TimestampMixin):
     )  # Combined highlights and talking points
     prepped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    # Application analysis (from job_analyze pipeline)
+    # Application analysis fields (reserved for external enrichment data)
     application_type: Mapped[str | None] = mapped_column(
         String(50), nullable=True
     )  # easy_apply, ats, direct, email, unknown

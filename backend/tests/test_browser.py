@@ -1,105 +1,6 @@
-"""Tests for browser automation module."""
+"""Tests for job-related helper logic and pipeline registration."""
 
-from app.browser.extractors import (
-    ApplicationType,
-    FieldType,
-    FormField,
-    ScreeningQuestion,
-    _map_field_type,
-)
 from app.pipelines.actions.job_prep.answer_generator import categorize_question
-
-
-class TestFieldType:
-    """Tests for field type mapping."""
-
-    def test_map_text_field(self):
-        """Test mapping text input type."""
-        assert _map_field_type("text") == FieldType.TEXT
-
-    def test_map_email_field(self):
-        """Test mapping email input type."""
-        assert _map_field_type("email") == FieldType.EMAIL
-
-    def test_map_phone_field(self):
-        """Test mapping phone/tel input type."""
-        assert _map_field_type("tel") == FieldType.PHONE
-
-    def test_map_textarea(self):
-        """Test mapping textarea."""
-        assert _map_field_type("textarea") == FieldType.TEXTAREA
-
-    def test_map_file_field(self):
-        """Test mapping file input type."""
-        assert _map_field_type("file") == FieldType.FILE
-
-    def test_map_unknown_field(self):
-        """Test mapping unknown input type."""
-        assert _map_field_type("custom") == FieldType.UNKNOWN
-
-    def test_map_case_insensitive(self):
-        """Test that mapping is case insensitive."""
-        assert _map_field_type("TEXT") == FieldType.TEXT
-        assert _map_field_type("Email") == FieldType.EMAIL
-
-
-class TestFormField:
-    """Tests for FormField dataclass."""
-
-    def test_form_field_creation(self):
-        """Test creating a form field."""
-        field = FormField(
-            name="email",
-            field_type=FieldType.EMAIL,
-            label="Email Address",
-            required=True,
-        )
-        assert field.name == "email"
-        assert field.field_type == FieldType.EMAIL
-        assert field.required is True
-
-    def test_form_field_to_dict(self):
-        """Test converting form field to dictionary."""
-        field = FormField(
-            name="cover_letter",
-            field_type=FieldType.TEXTAREA,
-            label="Cover Letter",
-            required=False,
-            placeholder="Tell us about yourself...",
-        )
-        d = field.to_dict()
-        assert d["name"] == "cover_letter"
-        assert d["field_type"] == "textarea"
-        assert d["required"] is False
-        assert d["placeholder"] == "Tell us about yourself..."
-
-
-class TestScreeningQuestion:
-    """Tests for ScreeningQuestion dataclass."""
-
-    def test_screening_question_creation(self):
-        """Test creating a screening question."""
-        question = ScreeningQuestion(
-            question="Are you authorized to work in the US?",
-            field_type=FieldType.RADIO,
-            required=True,
-            options=["Yes", "No"],
-        )
-        assert question.question == "Are you authorized to work in the US?"
-        assert question.required is True
-        assert len(question.options) == 2
-
-    def test_screening_question_to_dict(self):
-        """Test converting screening question to dictionary."""
-        question = ScreeningQuestion(
-            question="Years of experience with Python?",
-            field_type=FieldType.SELECT,
-            options=["0-2", "3-5", "5+"],
-        )
-        d = question.to_dict()
-        assert d["question"] == "Years of experience with Python?"
-        assert d["field_type"] == "select"
-        assert len(d["options"]) == 3
 
 
 class TestQuestionCategorization:
@@ -138,23 +39,6 @@ class TestQuestionCategorization:
         assert categorize_question("Describe yourself in 3 words") is None
 
 
-class TestApplicationType:
-    """Tests for ApplicationType enum."""
-
-    def test_application_type_values(self):
-        """Test that all expected application types exist."""
-        assert ApplicationType.EASY_APPLY.value == "easy_apply"
-        assert ApplicationType.ATS.value == "ats"
-        assert ApplicationType.DIRECT.value == "direct"
-        assert ApplicationType.EMAIL.value == "email"
-        assert ApplicationType.UNKNOWN.value == "unknown"
-
-
-# =============================================================================
-# Pipeline Registration Tests
-# =============================================================================
-
-
 class TestJobPipelineRegistration:
     """Tests for job-related pipeline registration."""
 
@@ -183,4 +67,4 @@ class TestJobPipelineRegistration:
         assert info is not None
         props = info["input_schema"]["properties"]
         assert "generate_screening_answers" in props
-        assert "auto_analyze" in props
+        assert "auto_analyze" not in props

@@ -25,8 +25,6 @@ def discover_pipelines(force_reload: bool = False) -> None:
                       Useful for testing after clear_registry().
     """
     # List of pipeline modules to discover
-    # Note: job_analyze is NOT registered here - it's used internally by job_prep.
-    # The job_prep pipeline auto-analyzes when needed (auto_analyze=True).
     pipeline_modules = [
         "app.pipelines.actions.echo",
         "app.pipelines.actions.job_search.pipeline",

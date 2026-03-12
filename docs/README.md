@@ -8,6 +8,7 @@ Welcome to the documentation for **personal_automations** - a full-stack AI chat
 |----------|-------------|
 | [Architecture](./architecture.md) | System architecture and design patterns |
 | [Backend](./backend.md) | FastAPI backend, API endpoints, and services |
+| [Jobs API Reference](./jobs-api.md) | Current jobs-area routes, pipelines, schedules, OpenClaw ingest, and agent surface |
 | [Frontend](./frontend.md) | Next.js frontend, components, and state management |
 | [AI Agent](./ai-agent.md) | PydanticAI agent setup, tools, and WebSocket streaming |
 | [Authentication](./authentication.md) | JWT, OAuth, and API key authentication |

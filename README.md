@@ -61,6 +61,7 @@ See the [`docs/`](./docs/) folder for detailed documentation:
 - [Getting Started](./docs/getting-started.md) — Setup and development
 - [Architecture](./docs/architecture.md) — System design and patterns
 - [Backend](./docs/backend.md) — API endpoints and services
+- [Jobs API Reference](./docs/jobs-api.md) — Current jobs routes, pipelines, schedules, OpenClaw, and jobs agent surface
 - [Frontend](./docs/frontend.md) — Components and state management
 - [AI Agent](./docs/ai-agent.md) — PydanticAI configuration
 - [Authentication](./docs/authentication.md) — JWT and OAuth

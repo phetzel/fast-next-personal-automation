@@ -81,6 +81,7 @@ All endpoints are prefixed with `/api/v1`.
 | PATCH | `/jobs/{id}` | Update job (status, notes, cover_letter) |
 | DELETE | `/jobs/{id}` | Delete job |
 | GET | `/jobs/stats` | Get job statistics |
+| POST | `/jobs/batch/delete` | Soft-delete all jobs for one status (`new`, `prepped`, `reviewed`) |
 | POST | `/jobs/{id}/cover-letter/generate-pdf` | Generate/regenerate cover letter PDF |
 | GET | `/jobs/{id}/cover-letter/download` | Download cover letter PDF |
 | GET | `/jobs/{id}/cover-letter/preview` | Preview cover letter PDF in browser |
@@ -210,10 +211,10 @@ Recurring expenses support an optional `account_id` field. When set, a nightly w
 | Pipeline | Description |
 |----------|-------------|
 | `job_search` | Search job boards and analyze fit against resume |
-| `job_prep` | Auto-analyzes application page, then generates cover letter (if needed) and prep notes |
+| `job_search_batch` | Search across all job profiles with resumes |
+| `job_prep` | Generate cover letter and prep notes for a job |
+| `job_prep_batch` | Prep all `new` jobs in score order |
 | `email_sync_jobs` | Sync job listings from connected email accounts |
-
-> **Note:** `job_analyze` exists as an internal module used by `job_prep` (via `auto_analyze=True`), but is not exposed as a standalone pipeline.
 
 ### Schedules
 
@@ -250,7 +251,7 @@ Authentication model:
 - External score/reasoning passthrough (`relevance_score`, `reasoning`) when provided
 - Optional internal AI scoring fallback with a profile resume (`analyze_with_profile`)
 - Score filtering (`min_score`) or forced save (`save_all`)
-- Persisting jobs with `ingestion_source="manual"` for source tracking
+- Persisting jobs with `ingestion_source="openclaw"` for source tracking
 
 Current payload limits/behavior:
 - `jobs` minimum length: `1` (request validation)
@@ -267,8 +268,8 @@ See [OpenClaw Job Ingest](./openclaw.md) for the exact end-to-end flow and the m
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/agent/areas` | List available area configs |
-| POST | `/agent/areas/{area}/chat` | Chat with area agent (non-streaming) |
+| GET | `/areas` | List available area configs |
+| POST | `/areas/{area}/chat` | Chat with area agent (non-streaming) |
 
 ## Services
 
@@ -429,9 +430,6 @@ settings.OPENAI_API_KEY
 | `AI_MODEL` | `gpt-4o-mini` | Default AI model |
 | `RATE_LIMIT_REQUESTS` | `100` | Requests per period |
 | `RATE_LIMIT_PERIOD` | `60` | Rate limit period (seconds) |
-| `BROWSER_HEADLESS` | `True` | Run Playwright browser in headless mode |
-| `BROWSER_TIMEOUT` | `30000` | Browser operation timeout in milliseconds |
-| `BROWSER_USE_AI_MODEL` | `gpt-4o` | Model for AI-powered browser analysis |
 | `GOOGLE_GMAIL_REDIRECT_URI` | - | Gmail OAuth callback URL |
 | `EMAIL_SYNC_INTERVAL_MINUTES` | `60` | How often to sync email sources |
 | `EMAIL_SYNC_LOOKBACK_HOURS` | `72` | How far back to look on first sync |
@@ -569,15 +567,14 @@ The email integration automatically syncs job alert emails from connected Gmail 
 - **Supported Job Boards**: Indeed, LinkedIn, HiringCafe, Glassdoor, Dice, ZipRecruiter
 - **Sync Frequency**: Every hour via scheduled task
 - **Parsers**: Template-based (BeautifulSoup) for known formats, AI fallback (GPT-4o-mini) for unknown
-- **Description Enrichment**: Optionally scrapes full job descriptions from URLs using Playwright
 - **Score Filtering**: Optionally filters jobs by AI relevance score before saving
 
 ### Architecture
 
 ```
-Gmail API → GmailClient → Email Parsers → Description Scraper → AI Scoring → Job Records
-                ↑                ↓                                    ↓
-          EmailSource      EmailMessage                        (filtered by score)
+Gmail API → GmailClient → Email Parsers → AI Scoring → Job Records
+                ↑                ↓                        ↓
+          EmailSource      EmailMessage            (filtered by score)
           (OAuth tokens)   (processed tracking)
 ```
 
@@ -586,7 +583,6 @@ Gmail API → GmailClient → Email Parsers → Description Scraper → AI Scori
 The `email_sync_jobs` pipeline accepts:
 - `source_id` - Specific email source to sync (optional, syncs all if not provided)
 - `force_full_sync` - Ignore last sync time and sync all matching emails
-- `enrich_descriptions` - Scrape full job descriptions from URLs (default: true)
 - `save_all` - Save all jobs regardless of score (default: false, uses profile's min_score_threshold)
 
 ### Future Enhancements (Phase 3)

@@ -1,15 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import {
-  AlertCircle,
-  Check,
-  Copy,
-  KeyRound,
-  Loader2,
-  ShieldCheck,
-  Trash2,
-} from "lucide-react";
+import { AlertCircle, Check, Copy, KeyRound, Loader2, ShieldCheck, Trash2 } from "lucide-react";
 import { apiClient, ApiError } from "@/lib/api-client";
 import {
   Badge,
@@ -127,9 +119,7 @@ export default function OpenClawSettingsPage() {
     try {
       await apiClient.delete(`/integrations/openclaw/tokens/${tokenId}`);
       setTokens((current) =>
-        current.map((token) =>
-          token.id === tokenId ? { ...token, is_active: false } : token
-        )
+        current.map((token) => (token.id === tokenId ? { ...token, is_active: false } : token))
       );
       setSuccess("Token revoked.");
     } catch (err) {
@@ -179,8 +169,8 @@ export default function OpenClawSettingsPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">OpenClaw Jobs</h1>
             <p className="text-muted-foreground">
-              Create a scoped machine token so OpenClaw or Clawbot can add jobs through the
-              existing ingest endpoint.
+              Create a scoped machine token so OpenClaw or Clawbot can add jobs through the existing
+              ingest endpoint.
             </p>
           </div>
         </div>
@@ -329,19 +319,19 @@ export default function OpenClawSettingsPage() {
                   </div>
                   <dl className="text-muted-foreground grid gap-1 text-sm sm:grid-cols-2">
                     <div>
-                      <dt className="font-medium text-foreground">Created</dt>
+                      <dt className="text-foreground font-medium">Created</dt>
                       <dd>{formatDate(token.created_at)}</dd>
                     </div>
                     <div>
-                      <dt className="font-medium text-foreground">Last used</dt>
+                      <dt className="text-foreground font-medium">Last used</dt>
                       <dd>{formatDate(token.last_used_at)}</dd>
                     </div>
                     <div>
-                      <dt className="font-medium text-foreground">Expires</dt>
+                      <dt className="text-foreground font-medium">Expires</dt>
                       <dd>{formatDate(token.expires_at)}</dd>
                     </div>
                     <div>
-                      <dt className="font-medium text-foreground">Token ID</dt>
+                      <dt className="text-foreground font-medium">Token ID</dt>
                       <dd className="font-mono text-xs break-all">{token.id}</dd>
                     </div>
                   </dl>
