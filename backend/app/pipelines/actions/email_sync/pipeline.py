@@ -33,10 +33,6 @@ class EmailSyncInput(BaseModel):
         default=False,
         description="If true, ignores last_sync_at and syncs all matching emails.",
     )
-    enrich_descriptions: bool = Field(
-        default=True,
-        description="If true, scrape full job descriptions from URLs before AI analysis.",
-    )
     save_all: bool = Field(
         default=False,
         description="If true, save all jobs regardless of score. If false, only save jobs meeting min_score threshold.",
@@ -48,7 +44,6 @@ class EmailSyncOutput(BaseModel):
 
     emails_processed: int = Field(default=0, description="Number of emails processed")
     jobs_extracted: int = Field(default=0, description="Total jobs extracted from emails")
-    jobs_enriched: int = Field(default=0, description="Jobs with descriptions scraped from URL")
     jobs_analyzed: int = Field(default=0, description="Jobs analyzed with AI scoring")
     jobs_saved: int = Field(default=0, description="New jobs saved (after deduplication)")
     jobs_filtered: int = Field(default=0, description="Jobs filtered out due to low score")
@@ -150,12 +145,10 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
                         context.user_id,
                         sync_id=sync.id,
                         force_full_sync=input.force_full_sync,
-                        enrich_descriptions=input.enrich_descriptions,
                         save_all=input.save_all,
                     )
                     output.emails_processed += result["emails_processed"]
                     output.jobs_extracted += result["jobs_extracted"]
-                    output.jobs_enriched += result.get("jobs_enriched", 0)
                     output.jobs_analyzed += result["jobs_analyzed"]
                     output.jobs_saved += result["jobs_saved"]
                     output.jobs_filtered += result.get("jobs_filtered", 0)
@@ -182,7 +175,6 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
                 emails_processed=output.emails_processed,
                 sync_metadata={
                     "jobs_extracted": output.jobs_extracted,
-                    "jobs_enriched": output.jobs_enriched,
                     "jobs_analyzed": output.jobs_analyzed,
                     "jobs_saved": output.jobs_saved,
                     "jobs_filtered": output.jobs_filtered,
@@ -213,7 +205,6 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
         user_id: UUID,
         sync_id: UUID | None = None,
         force_full_sync: bool = False,
-        enrich_descriptions: bool = True,
         save_all: bool = False,
     ) -> dict:
         """Sync a single email source.
@@ -224,7 +215,6 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
             user_id: User ID
             sync_id: Optional sync record ID
             force_full_sync: If true, ignore last_sync_at
-            enrich_descriptions: If true, scrape full job descriptions from URLs
             save_all: If true, save all jobs regardless of score
         """
         logger.info(f"Syncing email source: {source.email_address}")
@@ -233,7 +223,6 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
             "emails_processed": 0,
             "emails_fetched": 0,
             "jobs_extracted": 0,
-            "jobs_enriched": 0,
             "jobs_analyzed": 0,
             "jobs_saved": 0,
             "jobs_filtered": 0,
@@ -321,13 +310,6 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
                     for job in extracted_jobs
                 ]
 
-                # Enrich jobs with full descriptions from URLs
-                if raw_jobs and enrich_descriptions:
-                    raw_jobs = await self._enrich_job_descriptions(raw_jobs)
-                    result["jobs_enriched"] += sum(
-                        1 for job in raw_jobs if job.description and len(job.description) > 500
-                    )
-
                 if raw_jobs:
                     ingestion = await job_service.ingest_jobs(
                         user_id=user_id,
@@ -399,7 +381,6 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
             f"Sync complete for {source.email_address}: "
             f"{result['emails_processed']} emails, "
             f"{result['jobs_extracted']} extracted, "
-            f"{result['jobs_enriched']} enriched, "
             f"{result['jobs_analyzed']} analyzed, "
             f"{result['jobs_saved']} saved, "
             f"{result['jobs_filtered']} filtered, "
@@ -407,60 +388,3 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
         )
 
         return result
-
-    async def _enrich_job_descriptions(
-        self,
-        raw_jobs: list[RawJob],
-        max_concurrent: int = 3,
-    ) -> list[RawJob]:
-        """Enrich jobs with full descriptions scraped from their URLs.
-
-        Jobs that already have substantial descriptions (> 500 chars) are skipped.
-        Jobs where scraping fails retain their original description_snippet.
-
-        Args:
-            raw_jobs: List of RawJob objects to enrich
-            max_concurrent: Max concurrent scraping tasks
-
-        Returns:
-            List of RawJob objects with enriched descriptions
-        """
-        from app.browser.job_scraper import scrape_job_descriptions_batch
-
-        # Collect URLs that need scraping
-        urls_to_scrape: list[str] = []
-        url_to_job_indices: dict[str, list[int]] = {}
-
-        for i, job in enumerate(raw_jobs):
-            # Skip if already has a substantial description
-            if job.description and len(job.description) > 500:
-                continue
-
-            url = job.job_url
-            if url not in url_to_job_indices:
-                url_to_job_indices[url] = []
-                urls_to_scrape.append(url)
-            url_to_job_indices[url].append(i)
-
-        if not urls_to_scrape:
-            logger.info("No jobs need description enrichment")
-            return raw_jobs
-
-        logger.info(f"Enriching descriptions for {len(urls_to_scrape)} jobs")
-
-        # Scrape descriptions
-        scraped = await scrape_job_descriptions_batch(
-            urls_to_scrape,
-            max_concurrent=max_concurrent,
-        )
-
-        # Update jobs with scraped descriptions
-        enriched_count = 0
-        for url, result in scraped.items():
-            if result.success and result.description:
-                for job_idx in url_to_job_indices.get(url, []):
-                    raw_jobs[job_idx].description = result.description
-                    enriched_count += 1
-
-        logger.info(f"Successfully enriched {enriched_count} job descriptions")
-        return raw_jobs

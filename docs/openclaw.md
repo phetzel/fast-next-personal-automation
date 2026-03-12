@@ -40,12 +40,10 @@ Optional fields per job: `description`, `salary_range`, `date_posted`, `is_remot
 
 Top-level optional: `search_terms`, `analyze_with_profile` (bool), `profile_id`, `min_score`, `save_all`, `qa_with_internal_analysis`.
 
-## Ingest Script
+## Ingest Helper
 
-```bash
-# From this repo or the Clawbot workspace:
-skills/personal_automations_openclaw_jobs/submit_jobs.sh payload.json
-```
+The ingest helper is maintained on the OpenClaw droplet, not in this repository.
+Run it from the droplet-side OpenClaw workspace with your payload file.
 
 ## Verify
 
@@ -69,9 +67,9 @@ The current split is narrow: Clawbot ingests, the app does everything else. The 
 6. Clawbot delivers results back to Telegram
 
 **Consequences for the app:**
-- `job_analyze` becomes internal-only (no longer user-facing in pipelines)
+- `job_analyze` can be removed from the app entirely
 - `job_search` becomes redundant once Clawbot handles all sourcing and can be removed
-- Playwright dependency can be dropped from the app server
+- Backend Playwright/browser-use dependencies stay out of the app server
 - Two new integration additions needed: `jobs:read_resume` token scope + `/jobs/{id}/prep` endpoint
 
 Resume and all prep materials stay in the app as the source of truth. Clawbot remains stateless.

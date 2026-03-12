@@ -196,7 +196,6 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
                         profile_id=profile_id_to_use,
                         tone=input.tone,
                         generate_screening_answers=False,
-                        auto_analyze=False,
                     )
                     result = await prep_pipeline.execute(prep_input, context)
 

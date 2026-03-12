@@ -297,7 +297,6 @@ class TestEmailSyncPipeline:
         props = schema["properties"]
         assert "source_id" in props
         assert "force_full_sync" in props
-        assert "enrich_descriptions" in props
         assert "save_all" in props
 
     def test_email_sync_pipeline_output_schema(self):
@@ -312,7 +311,6 @@ class TestEmailSyncPipeline:
         props = schema["properties"]
         assert "emails_processed" in props
         assert "jobs_extracted" in props
-        assert "jobs_enriched" in props
         assert "jobs_analyzed" in props
         assert "jobs_saved" in props
         assert "jobs_filtered" in props
