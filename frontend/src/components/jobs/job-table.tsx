@@ -228,7 +228,7 @@ export function JobTable({
         cell: ({ row }) => {
           const job = row.original;
           const isPrepping = preppingJobId === job.id;
-          const showPrepButton = job.status === "new" && onPrep;
+          const showPrepButton = job.status === "analyzed" && onPrep;
 
           return (
             <div className="flex items-center gap-1">

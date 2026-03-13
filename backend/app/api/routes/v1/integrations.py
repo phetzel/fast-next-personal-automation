@@ -1,22 +1,40 @@
 """Integration routes for external automation tools (e.g., OpenClaw)."""
 
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, status
 
-from app.api.deps import CurrentUser, DBSession, IntegrationTokenSvc, JobSvc, OpenClawToken
+from app.api.deps import (
+    CurrentUser,
+    DBSession,
+    IntegrationTokenSvc,
+    JobSvc,
+    OpenClawAnalyzeToken,
+    OpenClawApplyToken,
+    OpenClawPrepToken,
+    OpenClawToken,
+)
 from app.core.exceptions import ValidationError
 from app.db.models.integration_token import IntegrationToken
+from app.db.models.job import JobStatus
+from app.pipelines.action_base import PipelineContext, PipelineSource
+from app.pipelines.registry import execute_pipeline
 from app.repositories import job_profile_repo
 from app.schemas.integration import (
+    OpenClawApplySuccessRequest,
+    OpenClawJobAnalyzeRequest,
     OpenClawJobsIngestRequest,
     OpenClawJobsIngestResponse,
+    OpenClawPrepBatchRequest,
     OpenClawTokenCreateRequest,
     OpenClawTokenCreateResponse,
     OpenClawTokenListResponse,
     OpenClawTokenRead,
 )
+from app.schemas.job import JobResponse
 from app.schemas.job_data import RawJob
+from app.schemas.pipeline import PipelineExecuteResponse
 
 router = APIRouter()
 
@@ -33,6 +51,27 @@ def _token_to_read(token: IntegrationToken) -> OpenClawTokenRead:
         last_used_at=token.last_used_at,
         expires_at=token.expires_at,
     )
+
+
+def _job_attributes_from_openclaw_payload(job) -> dict:
+    """Map optional OpenClaw enrichment fields onto persisted job attributes."""
+    attributes: dict = {}
+    if job.description is not None:
+        attributes["description"] = job.description
+    if job.has_application_analysis:
+        attributes.update(
+            {
+                "application_type": job.application_type,
+                "application_url": job.application_url,
+                "requires_cover_letter": job.requires_cover_letter,
+                "requires_resume": job.requires_resume,
+                "detected_fields": job.detected_fields,
+                "screening_questions": job.screening_questions,
+                "analyzed_at": job.analyzed_at or datetime.now(UTC),
+                "status": JobStatus.ANALYZED.value,
+            }
+        )
+    return attributes
 
 
 @router.post(
@@ -108,6 +147,11 @@ async def ingest_openclaw_jobs(
         if job.relevance_score is not None
     }
     external_analysis_used = bool(external_analysis_by_url)
+    job_attributes_by_url = {}
+    for job in payload.jobs:
+        attributes = _job_attributes_from_openclaw_payload(job)
+        if attributes:
+            job_attributes_by_url[job.job_url] = attributes
 
     if payload.analyze_with_profile:
         if payload.profile_id:
@@ -164,6 +208,7 @@ async def ingest_openclaw_jobs(
         save_all=payload.save_all,
         search_terms=payload.search_terms,
         external_analysis_by_url=external_analysis_by_url,
+        job_attributes_by_url=job_attributes_by_url,
         qa_with_internal_analysis=payload.qa_with_internal_analysis,
     )
     await db.commit()
@@ -184,3 +229,79 @@ async def ingest_openclaw_jobs(
         token_id=openclaw_token.id,
         token_name=openclaw_token.name,
     )
+
+
+@router.post("/openclaw/jobs/{job_id}/analyze", response_model=JobResponse)
+async def analyze_openclaw_job(
+    job_id: UUID,
+    payload: OpenClawJobAnalyzeRequest,
+    openclaw_token: OpenClawAnalyzeToken,
+    job_service: JobSvc,
+) -> JobResponse:
+    """Persist application-page analysis for an existing job."""
+    job = await job_service.update_application_analysis(
+        job_id,
+        openclaw_token.user_id,
+        description=payload.description,
+        application_type=payload.application_type,
+        application_url=payload.application_url,
+        requires_cover_letter=payload.requires_cover_letter,
+        requires_resume=payload.requires_resume,
+        detected_fields=payload.detected_fields,
+        screening_questions=payload.screening_questions,
+        analyzed_at=payload.analyzed_at,
+    )
+    return JobResponse.model_validate(job)
+
+
+@router.post("/openclaw/jobs/prep-batch", response_model=PipelineExecuteResponse)
+async def prep_openclaw_jobs(
+    payload: OpenClawPrepBatchRequest,
+    openclaw_token: OpenClawPrepToken,
+    db: DBSession,
+) -> PipelineExecuteResponse:
+    """Trigger the internal analyzed-job prep batch pipeline for this user."""
+    context = PipelineContext(
+        source=PipelineSource.API,
+        user_id=openclaw_token.user_id,
+        metadata={
+            "integration": "openclaw",
+            "token_id": str(openclaw_token.id),
+            "token_name": openclaw_token.name,
+        },
+    )
+    result = await execute_pipeline(
+        "job_prep_batch",
+        {
+            "job_ids": [str(job_id) for job_id in payload.job_ids] if payload.job_ids else None,
+            "max_jobs": payload.max_jobs,
+            "tone": payload.tone,
+        },
+        context,
+        db=db,
+    )
+    return PipelineExecuteResponse(
+        success=result.success,
+        output=result.output.model_dump(mode="json") if result.output else None,
+        error=result.error,
+        metadata=result.metadata,
+    )
+
+
+@router.post("/openclaw/jobs/{job_id}/apply-success", response_model=JobResponse)
+async def mark_openclaw_apply_success(
+    job_id: UUID,
+    payload: OpenClawApplySuccessRequest,
+    openclaw_token: OpenClawApplyToken,
+    job_service: JobSvc,
+) -> JobResponse:
+    """Record that OpenClaw successfully submitted an application."""
+    job = await job_service.mark_job_applied(
+        job_id,
+        openclaw_token.user_id,
+        applied_at=payload.applied_at,
+        application_method=payload.application_method or "openclaw",
+        confirmation_code=payload.confirmation_code,
+        notes=payload.notes,
+    )
+    return JobResponse.model_validate(job)

@@ -31,10 +31,10 @@ Most jobs routes use standard user auth:
 
 - Header: `Authorization: Bearer <access_token>`
 
-The OpenClaw ingest route uses machine auth instead:
+The OpenClaw machine routes use scoped machine auth instead:
 
 - Header: `X-Integration-Token: oct_...`
-- Required scope: `jobs:ingest`
+- Scopes: `jobs:ingest`, `jobs:analyze`, `jobs:prep`, `jobs:apply`
 
 ## Core Models
 
@@ -48,11 +48,13 @@ Jobs are stored in `jobs` with these notable fields:
 - Matching data: `relevance_score`, `reasoning`
 - Workflow data: `status`, `notes`
 - Prep data: `cover_letter`, `cover_letter_file_path`, `cover_letter_generated_at`, `prep_notes`, `prepped_at`
-- Application analysis: `application_type`, `application_url`, `requires_cover_letter`, `requires_resume`, `detected_fields`, `screening_questions`, `analyzed_at`
+- Application analysis: `application_type`, `application_url`, `requires_cover_letter`, `requires_resume`, `detected_fields`, `screening_questions`, `screening_answers`, `analyzed_at`
+- Application submission: `applied_at`, `application_method`, `confirmation_code`
 
 Statuses:
 
 - `new`
+- `analyzed`
 - `prepped`
 - `reviewed`
 - `applied`
@@ -64,7 +66,8 @@ Important implementation details:
 - Jobs are soft-deleted with `deleted_at`.
 - Duplicate detection is by `(user_id, job_url)`.
 - Duplicate detection includes soft-deleted jobs, so deleting a job does not make it re-ingestable later.
-- There is no public `POST /jobs` create route. Jobs enter through pipelines or integration ingestion.
+- There is a public `POST /jobs` route for manually adding and scoring a job.
+- Server-side transition rules are enforced in the job service, not just in the frontend.
 
 ### Job Profile
 
@@ -95,8 +98,9 @@ Lists the current user's non-deleted jobs.
 
 Query params:
 
-- `status`: one of `new|prepped|reviewed|applied|interviewing|rejected`
+- `status`: one of `new|analyzed|prepped|reviewed|applied|interviewing|rejected`
 - `source`: free-form source string such as `linkedin`, `indeed`, `greenhouse`
+- `ingestion_source`: `scrape|email|manual|openclaw`
 - `min_score`: float `0-10`
 - `max_score`: float `0-10`
 - `search`: text matched against title, company, and description
@@ -114,16 +118,13 @@ Response:
 - `page_size`
 - `has_more`
 
-Notes:
-
-- The backend route does not currently expose `ingestion_source` as a query param, even though the shared schema and frontend types define it.
-
 #### `GET /api/v1/jobs/stats`
 
 Returns aggregate job stats for the current user:
 
 - `total`
 - `new`
+- `analyzed`
 - `prepped`
 - `reviewed`
 - `applied`
@@ -149,6 +150,7 @@ Request body:
 Allowed statuses:
 
 - `new`
+- `analyzed`
 - `prepped`
 - `reviewed`
 
@@ -174,8 +176,24 @@ Supported writable fields:
 
 Notes:
 
-- The backend accepts any valid `JobStatus` enum value.
-- The expected status flow is modeled in the frontend, but there is no server-side transition enforcement in this route.
+- The backend enforces lifecycle transitions.
+- Allowed forward transitions are:
+  - `new -> analyzed`
+  - `analyzed -> prepped`
+  - `prepped -> reviewed`
+  - `reviewed -> applied`
+  - `applied -> interviewing|rejected`
+  - `interviewing -> rejected`
+
+#### `POST /api/v1/jobs`
+
+Creates a manual job and scores it against the selected profile or the user's default profile.
+
+Behavior:
+
+- Requires a scorable profile with resume text
+- Saves jobs with `ingestion_source="manual"`
+- Saves manual jobs as `new`
 
 #### `DELETE /api/v1/jobs/{job_id}`
 
@@ -436,13 +454,13 @@ Persistence behavior:
 
 Important implementation detail:
 
-- The current implementation always generates a cover letter, even though the older comments still describe conditional generation based on application analysis.
+- The current implementation only generates a cover letter when application analysis requires one or the caller forces it.
 
 ### `job_prep_batch`
 
 Purpose:
 
-- Prep all `new` jobs in descending score order
+- Prep all `analyzed` jobs in descending score order
 
 Input:
 
@@ -482,6 +500,7 @@ Persistence behavior:
 
 - Saved jobs get `ingestion_source="email"`
 - Uses the user's default profile for scoring when resume text is available
+- Fails the sync with a structured configuration error when no scorable profile is available
 
 ## Email Routes That Feed Jobs
 
@@ -578,6 +597,7 @@ Revokes one token.
 Auth:
 
 - `X-Integration-Token`
+- required scope: `jobs:ingest`
 
 Top-level request fields:
 
@@ -604,6 +624,14 @@ Per-job fields:
 - optional external scoring:
   - `relevance_score`
   - `reasoning`
+- optional application analysis:
+  - `application_type`
+  - `application_url`
+  - `requires_cover_letter`
+  - `requires_resume`
+  - `detected_fields`
+  - `screening_questions`
+  - `analyzed_at`
 
 Validation rules:
 
@@ -634,10 +662,78 @@ Persistence behavior:
 - Jobs are stored with `ingestion_source="openclaw"`
 - External `relevance_score` and `reasoning` are stored directly when provided
 - If external analysis is absent and profile resume context is available, internal analysis can score the jobs
+- Jobs are saved directly as `analyzed` when application-analysis fields are present
 
 Important note:
 
 - OpenClaw should call the FastAPI backend origin directly. There is no frontend proxy route for machine ingest in `frontend/src/app/api/`.
+
+### Machine Analyze Route
+
+#### `POST /api/v1/integrations/openclaw/jobs/{job_id}/analyze`
+
+Auth:
+
+- `X-Integration-Token`
+- required scope: `jobs:analyze`
+
+Payload fields:
+
+- `description`
+- `application_type`
+- `application_url`
+- `requires_cover_letter`
+- `requires_resume`
+- `detected_fields`
+- `screening_questions`
+- `analyzed_at`
+
+Behavior:
+
+- Requires at least one application-analysis field
+- Moves `new -> analyzed`
+- Leaves later-stage jobs in place while refreshing analysis data
+
+### Machine Prep Route
+
+#### `POST /api/v1/integrations/openclaw/jobs/prep-batch`
+
+Auth:
+
+- `X-Integration-Token`
+- required scope: `jobs:prep`
+
+Payload fields:
+
+- `job_ids` optional
+- `max_jobs`
+- `tone`
+
+Behavior:
+
+- Executes the internal `job_prep_batch` pipeline synchronously
+- Targets analyzed jobs
+
+### Machine Apply Route
+
+#### `POST /api/v1/integrations/openclaw/jobs/{job_id}/apply-success`
+
+Auth:
+
+- `X-Integration-Token`
+- required scope: `jobs:apply`
+
+Payload fields:
+
+- `applied_at`
+- `application_method`
+- `confirmation_code`
+- `notes`
+
+Behavior:
+
+- Only valid for reviewed jobs unless the job is already applied
+- Writes the application tracking fields and advances `reviewed -> applied`
 
 ## Jobs Area Agent Surface
 

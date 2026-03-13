@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   Briefcase,
   Sparkles,
+  Search,
   FileText,
   Eye,
   Send,
@@ -47,8 +48,8 @@ export function JobStatsCard({ stats, isLoading, className }: JobStatsCardProps)
     return (
       <Card className={className}>
         <CardContent className="py-6">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9">
-            {Array.from({ length: 9 }).map((_, i) => (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-10">
+            {Array.from({ length: 10 }).map((_, i) => (
               <div key={i} className="h-16 animate-pulse rounded-lg bg-gray-200" />
             ))}
           </div>
@@ -60,7 +61,7 @@ export function JobStatsCard({ stats, isLoading, className }: JobStatsCardProps)
   return (
     <Card className={className}>
       <CardContent className="py-6">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-10">
           <StatItem
             label="Total"
             value={stats?.total ?? 0}
@@ -72,6 +73,12 @@ export function JobStatsCard({ stats, isLoading, className }: JobStatsCardProps)
             value={stats?.new ?? 0}
             Icon={Sparkles}
             color="bg-blue-500/10 text-blue-600"
+          />
+          <StatItem
+            label="Analyzed"
+            value={stats?.analyzed ?? 0}
+            Icon={Search}
+            color="bg-indigo-500/10 text-indigo-600"
           />
           <StatItem
             label="Prepped"

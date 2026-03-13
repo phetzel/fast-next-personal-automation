@@ -149,6 +149,11 @@ class JobProfileService:
             target_locations=profile_in.target_locations,
             min_score_threshold=profile_in.min_score_threshold,
             preferences=profile_in.preferences,
+            contact_full_name=profile_in.contact_full_name,
+            contact_email=profile_in.contact_email,
+            contact_phone=profile_in.contact_phone,
+            contact_location=profile_in.contact_location,
+            contact_website=profile_in.contact_website,
         )
 
         # If marked as default, unset other defaults

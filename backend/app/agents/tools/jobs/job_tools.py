@@ -14,7 +14,8 @@ from pydantic_ai.toolsets import FunctionToolset
 from app.agents.tools.jobs.helpers import get_db_and_user
 from app.db.models.job import JobStatus
 from app.repositories import job as job_repo
-from app.schemas.job import JobFilters, JobResponse, JobSummary
+from app.schemas.job import JobFilters, JobResponse, JobSummary, JobUpdate
+from app.services.job import JobService
 
 # Create the toolset
 jobs_toolset = FunctionToolset()
@@ -40,7 +41,7 @@ async def list_jobs(
     and source.
 
     Args:
-        status: Filter by job status. Options: new, prepped, reviewed, applied, rejected, interviewing
+        status: Filter by job status. Options: new, analyzed, prepped, reviewed, applied, rejected, interviewing
         search: Search text in job title, company name, or description
         min_score: Minimum relevance score (0-10) to include
         max_score: Maximum relevance score (0-10) to include
@@ -65,7 +66,7 @@ async def list_jobs(
         except ValueError:
             return {
                 "success": False,
-                "error": f"Invalid status '{status}'. Valid options: new, prepped, reviewed, applied, rejected, interviewing",
+                "error": f"Invalid status '{status}'. Valid options: new, analyzed, prepped, reviewed, applied, rejected, interviewing",
             }
 
     # Build filters
@@ -160,6 +161,7 @@ async def get_job_stats(ctx: RunContext) -> dict:
             "total_jobs": stats["total"],
             "by_status": {
                 "new": stats["new"],
+                "analyzed": stats["analyzed"],
                 "prepped": stats["prepped"],
                 "reviewed": stats["reviewed"],
                 "applied": stats["applied"],
@@ -184,12 +186,12 @@ async def update_job_status(
     Use this when the user says they've reviewed a job, applied to it,
     got an interview, or received a rejection.
 
-    Status flow: new → prepped → reviewed → applied → interviewing
-    Rejection (from employer): applied → rejected, or interviewing → rejected
+    Status flow: new → analyzed → prepped → reviewed → applied
+    Outcomes: applied → interviewing, applied → rejected, interviewing → rejected
 
     Args:
         job_id: The UUID of the job to update
-        status: New status. Options: new, prepped, reviewed, applied, interviewing, rejected
+        status: New status. Options: new, analyzed, prepped, reviewed, applied, interviewing, rejected
         notes: Optional note to append to the job (e.g., "Applied via LinkedIn")
 
     Returns:
@@ -209,24 +211,29 @@ async def update_job_status(
     except ValueError:
         return {
             "success": False,
-            "error": f"Invalid status '{status}'. Valid options: new, prepped, reviewed, applied, interviewing, rejected",
+            "error": f"Invalid status '{status}'. Valid options: new, analyzed, prepped, reviewed, applied, interviewing, rejected",
         }
 
-    job = await job_repo.get_by_id_and_user(db, job_uuid, user_id)
-    if not job:
-        return {"success": False, "error": f"Job not found with ID: {job_id}"}
+    job_service = JobService(db)
+    try:
+        update_kwargs: dict[str, str | JobStatus] = {"status": job_status}
+        if notes:
+            job = await job_service.get_by_id(job_uuid, user_id)
+            update_kwargs["notes"] = f"{job.notes}\n\n{notes}".strip() if job.notes else notes
 
-    update_data: dict = {"status": job_status.value}
-    if notes:
-        existing = job.notes or ""
-        update_data["notes"] = f"{existing}\n\n{notes}".strip()
-
-    await job_repo.update(db, db_job=job, update_data=update_data)
+        updated = await job_service.update(
+            job_uuid,
+            user_id,
+            JobUpdate(**update_kwargs),
+        )
+    except Exception as exc:
+        message = getattr(exc, "message", str(exc))
+        return {"success": False, "error": message}
 
     return {
         "success": True,
-        "message": f"Updated '{job.title}' at {job.company} to status: {job_status.value}",
-        "job_id": str(job.id),
+        "message": f"Updated '{updated.title}' at {updated.company} to status: {job_status.value}",
+        "job_id": str(updated.id),
         "new_status": job_status.value,
     }
 

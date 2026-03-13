@@ -29,6 +29,7 @@ interface JobStore {
   setStats: (stats: JobStats | null) => void;
   setStatsLoading: (loading: boolean) => void;
   setSelectedJob: (job: Job | null) => void;
+  addJob: (job: Job) => void;
   updateJob: (job: Job) => void;
   removeJob: (jobId: string) => void;
 }
@@ -70,6 +71,13 @@ export const useJobStore = create<JobStore>((set) => ({
   setStatsLoading: (statsLoading) => set({ statsLoading }),
 
   setSelectedJob: (selectedJob) => set({ selectedJob }),
+
+  addJob: (job) =>
+    set((state) => ({
+      jobs: [job, ...state.jobs],
+      total: state.total + 1,
+      selectedJob: job,
+    })),
 
   updateJob: (updatedJob) =>
     set((state) => ({

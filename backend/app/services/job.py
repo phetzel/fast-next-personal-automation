@@ -22,10 +22,29 @@ from app.db.models.job import Job, JobStatus
 from app.db.models.job_profile import JobProfile
 from app.db.models.user import User
 from app.repositories import job_profile_repo, job_repo
-from app.schemas.job import JobFilters, JobUpdate
+from app.schemas.job import JobFilters, JobUpdate, ManualJobCreateRequest
 from app.schemas.job_data import RawJob  # Unified job data model
 
 logger = logging.getLogger(__name__)
+
+_STATUS_TRANSITIONS: dict[JobStatus, set[JobStatus]] = {
+    JobStatus.NEW: {JobStatus.ANALYZED},
+    JobStatus.ANALYZED: {JobStatus.PREPPED},
+    JobStatus.PREPPED: {JobStatus.REVIEWED},
+    JobStatus.REVIEWED: {JobStatus.APPLIED},
+    JobStatus.APPLIED: {JobStatus.INTERVIEWING, JobStatus.REJECTED},
+    JobStatus.INTERVIEWING: {JobStatus.REJECTED},
+    JobStatus.REJECTED: set(),
+}
+
+_APPLICATION_ANALYSIS_FIELDS = (
+    "application_type",
+    "application_url",
+    "requires_cover_letter",
+    "requires_resume",
+    "detected_fields",
+    "screening_questions",
+)
 
 
 @dataclass
@@ -76,6 +95,80 @@ class JobService:
         """Get job statistics for a user."""
         return await job_repo.get_stats(self.db, user_id)
 
+    async def require_scorable_profile(
+        self,
+        user_id: UUID,
+        profile_id: UUID | None = None,
+        *,
+        purpose: str = "job ingestion",
+    ) -> JobProfile:
+        """Return a user-owned profile with resume text or raise a structured error."""
+        if profile_id is not None:
+            profile = await job_profile_repo.get_by_id(self.db, profile_id)
+            if profile is None or profile.user_id != user_id:
+                message = "Selected profile not found or access denied"
+                profile = None
+            elif not profile.resume or not profile.resume.text_content:
+                message = f"Profile '{profile.name}' has no resume text for {purpose}"
+            else:
+                return profile
+        else:
+            profile = await job_profile_repo.get_default_for_user(self.db, user_id)
+            if profile is None:
+                message = f"A default profile with a resume is required for {purpose}"
+            elif not profile.resume or not profile.resume.text_content:
+                message = f"Default profile '{profile.name}' has no resume text for {purpose}"
+            else:
+                return profile
+
+        available_profiles = await job_profile_repo.get_by_user_id(self.db, user_id)
+        raise ValidationError(
+            message=message,
+            details={
+                "error_type": "profile_required",
+                "create_profile_url": "/jobs/profiles",
+                "available_profiles": [
+                    {
+                        "id": str(p.id),
+                        "name": p.name,
+                        "is_default": p.is_default,
+                        "has_resume": bool(p.resume and p.resume.text_content),
+                        "resume_name": p.resume.name if p.resume else None,
+                    }
+                    for p in available_profiles
+                ],
+            },
+        )
+
+    def _validate_status_transition(
+        self,
+        current_status: JobStatus,
+        new_status: JobStatus,
+    ) -> None:
+        """Validate lifecycle transitions, allowing idempotent writes."""
+        if current_status == new_status:
+            return
+
+        allowed_targets = _STATUS_TRANSITIONS[current_status]
+        if new_status not in allowed_targets:
+            raise ValidationError(
+                message=f"Invalid job status transition: {current_status.value} -> {new_status.value}",
+                details={
+                    "current_status": current_status.value,
+                    "requested_status": new_status.value,
+                    "allowed_statuses": sorted(status.value for status in allowed_targets),
+                },
+            )
+
+    @staticmethod
+    def _append_notes(existing: str | None, new_notes: str | None) -> str | None:
+        """Append notes while preserving any existing text."""
+        if not new_notes:
+            return existing
+        if not existing:
+            return new_notes
+        return f"{existing}\n\n{new_notes}".strip()
+
     async def update(
         self,
         job_id: UUID,
@@ -89,9 +182,10 @@ class JobService:
         """
         job = await self.get_by_id(job_id, user_id)
         update_data = job_in.model_dump(exclude_unset=True)
-        # Convert enum to value if present
-        if update_data.get("status"):
-            update_data["status"] = update_data["status"].value
+        if update_data.get("status") is not None:
+            next_status = update_data["status"]
+            self._validate_status_transition(JobStatus(job.status), next_status)
+            update_data["status"] = next_status.value
         return await job_repo.update(self.db, db_job=job, update_data=update_data)
 
     async def update_status(
@@ -105,13 +199,13 @@ class JobService:
         Raises:
             NotFoundError: If job does not exist or doesn't belong to user.
         """
-        job = await job_repo.update_status(self.db, job_id, user_id, status)
-        if not job:
-            raise NotFoundError(
-                message="Job not found",
-                details={"job_id": str(job_id)},
-            )
-        return job
+        job = await self.get_by_id(job_id, user_id)
+        self._validate_status_transition(JobStatus(job.status), status)
+        return await job_repo.update(
+            self.db,
+            db_job=job,
+            update_data={"status": status.value},
+        )
 
     async def delete(self, job_id: UUID, user_id: UUID) -> Job:
         """Delete a job.
@@ -148,7 +242,7 @@ class JobService:
         user_id: UUID,
         jobs: list[RawJob],
         *,
-        ingestion_source: Literal["scrape", "email", "manual"],
+        ingestion_source: Literal["scrape", "email", "manual", "openclaw"],
         profile_id: UUID | None = None,
         resume_text: str | None = None,
         target_roles: list[str] | None = None,
@@ -157,6 +251,7 @@ class JobService:
         save_all: bool = False,
         search_terms: str | None = None,
         external_analysis_by_url: dict[str, dict[str, Any]] | None = None,
+        job_attributes_by_url: dict[str, dict[str, Any]] | None = None,
         qa_with_internal_analysis: bool = False,
         qa_score_drift_threshold: float = 2.0,
     ) -> IngestionResult:
@@ -189,6 +284,7 @@ class JobService:
         """
         result = IngestionResult(jobs_received=len(jobs))
         external_analysis_by_url = external_analysis_by_url or {}
+        job_attributes_by_url = job_attributes_by_url or {}
 
         if not jobs:
             return result
@@ -327,6 +423,10 @@ class JobService:
                     job_data["relevance_score"] = analysis["relevance_score"]
                     job_data["reasoning"] = analysis["reasoning"]
 
+                extra_attributes = job_attributes_by_url.get(raw_job.job_url, {})
+                if extra_attributes:
+                    job_data.update(extra_attributes)
+
                 jobs_to_save.append(job_data)
 
         # Save to database
@@ -344,6 +444,138 @@ class JobService:
         )
 
         return result
+
+    async def create_manual_job(
+        self,
+        user_id: UUID,
+        job_in: ManualJobCreateRequest,
+    ) -> Job:
+        """Create a manually entered job and score it against a valid profile."""
+        profile = await self.require_scorable_profile(
+            user_id,
+            job_in.profile_id,
+            purpose="manual job creation",
+        )
+
+        ingestion = await self.ingest_jobs(
+            user_id=user_id,
+            jobs=[
+                RawJob(
+                    title=job_in.title,
+                    company=job_in.company,
+                    location=job_in.location,
+                    description=job_in.description,
+                    job_url=job_in.job_url,
+                    salary_range=job_in.salary_range,
+                    date_posted=job_in.date_posted,
+                    source=job_in.source,
+                    is_remote=job_in.is_remote,
+                    job_type=job_in.job_type,
+                    company_url=job_in.company_url,
+                )
+            ],
+            ingestion_source="manual",
+            profile_id=profile.id,
+            resume_text=profile.resume.text_content if profile.resume else None,
+            target_roles=profile.target_roles,
+            preferences=profile.preferences,
+            min_score=profile.min_score_threshold or 7.0,
+            save_all=True,
+        )
+
+        if ingestion.duplicates_skipped:
+            raise ValidationError(
+                message="A job with this URL already exists",
+                details={"job_url": job_in.job_url},
+            )
+        if not ingestion.saved_jobs:
+            raise ValidationError(message="Failed to create the manual job")
+
+        job = ingestion.saved_jobs[0]
+        if job_in.notes:
+            job = await job_repo.update(
+                self.db,
+                db_job=job,
+                update_data={"notes": job_in.notes},
+            )
+        return job
+
+    async def update_application_analysis(
+        self,
+        job_id: UUID,
+        user_id: UUID,
+        *,
+        description: str | None = None,
+        application_type: str | None = None,
+        application_url: str | None = None,
+        requires_cover_letter: bool | None = None,
+        requires_resume: bool | None = None,
+        detected_fields: dict[str, Any] | None = None,
+        screening_questions: list[dict[str, Any]] | None = None,
+        analyzed_at: datetime | None = None,
+    ) -> Job:
+        """Persist application-page analysis and advance NEW jobs to ANALYZED."""
+        job = await self.get_by_id(job_id, user_id)
+
+        update_data: dict[str, Any] = {}
+        if description is not None:
+            update_data["description"] = description
+        if application_type is not None:
+            update_data["application_type"] = application_type
+        if application_url is not None:
+            update_data["application_url"] = application_url
+        if requires_cover_letter is not None:
+            update_data["requires_cover_letter"] = requires_cover_letter
+        if requires_resume is not None:
+            update_data["requires_resume"] = requires_resume
+        if detected_fields is not None:
+            update_data["detected_fields"] = detected_fields
+        if screening_questions is not None:
+            update_data["screening_questions"] = screening_questions
+
+        has_analysis_payload = any(field in update_data for field in _APPLICATION_ANALYSIS_FIELDS)
+        if not has_analysis_payload:
+            raise ValidationError(
+                message="At least one application analysis field is required",
+                details={"required_fields": list(_APPLICATION_ANALYSIS_FIELDS)},
+            )
+
+        update_data["analyzed_at"] = analyzed_at or datetime.now(UTC)
+
+        current_status = JobStatus(job.status)
+        if current_status == JobStatus.NEW:
+            update_data["status"] = JobStatus.ANALYZED.value
+
+        return await job_repo.update(self.db, db_job=job, update_data=update_data)
+
+    async def mark_job_applied(
+        self,
+        job_id: UUID,
+        user_id: UUID,
+        *,
+        application_method: str | None = None,
+        confirmation_code: str | None = None,
+        applied_at: datetime | None = None,
+        notes: str | None = None,
+    ) -> Job:
+        """Mark a reviewed job as applied, allowing idempotent updates."""
+        job = await self.get_by_id(job_id, user_id)
+        current_status = JobStatus(job.status)
+        if current_status != JobStatus.APPLIED:
+            self._validate_status_transition(current_status, JobStatus.APPLIED)
+
+        update_data: dict[str, Any] = {
+            "status": JobStatus.APPLIED.value,
+            "applied_at": applied_at or job.applied_at or datetime.now(UTC),
+        }
+        if application_method is not None:
+            update_data["application_method"] = application_method
+        if confirmation_code is not None:
+            update_data["confirmation_code"] = confirmation_code
+        if notes is not None:
+            update_data["notes"] = self._append_notes(job.notes, notes)
+
+        return await job_repo.update(self.db, db_job=job, update_data=update_data)
 
     async def generate_cover_letter_pdf(
         self,

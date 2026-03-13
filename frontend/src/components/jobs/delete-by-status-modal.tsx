@@ -22,10 +22,15 @@ interface DeleteByStatusModalProps {
   stats: JobStats | null;
 }
 
-type DeletableStatus = "new" | "prepped" | "reviewed";
+type DeletableStatus = "new" | "analyzed" | "prepped" | "reviewed";
 
 const STATUS_OPTIONS: { value: DeletableStatus; label: string; description: string }[] = [
-  { value: "new", label: "New", description: "Jobs not yet prepped" },
+  { value: "new", label: "New", description: "Jobs waiting for OpenClaw analysis" },
+  {
+    value: "analyzed",
+    label: "Analyzed",
+    description: "Jobs ready for prep but not yet prepared",
+  },
   { value: "prepped", label: "Prepped", description: "Jobs with generated materials" },
   { value: "reviewed", label: "Reviewed", description: "Jobs marked as reviewed" },
 ];

@@ -11,6 +11,9 @@ from app.api.deps import (
     get_current_user,
     get_integration_token_service,
     get_job_service,
+    verify_openclaw_analyze_token,
+    verify_openclaw_apply_token,
+    verify_openclaw_prep_token,
     verify_openclaw_token,
 )
 from app.main import app
@@ -38,18 +41,59 @@ def _mock_user() -> SimpleNamespace:
     )
 
 
-def _mock_token(user_id) -> SimpleNamespace:
+def _mock_token(user_id, scopes: list[str] | None = None) -> SimpleNamespace:
     now = datetime.now(UTC)
     return SimpleNamespace(
         id=uuid4(),
         user_id=user_id,
         name="OpenClaw Prod",
-        scopes=["jobs:ingest"],
+        scopes=scopes or ["jobs:ingest"],
         is_active=True,
         created_at=now,
         updated_at=now,
         last_used_at=None,
         expires_at=None,
+    )
+
+
+def _mock_job(user_id, *, status: str = "new") -> SimpleNamespace:
+    now = datetime.now(UTC)
+    return SimpleNamespace(
+        id=uuid4(),
+        user_id=user_id,
+        profile_id=None,
+        title="Backend Engineer",
+        company="Acme",
+        location="Remote",
+        description="Build APIs",
+        job_url="https://jobs.example.com/1",
+        salary_range=None,
+        date_posted=None,
+        source="greenhouse",
+        ingestion_source="openclaw",
+        relevance_score=8.5,
+        reasoning="Strong fit",
+        status=status,
+        search_terms=None,
+        notes=None,
+        cover_letter=None,
+        cover_letter_file_path=None,
+        cover_letter_generated_at=None,
+        prep_notes=None,
+        prepped_at=None,
+        application_type="ats" if status != "new" else None,
+        application_url="https://boards.example.com/apply/123" if status != "new" else None,
+        requires_cover_letter=True if status != "new" else None,
+        requires_resume=True if status != "new" else None,
+        detected_fields=None,
+        screening_questions=[],
+        screening_answers=None,
+        analyzed_at=now if status != "new" else None,
+        applied_at=None,
+        application_method=None,
+        confirmation_code=None,
+        created_at=now,
+        updated_at=now,
     )
 
 
@@ -260,6 +304,7 @@ async def test_ingest_openclaw_jobs_uses_external_analysis_payload(client, mock_
             "reasoning": "Strong Python/FastAPI fit with relevant backend depth.",
         }
     }
+    assert kwargs["job_attributes_by_url"] == {}
     assert kwargs["qa_with_internal_analysis"] is False
     mock_db_session.commit.assert_awaited()
 
@@ -291,3 +336,150 @@ async def test_ingest_openclaw_jobs_requires_score_when_reasoning_present(client
         assert body["error"]["code"] == "VALIDATION_ERROR"
     else:
         assert body["detail"]
+
+
+@pytest.mark.anyio
+async def test_ingest_openclaw_jobs_can_save_directly_as_analyzed(client) -> None:
+    """Application-analysis payload should be forwarded and marked analyzed."""
+    user = _mock_user()
+    token = _mock_token(user.id)
+    job_service = SimpleNamespace(
+        ingest_jobs=AsyncMock(
+            return_value=IngestionResult(
+                jobs_received=1,
+                jobs_analyzed=1,
+                jobs_saved=1,
+                duplicates_skipped=0,
+                high_scoring=1,
+            )
+        )
+    )
+
+    app.dependency_overrides[verify_openclaw_token] = lambda: token
+    app.dependency_overrides[get_job_service] = lambda: job_service
+
+    response = await client.post(
+        "/api/v1/integrations/openclaw/jobs/ingest",
+        json={
+            "analyze_with_profile": False,
+            "jobs": [
+                {
+                    "title": "Backend Engineer",
+                    "company": "Acme",
+                    "job_url": "https://jobs.example.com/1",
+                    "description": "Full job description",
+                    "application_type": "ats",
+                    "application_url": "https://boards.example.com/apply/123",
+                    "requires_cover_letter": True,
+                    "screening_questions": [{"label": "Why Acme?"}],
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    kwargs = job_service.ingest_jobs.await_args.kwargs
+    assert kwargs["job_attributes_by_url"]["https://jobs.example.com/1"]["status"] == "analyzed"
+    assert (
+        kwargs["job_attributes_by_url"]["https://jobs.example.com/1"]["requires_cover_letter"]
+        is True
+    )
+
+
+@pytest.mark.anyio
+async def test_analyze_openclaw_job_route(client) -> None:
+    """Analyze route should update application analysis for the token's user."""
+    user = _mock_user()
+    token = _mock_token(user.id, scopes=["jobs:analyze"])
+    updated_job = _mock_job(user.id, status="analyzed")
+    job_service = SimpleNamespace(update_application_analysis=AsyncMock(return_value=updated_job))
+
+    app.dependency_overrides[verify_openclaw_analyze_token] = lambda: token
+    app.dependency_overrides[get_job_service] = lambda: job_service
+
+    response = await client.post(
+        f"/api/v1/integrations/openclaw/jobs/{updated_job.id}/analyze",
+        json={
+            "application_type": "ats",
+            "application_url": "https://boards.example.com/apply/123",
+            "requires_cover_letter": True,
+        },
+    )
+
+    assert response.status_code == 200
+    job_service.update_application_analysis.assert_awaited_once()
+    kwargs = job_service.update_application_analysis.await_args.kwargs
+    assert kwargs["application_type"] == "ats"
+    assert kwargs["application_url"] == "https://boards.example.com/apply/123"
+
+
+@pytest.mark.anyio
+async def test_openclaw_prep_batch_route_executes_pipeline(client) -> None:
+    """Prep-batch route should execute the internal batch prep pipeline."""
+    user = _mock_user()
+    token = _mock_token(user.id, scopes=["jobs:prep"])
+
+    app.dependency_overrides[verify_openclaw_prep_token] = lambda: token
+
+    from app.api.routes.v1 import integrations as integrations_route
+
+    original_execute_pipeline = integrations_route.execute_pipeline
+    integrations_route.execute_pipeline = AsyncMock(
+        return_value=SimpleNamespace(
+            success=True,
+            output=SimpleNamespace(
+                model_dump=lambda mode="json": {
+                    "total_processed": 1,
+                    "successful": 1,
+                    "failed": 0,
+                    "skipped": 0,
+                    "results": [],
+                }
+            ),
+            error=None,
+            metadata={"jobs_found": 1},
+        )
+    )
+
+    try:
+        response = await client.post(
+            "/api/v1/integrations/openclaw/jobs/prep-batch",
+            json={"max_jobs": 5, "tone": "professional"},
+        )
+    finally:
+        integrations_route.execute_pipeline = original_execute_pipeline
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["output"]["successful"] == 1
+
+
+@pytest.mark.anyio
+async def test_openclaw_apply_success_route(client) -> None:
+    """Apply-success route should mark a reviewed job as applied."""
+    user = _mock_user()
+    token = _mock_token(user.id, scopes=["jobs:apply"])
+    applied_job = _mock_job(user.id, status="applied")
+    applied_job.applied_at = datetime.now(UTC)
+    applied_job.application_method = "openclaw"
+    applied_job.confirmation_code = "ABC123"
+
+    job_service = SimpleNamespace(mark_job_applied=AsyncMock(return_value=applied_job))
+
+    app.dependency_overrides[verify_openclaw_apply_token] = lambda: token
+    app.dependency_overrides[get_job_service] = lambda: job_service
+
+    response = await client.post(
+        f"/api/v1/integrations/openclaw/jobs/{applied_job.id}/apply-success",
+        json={
+            "application_method": "openclaw",
+            "confirmation_code": "ABC123",
+            "notes": "Submitted successfully",
+        },
+    )
+
+    assert response.status_code == 200
+    kwargs = job_service.mark_job_applied.await_args.kwargs
+    assert kwargs["application_method"] == "openclaw"
+    assert kwargs["confirmation_code"] == "ABC123"

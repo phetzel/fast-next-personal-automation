@@ -10,6 +10,7 @@ import {
   JobStatsCard,
   SearchJobsModal,
   SearchAllJobsModal,
+  ManualJobModal,
   PrepJobModal,
   BatchPrepModal,
   DeleteByStatusModal,
@@ -23,7 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui";
 import type { Job } from "@/types";
-import { RefreshCw, Search, ChevronDown, Layers, Globe, Trash2 } from "lucide-react";
+import { RefreshCw, Search, ChevronDown, Layers, Globe, Trash2, Plus } from "lucide-react";
 
 export default function JobsListPage() {
   const {
@@ -50,6 +51,7 @@ export default function JobsListPage() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isSearchAllModalOpen, setIsSearchAllModalOpen] = useState(false);
+  const [isManualJobModalOpen, setIsManualJobModalOpen] = useState(false);
   const [isPrepModalOpen, setIsPrepModalOpen] = useState(false);
   const [isBatchPrepModalOpen, setIsBatchPrepModalOpen] = useState(false);
   const [isDeleteByStatusModalOpen, setIsDeleteByStatusModalOpen] = useState(false);
@@ -62,6 +64,9 @@ export default function JobsListPage() {
     fetchJobs,
     filters.page,
     filters.status,
+    filters.source,
+    filters.min_score,
+    filters.max_score,
     filters.sort_by,
     filters.sort_order,
     filters.search,
@@ -167,6 +172,10 @@ export default function JobsListPage() {
               <Search className="mr-2 h-4 w-4" />
               Search Jobs
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setIsManualJobModalOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Manual Job
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setIsSearchAllModalOpen(true)}>
               <Globe className="mr-2 h-4 w-4" />
               Search All Profiles
@@ -174,7 +183,7 @@ export default function JobsListPage() {
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setIsBatchPrepModalOpen(true)}>
               <Layers className="mr-2 h-4 w-4" />
-              Prep All Jobs
+              Prep Analyzed Jobs
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -229,6 +238,16 @@ export default function JobsListPage() {
         isOpen={isSearchModalOpen}
         onClose={() => setIsSearchModalOpen(false)}
         onComplete={handleSearchComplete}
+      />
+
+      {/* Manual Job Modal */}
+      <ManualJobModal
+        isOpen={isManualJobModalOpen}
+        onClose={() => setIsManualJobModalOpen(false)}
+        onComplete={() => {
+          fetchJobs();
+          fetchStats();
+        }}
       />
 
       {/* Prep Modal */}

@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import {
   Briefcase,
   Sparkles,
+  Search,
   FileText,
   Send,
   PhoneCall,
@@ -28,7 +29,7 @@ export function JobsAreaCard() {
   }, [fetchStats]);
 
   // Calculate "action needed" count - jobs that need attention
-  const actionNeeded = (stats?.new ?? 0) + (stats?.prepped ?? 0);
+  const actionNeeded = (stats?.new ?? 0) + (stats?.analyzed ?? 0) + (stats?.prepped ?? 0);
 
   return (
     <Link href={ROUTES.JOBS} className="group block">
@@ -76,19 +77,20 @@ export function JobsAreaCard() {
 
           {/* Stats Grid */}
           {statsLoading ? (
-            <div className="grid grid-cols-4 gap-3">
-              {Array.from({ length: 4 }).map((_, i) => (
+            <div className="grid grid-cols-5 gap-3">
+              {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="bg-muted h-14 animate-pulse rounded-lg" />
               ))}
             </div>
           ) : stats ? (
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-5 gap-3">
+              <StatPill icon={Sparkles} label="New" value={stats.new} color="blue" />
               <StatPill
-                icon={Sparkles}
-                label="New"
-                value={stats.new}
-                color="blue"
-                highlight={stats.new > 0}
+                icon={Search}
+                label="Analyzed"
+                value={stats.analyzed}
+                color="purple"
+                highlight={stats.analyzed > 0}
               />
               <StatPill icon={FileText} label="Prepped" value={stats.prepped} color="cyan" />
               <StatPill icon={Send} label="Applied" value={stats.applied} color="green" />
