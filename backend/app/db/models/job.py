@@ -19,12 +19,13 @@ if TYPE_CHECKING:
 class JobStatus(StrEnum):
     """Status of a job in the user's pipeline.
 
-    Flow: NEW → PREPPED → REVIEWED → APPLIED → INTERVIEWING
+    Flow: NEW → ANALYZED → PREPPED → REVIEWED → APPLIED → INTERVIEWING
     - Can go to REJECTED from APPLIED or INTERVIEWING (employer rejects)
     - To remove a job from listings, use soft delete (sets deleted_at)
     """
 
     NEW = "new"
+    ANALYZED = "analyzed"
     PREPPED = "prepped"
     REVIEWED = "reviewed"
     APPLIED = "applied"
@@ -120,7 +121,15 @@ class Job(Base, TimestampMixin):
     screening_questions: Mapped[list | None] = mapped_column(
         JSON, nullable=True
     )  # Detected screening questions
+    screening_answers: Mapped[dict | None] = mapped_column(
+        JSON, nullable=True
+    )  # Generated answers for screening questions
     analyzed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Application submission tracking
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    application_method: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    confirmation_code: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Soft delete - prevents re-scraping deleted jobs
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -140,6 +149,21 @@ class Job(Base, TimestampMixin):
     def job_status(self) -> JobStatus:
         """Get status as enum."""
         return JobStatus(self.status)
+
+    @property
+    def has_application_analysis(self) -> bool:
+        """Return whether the job has meaningful application-page analysis data."""
+        return self.analyzed_at is not None and any(
+            value is not None
+            for value in (
+                self.application_type,
+                self.application_url,
+                self.requires_cover_letter,
+                self.requires_resume,
+                self.detected_fields,
+                self.screening_questions,
+            )
+        )
 
     def __repr__(self) -> str:
         return f"<Job(id={self.id}, title={self.title}, company={self.company}, score={self.relevance_score})>"

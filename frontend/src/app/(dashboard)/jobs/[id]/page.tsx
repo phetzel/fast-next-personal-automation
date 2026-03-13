@@ -9,7 +9,7 @@ import { apiClient } from "@/lib/api-client";
 import { Button, Textarea, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
 import { ScoreBadge, StatusBadge, PrepJobModal } from "@/components/jobs";
 import type { Job, JobStatus } from "@/types";
-import { JOB_STATUSES, JOB_STATUS_CONFIG, canTransitionTo } from "@/types";
+import { JOB_STATUSES, JOB_STATUS_CONFIG, canTransitionTo, shouldGenerateReviewPdf } from "@/types";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
@@ -109,7 +109,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     if (!job) return;
 
     // Special handling for transitioning to "prepped" - opens prep modal
-    if (newStatus === "prepped" && job.status === "new") {
+    if (newStatus === "prepped" && job.status === "analyzed") {
       setIsPrepModalOpen(true);
       return;
     }
@@ -159,9 +159,17 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       setCoverLetterDirty(false);
     }
 
-    setIsGeneratingPdf(true);
     setPdfError(null);
 
+    if (!shouldGenerateReviewPdf(job, coverLetter)) {
+      const updated = await updateJobStatus(job.id, { status: "reviewed" });
+      if (updated) {
+        setJob(updated);
+      }
+      return;
+    }
+
+    setIsGeneratingPdf(true);
     try {
       await apiClient.post<Job>(`/jobs/${job.id}/cover-letter/generate-pdf`);
       await updateJobStatus(job.id, { status: "reviewed" });
@@ -270,6 +278,13 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   const hasPreppedMaterials = !!job.cover_letter || !!job.prep_notes;
   const hasPdf = !!job.cover_letter_file_path;
   const isPrepping = prepExecState.status === "running";
+  const hasApplicationAnalysis =
+    !!job.analyzed_at ||
+    !!job.application_type ||
+    !!job.application_url ||
+    job.requires_cover_letter !== null ||
+    job.requires_resume !== null ||
+    !!job.screening_questions?.length;
 
   return (
     <div className="space-y-6">
@@ -346,7 +361,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             {STATUS_OPTIONS.map((option) => {
               const isCurrentStatus = job.status === option.value;
               const canTransition = canTransitionTo(job.status, option.value);
-              const isPreppedTransition = option.value === "prepped" && job.status === "new";
+              const isPreppedTransition = option.value === "prepped" && job.status === "analyzed";
               const isReviewedTransition = option.value === "reviewed" && job.status === "prepped";
 
               return (
@@ -384,14 +399,23 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
           </div>
           {job.status === "new" && (
             <p className="text-muted-foreground mt-2 text-xs">
+              <span className="text-blue-600 dark:text-blue-400">Next step:</span> OpenClaw still
+              needs to analyze the application page before prep can run.
+            </p>
+          )}
+          {job.status === "analyzed" && (
+            <p className="text-muted-foreground mt-2 text-xs">
               <span className="text-cyan-600 dark:text-cyan-400">Next step:</span> Click
-              &quot;Prepped&quot; to generate a tailored cover letter and interview talking points.
+              &quot;Prepped&quot; to generate a tailored cover letter and screening answers.
             </p>
           )}
           {job.status === "prepped" && (
             <p className="text-muted-foreground mt-2 text-xs">
               <span className="text-purple-600 dark:text-purple-400">Next step:</span> Review your
-              materials, then click &quot;Reviewed&quot; to generate a downloadable PDF.
+              materials, then click &quot;Reviewed&quot;{" "}
+              {shouldGenerateReviewPdf(job)
+                ? "to generate a downloadable PDF."
+                : "to move this job into the reviewed stage."}
             </p>
           )}
         </CardContent>
@@ -444,6 +468,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         {activeTab === "overview" && (
           <OverviewTab
             job={job}
+            hasApplicationAnalysis={hasApplicationAnalysis}
             notes={notes}
             setNotes={setNotes}
             notesDirty={notesDirty}
@@ -497,6 +522,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
 function OverviewTab({
   job,
+  hasApplicationAnalysis,
   notes,
   setNotes,
   notesDirty,
@@ -508,6 +534,7 @@ function OverviewTab({
   isPrepping,
 }: {
   job: Job;
+  hasApplicationAnalysis: boolean;
   notes: string;
   setNotes: (v: string) => void;
   notesDirty: boolean;
@@ -551,6 +578,50 @@ function OverviewTab({
           </Card>
         )}
 
+        {hasApplicationAnalysis && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Application Requirements</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div>
+                  <span className="text-muted-foreground">Application type:</span>{" "}
+                  <span className="capitalize">{job.application_type || "Unknown"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Cover letter:</span>{" "}
+                  {job.requires_cover_letter === null
+                    ? "Unknown"
+                    : job.requires_cover_letter
+                      ? "Required"
+                      : "Not required"}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Resume:</span>{" "}
+                  {job.requires_resume === null
+                    ? "Unknown"
+                    : job.requires_resume
+                      ? "Required"
+                      : "Not required"}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Screening questions:</span>{" "}
+                  {job.screening_questions?.length ?? 0}
+                </div>
+              </div>
+              {job.application_url && (
+                <Button asChild variant="outline" size="sm">
+                  <a href={job.application_url} target="_blank" rel="noopener noreferrer">
+                    Open Application
+                    <ExternalLink className="ml-2 h-4 w-4" />
+                  </a>
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Personal Notes */}
         <Card>
           <CardHeader>
@@ -589,7 +660,7 @@ function OverviewTab({
       {/* Sidebar */}
       <div className="space-y-6">
         {/* Quick Actions */}
-        {!hasPreppedMaterials && (
+        {!hasPreppedMaterials && job.status === "analyzed" && (
           <Card className="border-primary/30 bg-primary/5 border-2 border-dashed">
             <CardContent className="py-6">
               <div className="flex flex-col items-center text-center">
@@ -598,7 +669,7 @@ function OverviewTab({
                 </div>
                 <h3 className="mb-1 font-semibold">Ready to Prep?</h3>
                 <p className="text-muted-foreground mb-4 text-sm">
-                  AI will generate a tailored cover letter and interview talking points.
+                  AI will generate a tailored cover letter, prep notes, and screening answers.
                 </p>
                 <Button onClick={onPrep} disabled={isPrepping}>
                   {isPrepping ? (
@@ -609,6 +680,15 @@ function OverviewTab({
                   Start Prep
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {!hasPreppedMaterials && job.status === "new" && (
+          <Card className="border-blue-500/30 bg-blue-500/5 border-2 border-dashed">
+            <CardContent className="py-6 text-sm text-blue-700 dark:text-blue-300">
+              OpenClaw still needs to inspect the application page for this job before prep can
+              generate materials.
             </CardContent>
           </Card>
         )}
@@ -637,6 +717,12 @@ function OverviewTab({
                 <span className="max-w-[150px] truncate">{job.search_terms}</span>
               </div>
             )}
+            {job.analyzed_at && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Analyzed</span>
+                <span>{format(new Date(job.analyzed_at), "MMM d, yyyy")}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Added</span>
               <span>{format(new Date(job.created_at), "MMM d, yyyy")}</span>
@@ -661,6 +747,9 @@ function OverviewTab({
           <CardContent>
             <div className="space-y-4">
               <TimelineItem label="Job Added" date={job.created_at} isCompleted />
+              {job.analyzed_at && (
+                <TimelineItem label="Application Analyzed" date={job.analyzed_at} isCompleted />
+              )}
               {job.prepped_at && (
                 <TimelineItem label="Materials Generated" date={job.prepped_at} isCompleted />
               )}
@@ -674,14 +763,14 @@ function OverviewTab({
               {job.status === "applied" && (
                 <TimelineItem
                   label="Application Sent"
-                  date={job.updated_at || job.created_at}
+                  date={job.applied_at || job.updated_at || job.created_at}
                   isCompleted
                 />
               )}
               {job.status === "interviewing" && (
                 <TimelineItem
                   label="Interview Stage"
-                  date={job.updated_at || job.created_at}
+                  date={job.updated_at || job.applied_at || job.created_at}
                   isCompleted
                 />
               )}
@@ -746,18 +835,21 @@ function PrepTab({
         <div className="bg-muted mb-4 rounded-full p-4">
           <FileText className="text-muted-foreground h-8 w-8" />
         </div>
-        <h3 className="mb-2 text-lg font-semibold">No Materials Generated</h3>
+        <h3 className="mb-2 text-lg font-semibold">
+          {job.status === "new" ? "Waiting for Analysis" : "No Materials Generated"}
+        </h3>
         <p className="text-muted-foreground mb-6 max-w-md">
-          Run the prep pipeline to generate a tailored cover letter and interview talking points
-          based on your resume and the job description.
+          {job.status === "new"
+            ? "OpenClaw needs to inspect the application page before prep can generate materials."
+            : "Run the prep pipeline to generate a tailored cover letter and interview talking points based on your resume and the job description."}
         </p>
-        <Button onClick={onPrep} disabled={isPrepping}>
+        <Button onClick={onPrep} disabled={isPrepping || job.status !== "analyzed"}>
           {isPrepping ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
             <Sparkles className="mr-2 h-4 w-4" />
           )}
-          Start Prep
+          {job.status === "new" ? "Waiting on OpenClaw" : "Start Prep"}
         </Button>
       </div>
     );

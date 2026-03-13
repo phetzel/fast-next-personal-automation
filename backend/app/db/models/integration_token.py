@@ -15,6 +15,9 @@ class IntegrationScope(StrEnum):
     """Scopes supported by machine-to-machine integration tokens."""
 
     JOBS_INGEST = "jobs:ingest"
+    JOBS_ANALYZE = "jobs:analyze"
+    JOBS_PREP = "jobs:prep"
+    JOBS_APPLY = "jobs:apply"
 
 
 class IntegrationToken(Base, TimestampMixin):

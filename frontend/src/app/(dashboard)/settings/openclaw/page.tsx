@@ -21,6 +21,29 @@ import type {
   OpenClawTokenListResponse,
 } from "@/types";
 
+const AVAILABLE_SCOPES = [
+  {
+    value: "jobs:ingest",
+    label: "jobs:ingest",
+    description: "Create new jobs from OpenClaw discovery.",
+  },
+  {
+    value: "jobs:analyze",
+    label: "jobs:analyze",
+    description: "Mark jobs analyzed and persist application requirements.",
+  },
+  {
+    value: "jobs:prep",
+    label: "jobs:prep",
+    description: "Trigger analyzed-job prep batches inside this app.",
+  },
+  {
+    value: "jobs:apply",
+    label: "jobs:apply",
+    description: "Mark reviewed jobs as successfully applied.",
+  },
+] as const;
+
 function Alert({
   children,
   variant = "default",
@@ -54,6 +77,9 @@ export default function OpenClawSettingsPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [name, setName] = useState("OpenClaw Prod");
   const [expiresAt, setExpiresAt] = useState("");
+  const [selectedScopes, setSelectedScopes] = useState<string[]>(
+    AVAILABLE_SCOPES.map((scope) => scope.value)
+  );
   const [createdToken, setCreatedToken] = useState<OpenClawTokenCreateResponse | null>(null);
 
   useEffect(() => {
@@ -85,6 +111,7 @@ export default function OpenClawSettingsPage() {
 
     const payload: OpenClawTokenCreateRequest = {
       name: name.trim(),
+      scopes: selectedScopes,
     };
 
     if (expiresAt) {
@@ -108,7 +135,11 @@ export default function OpenClawSettingsPage() {
   };
 
   const handleRevoke = async (tokenId: string) => {
-    if (!confirm("Revoke this OpenClaw token? Clawbot will stop being able to ingest jobs.")) {
+    if (
+      !confirm(
+        "Revoke this OpenClaw token? Clawbot will stop being able to call its scoped job endpoints."
+      )
+    ) {
       return;
     }
 
@@ -161,6 +192,23 @@ export default function OpenClawSettingsPage() {
     \"search_terms\": \"backend engineer remote\"
   }'`;
 
+  const analyzeExample = `curl --fail-with-body --silent --show-error \\
+  -X POST \"$APP_API_BASE_URL/api/v1/integrations/openclaw/jobs/<job-id>/analyze\" \\
+  -H \"Content-Type: application/json\" \\
+  -H \"X-Integration-Token: ${exampleToken}\" \\
+  --data '{
+    \"application_type\": \"ats\",
+    \"application_url\": \"https://boards.example.com/apply/123\",
+    \"requires_cover_letter\": true,
+    \"screening_questions\": [{\"label\": \"Why this company?\"}]
+  }'`;
+
+  const prepExample = `curl --fail-with-body --silent --show-error \\
+  -X POST \"$APP_API_BASE_URL/api/v1/integrations/openclaw/jobs/prep-batch\" \\
+  -H \"Content-Type: application/json\" \\
+  -H \"X-Integration-Token: ${exampleToken}\" \\
+  --data '{\"max_jobs\": 10, \"tone\": \"professional\"}'`;
+
   return (
     <div className="container mx-auto max-w-5xl space-y-6">
       <div className="space-y-2">
@@ -169,15 +217,26 @@ export default function OpenClawSettingsPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">OpenClaw Jobs</h1>
             <p className="text-muted-foreground">
-              Create a scoped machine token so OpenClaw or Clawbot can add jobs through the existing
-              ingest endpoint.
+              Create a scoped machine token so OpenClaw or Clawbot can ingest jobs, persist
+              application analysis, trigger prep, and record successful applications.
             </p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary">Scope: jobs:ingest</Badge>
+          {AVAILABLE_SCOPES.map((scope) => (
+            <Badge key={scope.value} variant="secondary">
+              Scope: {scope.value}
+            </Badge>
+          ))}
           <Badge variant="secondary">Header: X-Integration-Token</Badge>
           <Badge variant="secondary">Route: /api/v1/integrations/openclaw/jobs/ingest</Badge>
+          <Badge variant="secondary">Route: /api/v1/integrations/openclaw/jobs/:id/analyze</Badge>
+          <Badge variant="secondary">
+            Route: /api/v1/integrations/openclaw/jobs/prep-batch
+          </Badge>
+          <Badge variant="secondary">
+            Route: /api/v1/integrations/openclaw/jobs/:id/apply-success
+          </Badge>
         </div>
       </div>
 
@@ -226,8 +285,7 @@ export default function OpenClawSettingsPage() {
           <CardHeader>
             <CardTitle>Create Token</CardTitle>
             <CardDescription>
-              Smallest supported scope is `jobs:ingest`. Leave expiry empty for a non-expiring
-              token.
+              Select only the scopes OpenClaw needs. Leave expiry empty for a non-expiring token.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -254,7 +312,40 @@ export default function OpenClawSettingsPage() {
                 />
               </div>
 
-              <Button disabled={creating} type="submit">
+              <div className="space-y-3">
+                <Label>Scopes</Label>
+                <div className="space-y-2">
+                  {AVAILABLE_SCOPES.map((scope) => {
+                    const checked = selectedScopes.includes(scope.value);
+                    return (
+                      <label
+                        key={scope.value}
+                        className="flex cursor-pointer items-start gap-3 rounded-lg border p-3"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(event) => {
+                            setSelectedScopes((current) => {
+                              if (event.target.checked) {
+                                return [...current, scope.value];
+                              }
+                              return current.filter((value) => value !== scope.value);
+                            });
+                          }}
+                          className="mt-1"
+                        />
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">{scope.label}</p>
+                          <p className="text-muted-foreground text-xs">{scope.description}</p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <Button disabled={creating || selectedScopes.length === 0} type="submit">
                 {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck />}
                 Create token
               </Button>
@@ -264,7 +355,7 @@ export default function OpenClawSettingsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Manual Ingest Check</CardTitle>
+            <CardTitle>API Examples</CardTitle>
             <CardDescription>
               Use the backend API origin for `$APP_API_BASE_URL`, not the Next.js frontend proxy.
             </CardDescription>
@@ -273,9 +364,15 @@ export default function OpenClawSettingsPage() {
             <pre className="bg-muted overflow-x-auto rounded-lg border p-4 text-xs leading-6">
               {ingestExample}
             </pre>
+            <pre className="bg-muted overflow-x-auto rounded-lg border p-4 text-xs leading-6">
+              {analyzeExample}
+            </pre>
+            <pre className="bg-muted overflow-x-auto rounded-lg border p-4 text-xs leading-6">
+              {prepExample}
+            </pre>
             <p className="text-muted-foreground text-sm">
-              The response includes `jobs_saved`, `duplicates_skipped`, `token_id`, and whether
-              profile analysis ran.
+              Use `jobs:ingest` for discovery, `jobs:analyze` for application requirements,
+              `jobs:prep` for prep batches, and `jobs:apply` to record apply success.
             </p>
           </CardContent>
         </Card>

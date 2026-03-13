@@ -77,11 +77,12 @@ All endpoints are prefixed with `/api/v1`.
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/jobs` | List user's job listings |
+| POST | `/jobs` | Create a manual job and score it against a profile |
 | GET | `/jobs/{id}` | Get job details |
 | PATCH | `/jobs/{id}` | Update job (status, notes, cover_letter) |
 | DELETE | `/jobs/{id}` | Delete job |
 | GET | `/jobs/stats` | Get job statistics |
-| POST | `/jobs/batch/delete` | Soft-delete all jobs for one status (`new`, `prepped`, `reviewed`) |
+| POST | `/jobs/batch/delete` | Soft-delete all jobs for one status (`new`, `analyzed`, `prepped`, `reviewed`) |
 | POST | `/jobs/{id}/cover-letter/generate-pdf` | Generate/regenerate cover letter PDF |
 | GET | `/jobs/{id}/cover-letter/download` | Download cover letter PDF |
 | GET | `/jobs/{id}/cover-letter/preview` | Preview cover letter PDF in browser |
@@ -213,7 +214,7 @@ Recurring expenses support an optional `account_id` field. When set, a nightly w
 | `job_search` | Search job boards and analyze fit against resume |
 | `job_search_batch` | Search across all job profiles with resumes |
 | `job_prep` | Generate cover letter and prep notes for a job |
-| `job_prep_batch` | Prep all `new` jobs in score order |
+| `job_prep_batch` | Prep analyzed jobs in score order |
 | `email_sync_jobs` | Sync job listings from connected email accounts |
 
 ### Schedules
@@ -238,12 +239,15 @@ All integration endpoints are prefixed with `/integrations/openclaw`.
 | GET | `/integrations/openclaw/tokens` | List current user's integration tokens |
 | DELETE | `/integrations/openclaw/tokens/{token_id}` | Revoke an integration token |
 | POST | `/integrations/openclaw/jobs/ingest` | Ingest jobs from OpenClaw using `X-Integration-Token` |
+| POST | `/integrations/openclaw/jobs/{job_id}/analyze` | Persist application-page analysis for an existing job |
+| POST | `/integrations/openclaw/jobs/prep-batch` | Trigger the analyzed-job prep batch pipeline |
+| POST | `/integrations/openclaw/jobs/{job_id}/apply-success` | Mark a reviewed job as applied |
 
 Authentication model:
 - Token management (`/tokens`) uses standard user JWT auth (`Authorization: Bearer ...`).
-- Ingestion (`/jobs/ingest`) uses machine token auth (`X-Integration-Token: oct_...`).
+- Machine routes use integration token auth (`X-Integration-Token: oct_...`).
 - Each integration token is owned by one user, and ingested jobs are written for that user.
-- Current supported scope is `jobs:ingest`.
+- Supported scopes are `jobs:ingest`, `jobs:analyze`, `jobs:prep`, and `jobs:apply`.
 - The web app exposes token management at `/settings/openclaw`.
 
 `/jobs/ingest` reuses the internal job ingestion service for:
@@ -252,6 +256,7 @@ Authentication model:
 - Optional internal AI scoring fallback with a profile resume (`analyze_with_profile`)
 - Score filtering (`min_score`) or forced save (`save_all`)
 - Persisting jobs with `ingestion_source="openclaw"` for source tracking
+- Directly saving jobs as `analyzed` when application-analysis fields are provided
 
 Current payload limits/behavior:
 - `jobs` minimum length: `1` (request validation)
@@ -260,7 +265,7 @@ Current payload limits/behavior:
 - If external scores are missing, internal analysis can fill scores when profile resume context is available
 - `analyze_with_profile=true` tries `profile_id` (if provided) or default profile
 - `qa_with_internal_analysis=true` runs internal analysis as QA comparison while still storing external scores
-- If no profile resume text is available, ingestion still works but skips analysis
+- If no profile resume text is available, ingestion still works but skips fit scoring
 
 See [OpenClaw Job Ingest](./openclaw.md) for the exact end-to-end flow and the minimal OpenClaw skill.
 

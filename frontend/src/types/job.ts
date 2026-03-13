@@ -8,6 +8,7 @@
  */
 export const JOB_STATUSES = [
   "new",
+  "analyzed",
   "prepped",
   "reviewed",
   "applied",
@@ -34,13 +35,18 @@ export const JOB_STATUS_CONFIG: Record<
 > = {
   new: {
     label: "New",
-    description: "Just scraped, not reviewed yet",
+    description: "Added and scored, waiting for application-page analysis",
     allowedFrom: [], // Initial state, nothing transitions to new
+  },
+  analyzed: {
+    label: "Analyzed",
+    description: "Application page inspected and requirements captured by OpenClaw",
+    allowedFrom: [],
   },
   prepped: {
     label: "Prepped",
     description: "Cover letter & notes generated",
-    allowedFrom: ["new"],
+    allowedFrom: ["analyzed"],
   },
   reviewed: {
     label: "Reviewed",
@@ -114,8 +120,42 @@ export interface Job {
   cover_letter_generated_at: string | null;
   prep_notes: string | null;
   prepped_at: string | null;
+  application_type: "easy_apply" | "ats" | "direct" | "email" | "unknown" | null;
+  application_url: string | null;
+  requires_cover_letter: boolean | null;
+  requires_resume: boolean | null;
+  detected_fields: Record<string, unknown> | null;
+  screening_questions: Array<Record<string, unknown>> | null;
+  screening_answers: Record<string, string> | null;
+  analyzed_at: string | null;
+  applied_at: string | null;
+  application_method: string | null;
+  confirmation_code: string | null;
   created_at: string;
   updated_at: string | null;
+}
+
+/**
+ * True when the job currently has real cover-letter text that can be rendered to PDF.
+ */
+export function hasCoverLetterText(coverLetter: string | null | undefined): boolean {
+  const text = coverLetter?.trim();
+  return Boolean(text && text !== "Not requested");
+}
+
+/**
+ * Reviewed jobs should only skip PDF generation when analysis explicitly says
+ * a cover letter is not required and no cover-letter text exists.
+ */
+export function shouldGenerateReviewPdf(
+  job: Pick<Job, "cover_letter" | "requires_cover_letter">,
+  draftCoverLetter?: string | null
+): boolean {
+  if (hasCoverLetterText(draftCoverLetter ?? job.cover_letter)) {
+    return true;
+  }
+
+  return job.requires_cover_letter !== false;
 }
 
 /**
@@ -148,6 +188,7 @@ export interface JobListResponse {
 export interface JobStats {
   total: number;
   new: number;
+  analyzed: number;
   prepped: number;
   reviewed: number;
   applied: number;
@@ -182,6 +223,22 @@ export interface JobUpdate {
   notes?: string;
   cover_letter?: string;
   prep_notes?: string;
+}
+
+export interface ManualJobCreateRequest {
+  title: string;
+  company: string;
+  job_url: string;
+  location?: string | null;
+  description?: string | null;
+  salary_range?: string | null;
+  date_posted?: string | null;
+  source?: string | null;
+  is_remote?: boolean | null;
+  job_type?: string | null;
+  company_url?: string | null;
+  profile_id?: string | null;
+  notes?: string | null;
 }
 
 // ===========================================================================

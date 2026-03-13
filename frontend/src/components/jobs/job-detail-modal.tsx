@@ -11,7 +11,7 @@ import {
   Textarea,
 } from "@/components/ui";
 import type { Job, JobStatus, JobUpdate } from "@/types";
-import { JOB_STATUSES, JOB_STATUS_CONFIG, canTransitionTo } from "@/types";
+import { JOB_STATUSES, JOB_STATUS_CONFIG, canTransitionTo, shouldGenerateReviewPdf } from "@/types";
 import { ScoreBadge } from "./score-badge";
 import { StatusBadge } from "./status-badge";
 import { apiClient } from "@/lib/api-client";
@@ -87,6 +87,12 @@ export function JobDetailModal({
   if (!job) return null;
 
   const handleStatusChange = async (newStatus: JobStatus) => {
+    if (newStatus === "prepped" && job.status === "analyzed" && onPrep) {
+      onClose();
+      onPrep(job);
+      return;
+    }
+
     // Special handling for transitioning to "reviewed" - generates PDF
     if (newStatus === "reviewed" && job.status === "prepped") {
       await handleMarkAsReviewed();
@@ -119,10 +125,15 @@ export function JobDetailModal({
       setCoverLetterDirty(false);
     }
 
-    // Generate PDF
-    setIsGeneratingPdf(true);
     setPdfError(null);
 
+    if (!shouldGenerateReviewPdf(job, coverLetter)) {
+      await onUpdate(job.id, { status: "reviewed" });
+      return;
+    }
+
+    // Generate PDF when the workflow still has cover-letter output to carry forward.
+    setIsGeneratingPdf(true);
     try {
       const updatedJob = await apiClient.post<Job>(`/jobs/${job.id}/cover-letter/generate-pdf`);
 
@@ -212,6 +223,13 @@ export function JobDetailModal({
 
   const hasPreppedMaterials = !!job.cover_letter || !!job.prep_notes;
   const hasPdf = !!job.cover_letter_file_path;
+  const hasApplicationAnalysis =
+    !!job.analyzed_at ||
+    !!job.application_type ||
+    !!job.application_url ||
+    job.requires_cover_letter !== null ||
+    job.requires_resume !== null ||
+    !!job.screening_questions?.length;
 
   return (
     <Dialog open={isOpen} onOpenChange={() => onClose()}>
@@ -272,7 +290,11 @@ export function JobDetailModal({
             <div className="flex flex-wrap gap-2">
               {STATUS_OPTIONS.map((option) => {
                 const isCurrentStatus = job.status === option.value;
-                const canTransition = canTransitionTo(job.status, option.value);
+                const canTransition =
+                  canTransitionTo(job.status, option.value) &&
+                  !(option.value === "prepped" && job.status === "analyzed" && !onPrep);
+                const isPrepTransition =
+                  option.value === "prepped" && job.status === "analyzed";
                 const isReviewedTransition =
                   option.value === "reviewed" && job.status === "prepped";
 
@@ -286,6 +308,9 @@ export function JobDetailModal({
                     title={option.description}
                     className={cn(
                       !isCurrentStatus && !canTransition && "cursor-not-allowed opacity-40",
+                      isPrepTransition &&
+                        canTransition &&
+                        "border-cyan-500/50 hover:bg-cyan-500/10",
                       isReviewedTransition &&
                         canTransition &&
                         "border-purple-500/50 hover:bg-purple-500/10"
@@ -299,13 +324,77 @@ export function JobDetailModal({
                 );
               })}
             </div>
+            {job.status === "new" && (
+              <p className="text-muted-foreground mt-2 text-xs">
+                <span className="text-blue-600 dark:text-blue-400">Next step:</span> OpenClaw
+                still needs to analyze the application page before this job can be prepped.
+              </p>
+            )}
+            {job.status === "analyzed" && (
+              <p className="text-muted-foreground mt-2 text-xs">
+                <span className="text-cyan-600 dark:text-cyan-400">Next step:</span> Click
+                &quot;Prepped&quot; to generate the cover letter and screening answers.
+              </p>
+            )}
             {job.status === "prepped" && (
               <p className="text-muted-foreground mt-2 text-xs">
                 <span className="text-purple-600 dark:text-purple-400">Tip:</span> Clicking
-                &quot;Reviewed&quot; will generate a PDF of your cover letter.
+                &quot;Reviewed&quot;{" "}
+                {shouldGenerateReviewPdf(job)
+                  ? "will generate a PDF of your cover letter."
+                  : "will move this job into the reviewed stage."}
               </p>
             )}
           </div>
+
+          {hasApplicationAnalysis && (
+            <div className="space-y-3 rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-4">
+              <div className="flex items-center justify-between">
+                <p className="font-medium text-indigo-700 dark:text-indigo-300">
+                  Application Analysis
+                </p>
+                {job.analyzed_at && (
+                  <span className="text-xs text-indigo-700/80 dark:text-indigo-300/80">
+                    {format(new Date(job.analyzed_at), "MMM d, h:mm a")}
+                  </span>
+                )}
+              </div>
+              <div className="grid gap-2 text-sm sm:grid-cols-2">
+                <div>
+                  <span className="text-muted-foreground">Application type:</span>{" "}
+                  <span className="capitalize">{job.application_type || "Unknown"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Cover letter:</span>{" "}
+                  {job.requires_cover_letter === null
+                    ? "Unknown"
+                    : job.requires_cover_letter
+                      ? "Required"
+                      : "Not required"}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Resume:</span>{" "}
+                  {job.requires_resume === null
+                    ? "Unknown"
+                    : job.requires_resume
+                      ? "Required"
+                      : "Not required"}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Screening questions:</span>{" "}
+                  {job.screening_questions?.length ?? 0}
+                </div>
+              </div>
+              {job.application_url && (
+                <Button variant="outline" size="sm" asChild className="w-fit">
+                  <a href={job.application_url} target="_blank" rel="noopener noreferrer">
+                    Open Application
+                    <ExternalLink className="ml-2 h-4 w-4" />
+                  </a>
+                </Button>
+              )}
+            </div>
+          )}
 
           {/* PDF Error */}
           {pdfError && (
@@ -453,8 +542,8 @@ export function JobDetailModal({
             </div>
           )}
 
-          {/* Show prompt to prep if job is new and no materials */}
-          {job.status === "new" && !hasPreppedMaterials && onPrep && (
+          {/* Show prompt to prep if job is analyzed and no materials */}
+          {job.status === "analyzed" && !hasPreppedMaterials && onPrep && (
             <div className="border-primary/30 bg-primary/5 rounded-lg border-2 border-dashed p-4">
               <div className="flex items-start gap-3">
                 <div className="bg-primary/10 rounded-full p-2">
@@ -463,7 +552,8 @@ export function JobDetailModal({
                 <div className="flex-1">
                   <p className="font-medium">Ready to Prepare?</p>
                   <p className="text-muted-foreground mt-1 text-sm">
-                    Generate a tailored cover letter and prep notes for this job.
+                    Generate a tailored cover letter, prep notes, and screening answers for this
+                    job.
                   </p>
                   <Button
                     size="sm"
@@ -478,6 +568,13 @@ export function JobDetailModal({
                   </Button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {job.status === "new" && (
+            <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4 text-sm text-blue-700 dark:text-blue-300">
+              This job has been scored and saved, but it still needs OpenClaw to inspect the
+              application page before prep can run.
             </div>
           )}
 

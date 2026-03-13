@@ -3,7 +3,15 @@
 import { useCallback } from "react";
 import { useJobStore } from "@/stores/job-store";
 import { apiClient } from "@/lib/api-client";
-import type { Job, JobFilters, JobListResponse, JobStats, JobStatus, JobUpdate } from "@/types";
+import type {
+  Job,
+  JobFilters,
+  JobListResponse,
+  JobStats,
+  JobStatus,
+  JobUpdate,
+  ManualJobCreateRequest,
+} from "@/types";
 
 /**
  * Hook for managing jobs data and API interactions.
@@ -26,6 +34,7 @@ export function useJobs() {
     setStats,
     setStatsLoading,
     setSelectedJob,
+    addJob,
     updateJob,
     removeJob,
   } = useJobStore();
@@ -121,6 +130,23 @@ export function useJobs() {
   );
 
   /**
+   * Create a manual job.
+   */
+  const createJob = useCallback(
+    async (payload: ManualJobCreateRequest): Promise<Job | null> => {
+      try {
+        const job = await apiClient.post<Job>("/jobs", payload);
+        addJob(job);
+        return job;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to create job");
+        return null;
+      }
+    },
+    [addJob, setError]
+  );
+
+  /**
    * Delete a job.
    */
   const deleteJob = useCallback(
@@ -179,6 +205,7 @@ export function useJobs() {
     fetchJobs,
     fetchStats,
     fetchJob,
+    createJob,
     updateJobStatus,
     deleteJob,
     deleteByStatus,

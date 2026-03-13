@@ -167,19 +167,24 @@ async def service_endpoint(api_key: ValidAPIKey):
 
 ## Integration Tokens (OpenClaw)
 
-OpenClaw ingestion uses scoped per-user integration tokens, separate from the global API key.
+OpenClaw uses scoped per-user integration tokens, separate from the global API key.
 
 ### Purpose
 
 - Global API key: currently used by generic pipeline webhook routes.
 - Integration token: least-privilege machine token tied to one user and explicit scopes.
 
-### Current scope and routes
+### Current scopes and routes
 
-- Supported scope: `jobs:ingest`
+- Supported scopes: `jobs:ingest`, `jobs:analyze`, `jobs:prep`, `jobs:apply`
 - Header name: `X-Integration-Token`
-- Current route using it: `POST /api/v1/integrations/openclaw/jobs/ingest`
-- Payload supports optional external analysis fields per job: `relevance_score`, `reasoning`
+- Current routes using it:
+  - `POST /api/v1/integrations/openclaw/jobs/ingest`
+  - `POST /api/v1/integrations/openclaw/jobs/{job_id}/analyze`
+  - `POST /api/v1/integrations/openclaw/jobs/prep-batch`
+  - `POST /api/v1/integrations/openclaw/jobs/{job_id}/apply-success`
+- Ingest payload supports optional external analysis fields per job: `relevance_score`, `reasoning`
+- Ingest payload also supports application-analysis fields such as `application_type`, `application_url`, `requires_cover_letter`, and `screening_questions`
 - Optional `qa_with_internal_analysis` can run internal profile analysis as comparison only
 
 ### Lifecycle
@@ -188,7 +193,7 @@ OpenClaw ingestion uses scoped per-user integration tokens, separate from the gl
    - `POST /api/v1/integrations/openclaw/tokens`
    - Web UI: `/settings/openclaw`
 2. Plaintext token (`oct_...`) is returned once; only hash is stored server-side.
-3. OpenClaw sends token in `X-Integration-Token` when calling ingest route.
+3. OpenClaw sends token in `X-Integration-Token` when calling one of the scoped machine routes.
 4. User can revoke token:
    - `DELETE /api/v1/integrations/openclaw/tokens/{token_id}`
 

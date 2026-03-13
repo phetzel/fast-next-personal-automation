@@ -16,7 +16,7 @@ from app.db.session import get_db_context
 from app.email.config import get_default_sender_domains, get_parser, get_parser_for_sender
 from app.pipelines.action_base import ActionPipeline, ActionResult, PipelineContext
 from app.pipelines.registry import register_pipeline
-from app.repositories import email_source_repo, email_sync_repo, job_profile_repo
+from app.repositories import email_source_repo, email_sync_repo
 from app.services.job import JobService, RawJob
 
 logger = logging.getLogger(__name__)
@@ -229,22 +229,16 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
             "high_scoring": 0,
         }
 
-        # Get user's default profile for AI analysis
-        profile = await job_profile_repo.get_default_for_user(db, user_id)
-        resume_text = None
-        target_roles = None
-        min_score = 7.0
-
-        if profile and profile.resume and profile.resume.text_content:
-            resume_text = profile.resume.text_content
-            target_roles = profile.target_roles
-            min_score = profile.min_score_threshold or 7.0
-            logger.info(f"AI scoring enabled with profile '{profile.name}'")
-        else:
-            logger.info("No profile with resume found - jobs will not be AI scored")
-
         # Initialize job service
         job_service = JobService(db)
+        profile = await job_service.require_scorable_profile(
+            user_id,
+            purpose="email job ingestion",
+        )
+        resume_text = profile.resume.text_content if profile.resume else None
+        target_roles = profile.target_roles
+        min_score = profile.min_score_threshold or 7.0
+        logger.info(f"AI scoring enabled with profile '{profile.name}'")
 
         # Initialize Gmail client with decrypted tokens
         access_token, refresh_token = email_source_repo.get_decrypted_tokens(source)

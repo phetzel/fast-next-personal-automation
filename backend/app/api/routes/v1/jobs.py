@@ -4,6 +4,7 @@ Provides REST endpoints for managing user's job listings from the search pipelin
 """
 
 import logging
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Query
@@ -13,11 +14,13 @@ from pydantic import BaseModel, Field
 from app.api.deps import CurrentUser, JobSvc
 from app.db.models.job import JobStatus
 from app.schemas.job import (
+    IngestionSource,
     JobFilters,
     JobListResponse,
     JobResponse,
     JobStatsResponse,
     JobUpdate,
+    ManualJobCreateRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -31,6 +34,10 @@ async def list_jobs(
     job_service: JobSvc,
     status: JobStatus | None = Query(None, description="Filter by status"),
     source: str | None = Query(None, description="Filter by source (linkedin, indeed, etc.)"),
+    ingestion_source: IngestionSource | None = Query(
+        None,
+        description="Filter by how the job entered the app (scrape, email, manual, openclaw)",
+    ),
     min_score: float | None = Query(None, ge=0.0, le=10.0, description="Minimum relevance score"),
     max_score: float | None = Query(None, ge=0.0, le=10.0, description="Maximum relevance score"),
     search: str | None = Query(None, description="Search in title, company, description"),
@@ -41,8 +48,11 @@ async def list_jobs(
     ),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
-    sort_by: str = Query("created_at", description="Sort field"),
-    sort_order: str = Query("desc", description="Sort order (asc/desc)"),
+    sort_by: Literal["created_at", "relevance_score", "date_posted", "company"] = Query(
+        "created_at",
+        description="Sort field",
+    ),
+    sort_order: Literal["asc", "desc"] = Query("desc", description="Sort order (asc/desc)"),
 ) -> JobListResponse:
     """List user's jobs with filtering and pagination.
 
@@ -52,14 +62,15 @@ async def list_jobs(
     filters = JobFilters(
         status=status,
         source=source,
+        ingestion_source=ingestion_source,
         min_score=min_score,
         max_score=max_score,
         search=search,
         posted_within_hours=posted_within_hours,
         page=page,
         page_size=page_size,
-        sort_by=sort_by,  # type: ignore
-        sort_order=sort_order,  # type: ignore
+        sort_by=sort_by,
+        sort_order=sort_order,
     )
 
     jobs, total = await job_service.get_by_user(current_user.id, filters)
@@ -114,12 +125,17 @@ async def delete_jobs_by_status(
 
     Use this to quickly clear out jobs you're not interested in.
     Jobs are soft-deleted (hidden from listings but preserved to prevent re-scraping).
-    Only NEW, PREPPED, and REVIEWED statuses can be batch deleted.
+    Only NEW, ANALYZED, PREPPED, and REVIEWED statuses can be batch deleted.
     """
     from app.core.exceptions import ValidationError
 
     # Validate that the status can be batch deleted
-    deletable_statuses = [JobStatus.NEW, JobStatus.PREPPED, JobStatus.REVIEWED]
+    deletable_statuses = [
+        JobStatus.NEW,
+        JobStatus.ANALYZED,
+        JobStatus.PREPPED,
+        JobStatus.REVIEWED,
+    ]
     if request.status not in deletable_statuses:
         raise ValidationError(
             message=f"Only {', '.join(s.value for s in deletable_statuses)} statuses can be batch deleted",
@@ -137,6 +153,17 @@ async def delete_jobs_by_status(
 # =============================================================================
 # Single job operations
 # =============================================================================
+
+
+@router.post("", response_model=JobResponse, status_code=201)
+async def create_job(
+    job_in: ManualJobCreateRequest,
+    current_user: CurrentUser,
+    job_service: JobSvc,
+) -> JobResponse:
+    """Create a manual job and score it with the selected/default profile."""
+    job = await job_service.create_manual_job(current_user.id, job_in)
+    return JobResponse.model_validate(job)
 
 
 @router.get("/{job_id}", response_model=JobResponse)

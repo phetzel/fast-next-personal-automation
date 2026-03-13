@@ -77,6 +77,11 @@ def _profile_to_response(profile: JobProfile, projects: list | None = None) -> J
         target_locations=profile.target_locations,
         min_score_threshold=profile.min_score_threshold,
         preferences=profile.preferences,
+        contact_full_name=profile.contact_full_name,
+        contact_phone=profile.contact_phone,
+        contact_email=profile.contact_email,
+        contact_location=profile.contact_location,
+        contact_website=profile.contact_website,
         created_at=profile.created_at,
         updated_at=profile.updated_at,
     )

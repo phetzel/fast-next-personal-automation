@@ -328,19 +328,19 @@ test.describe("Inline Pipeline Execution", () => {
 
         // Should show status buttons
         await expect(
-          page.getByRole("button", { name: /new|prepped|reviewed|applied/i }).first()
+          page.getByRole("button", { name: /new|analyzed|prepped|reviewed|applied/i }).first()
         ).toBeVisible();
       }
     });
 
-    test("should have prepare materials CTA for new jobs", async ({ page }) => {
+    test("should have prepare materials CTA for analyzed jobs", async ({ page }) => {
       await page.goto("/jobs/list");
 
       const jobRow = page.locator("tbody tr").first();
       if (await jobRow.isVisible().catch(() => false)) {
         await jobRow.click();
 
-        // If job is new without prep, should show prepare materials button
+        // If job is analyzed without prep, should show prepare materials button
         // This may or may not be visible depending on job status - just verify modal is open
         await expect(page.getByRole("dialog")).toBeVisible();
       }

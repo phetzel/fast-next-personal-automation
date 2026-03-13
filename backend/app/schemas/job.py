@@ -11,6 +11,7 @@ from app.schemas.base import BaseSchema, TimestampSchema
 
 # Application type literals
 ApplicationType = Literal["easy_apply", "ats", "direct", "email", "unknown"]
+IngestionSource = Literal["scrape", "email", "manual", "openclaw"]
 
 
 class JobBase(BaseSchema):
@@ -28,7 +29,7 @@ class JobBase(BaseSchema):
     source: str | None = Field(
         default=None, max_length=50, description="Source (linkedin, indeed, etc.)"
     )
-    ingestion_source: str | None = Field(
+    ingestion_source: IngestionSource | None = Field(
         default=None,
         max_length=20,
         description="How job was discovered (scrape, email, manual, openclaw)",
@@ -55,6 +56,13 @@ class JobCreate(JobBase):
     search_terms: str | None = Field(
         default=None, max_length=500, description="Search terms used to find this job"
     )
+
+
+class ManualJobCreateRequest(JobBase):
+    """Schema for manually creating a job while still scoring it against a profile."""
+
+    profile_id: UUID | None = Field(default=None, description="Profile to use for scoring")
+    notes: str | None = Field(default=None, description="Optional notes for the job")
 
 
 class JobUpdate(BaseSchema):
@@ -95,7 +103,12 @@ class JobResponse(JobBase, TimestampSchema):
     requires_resume: bool | None = None
     detected_fields: dict[str, Any] | None = None
     screening_questions: list[dict[str, Any]] | None = None
+    screening_answers: dict[str, str] | None = None
     analyzed_at: datetime | None = None
+    # Application submission
+    applied_at: datetime | None = None
+    application_method: str | None = None
+    confirmation_code: str | None = None
 
 
 class JobSummary(BaseSchema):
@@ -127,6 +140,7 @@ class JobStatsResponse(BaseSchema):
 
     total: int = 0
     new: int = 0
+    analyzed: int = 0
     prepped: int = 0
     reviewed: int = 0
     applied: int = 0
@@ -141,7 +155,7 @@ class JobFilters(BaseSchema):
 
     status: JobStatus | None = None
     source: str | None = None
-    ingestion_source: str | None = Field(
+    ingestion_source: IngestionSource | None = Field(
         default=None,
         description="Filter by how job was discovered (scrape, email, manual, openclaw)",
     )

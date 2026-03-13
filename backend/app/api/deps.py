@@ -159,6 +159,7 @@ FinanceSvc = Annotated[FinanceService, Depends(get_finance_service)]
 # === Authentication Dependencies ===
 
 from app.core.exceptions import AuthenticationError, AuthorizationError
+from app.db.models.integration_token import IntegrationScope, IntegrationToken
 from app.db.models.user import User, UserRole
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
@@ -383,18 +384,29 @@ ValidAPIKey = Annotated[str, Depends(verify_api_key)]
 openclaw_token_header = APIKeyHeader(name="X-Integration-Token", auto_error=False)
 
 
-async def verify_openclaw_token(
-    token: Annotated[str | None, Depends(openclaw_token_header)],
-    integration_token_service: IntegrationTokenSvc,
-):
-    """Verify OpenClaw integration token and required scope."""
-    if token is None:
-        raise AuthenticationError(message="Integration token header missing")
-    return await integration_token_service.verify_openclaw_token(
-        token, required_scope=IntegrationScope.JOBS_INGEST.value
-    )
+def require_openclaw_token_scope(required_scope: IntegrationScope):
+    """Create a dependency that validates an OpenClaw token for one scope."""
+
+    async def _verify_openclaw_token(
+        token: Annotated[str | None, Depends(openclaw_token_header)],
+        integration_token_service: IntegrationTokenSvc,
+    ):
+        if token is None:
+            raise AuthenticationError(message="Integration token header missing")
+        return await integration_token_service.verify_openclaw_token(
+            token,
+            required_scope=required_scope.value,
+        )
+
+    return _verify_openclaw_token
 
 
-from app.db.models.integration_token import IntegrationScope, IntegrationToken
+verify_openclaw_token = require_openclaw_token_scope(IntegrationScope.JOBS_INGEST)
+verify_openclaw_analyze_token = require_openclaw_token_scope(IntegrationScope.JOBS_ANALYZE)
+verify_openclaw_prep_token = require_openclaw_token_scope(IntegrationScope.JOBS_PREP)
+verify_openclaw_apply_token = require_openclaw_token_scope(IntegrationScope.JOBS_APPLY)
 
 OpenClawToken = Annotated[IntegrationToken, Depends(verify_openclaw_token)]
+OpenClawAnalyzeToken = Annotated[IntegrationToken, Depends(verify_openclaw_analyze_token)]
+OpenClawPrepToken = Annotated[IntegrationToken, Depends(verify_openclaw_prep_token)]
+OpenClawApplyToken = Annotated[IntegrationToken, Depends(verify_openclaw_apply_token)]

@@ -1,26 +1,58 @@
 # OpenClaw Integration
 
-Clawbot pushes jobs into this app through a scoped token. All other job management stays in the app.
+OpenClaw now owns browser-only job work for this app: discovery, application-page inspection, and recording apply success. The app remains the system of record for job status, scoring, prep artifacts, review state, and applicant data.
 
-## Endpoint
+## Current Workflow
 
-```
-POST /api/v1/integrations/openclaw/jobs/ingest
+1. Jobs enter the app through manual creation, email sync, job search, or OpenClaw ingest.
+2. App-owned ingest flows still score jobs against a profile and save them as `new`.
+3. OpenClaw can ingest jobs as:
+   - `new` when it only has listing data
+   - `analyzed` when it also sends application-page requirements
+4. OpenClaw can update existing jobs to `analyzed` after visiting the application page.
+5. OpenClaw can trigger the internal `job_prep_batch` pipeline for analyzed jobs.
+6. After manual review, OpenClaw can record a successful application and move the job to `applied`.
+
+Current lifecycle: `new -> analyzed -> prepped -> reviewed -> applied -> interviewing/rejected`
+
+## Auth Header
+
+All OpenClaw machine routes use:
+
+```http
 X-Integration-Token: oct_...
 ```
 
-Scope required: `jobs:ingest`. Jobs are stored with `ingestion_source=openclaw`.
+## Token Scopes
+
+- `jobs:ingest`
+- `jobs:analyze`
+- `jobs:prep`
+- `jobs:apply`
+
+## Routes
+
+```http
+POST /api/v1/integrations/openclaw/jobs/ingest
+POST /api/v1/integrations/openclaw/jobs/{job_id}/analyze
+POST /api/v1/integrations/openclaw/jobs/prep-batch
+POST /api/v1/integrations/openclaw/jobs/{job_id}/apply-success
+```
 
 ## Token Setup
 
-1. Go to `/settings/openclaw` → create a token → copy the `oct_...` value immediately (shown once).
-2. Set on the Clawbot side:
-   ```bash
-   export PERSONAL_AUTOMATIONS_API_BASE_URL=https://api.example.com
-   export PERSONAL_AUTOMATIONS_OPENCLAW_TOKEN=oct_...
-   ```
+1. Go to `/settings/openclaw` and create a token with the scopes OpenClaw needs.
+2. Copy the plaintext `oct_...` token immediately. It is only shown once.
+3. Configure the OpenClaw droplet:
 
-## Minimal Payload
+```bash
+export PERSONAL_AUTOMATIONS_API_BASE_URL=https://api.example.com
+export PERSONAL_AUTOMATIONS_OPENCLAW_TOKEN=oct_...
+```
+
+## Ingest Payload
+
+Minimal payload:
 
 ```json
 {
@@ -36,40 +68,64 @@ Scope required: `jobs:ingest`. Jobs are stored with `ingestion_source=openclaw`.
 }
 ```
 
-Optional fields per job: `description`, `salary_range`, `date_posted`, `is_remote`, `job_type`, `company_url`, `relevance_score`, `reasoning`.
+Optional per-job enrichment fields:
 
-Top-level optional: `search_terms`, `analyze_with_profile` (bool), `profile_id`, `min_score`, `save_all`, `qa_with_internal_analysis`.
+- listing enrichment: `description`, `salary_range`, `date_posted`, `is_remote`, `job_type`, `company_url`
+- fit scoring: `relevance_score`, `reasoning`
+- application analysis: `application_type`, `application_url`, `requires_cover_letter`, `requires_resume`, `detected_fields`, `screening_questions`, `analyzed_at`
 
-## Ingest Helper
+Top-level options:
 
-The ingest helper is maintained on the OpenClaw droplet, not in this repository.
-Run it from the droplet-side OpenClaw workspace with your payload file.
+- `search_terms`
+- `profile_id`
+- `analyze_with_profile`
+- `min_score`
+- `save_all`
+- `qa_with_internal_analysis`
+
+If application-analysis fields are present, the job is persisted as `analyzed`. Otherwise it stays `new`.
+
+## Analyze Existing Job
+
+Use `POST /api/v1/integrations/openclaw/jobs/{job_id}/analyze` when the app already has the job but OpenClaw later visits the application page.
+
+The payload can update:
+
+- `description`
+- `application_type`
+- `application_url`
+- `requires_cover_letter`
+- `requires_resume`
+- `detected_fields`
+- `screening_questions`
+- `analyzed_at`
+
+This advances `new -> analyzed` and is idempotent for already analyzed jobs.
+
+## Trigger Prep
+
+Use `POST /api/v1/integrations/openclaw/jobs/prep-batch` with `jobs:prep` to run the internal prep batch synchronously for analyzed jobs.
+
+Accepted fields:
+
+- `job_ids` optional explicit subset
+- `max_jobs`
+- `tone`
+
+## Record Apply Success
+
+Use `POST /api/v1/integrations/openclaw/jobs/{job_id}/apply-success` with `jobs:apply` after OpenClaw successfully submits an application for a reviewed job.
+
+Accepted fields:
+
+- `applied_at`
+- `application_method`
+- `confirmation_code`
+- `notes`
 
 ## Verify
 
 ```bash
-curl "${APP_API_BASE_URL}/api/v1/jobs?page=1&page_size=5" -H "Authorization: Bearer ${ACCESS_TOKEN}"
+curl "${APP_API_BASE_URL}/api/v1/jobs?page=1&page_size=5" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}"
 ```
-
----
-
-## Planned: Expand Clawbot Responsibilities
-
-The current split is narrow: Clawbot ingests, the app does everything else. The planned direction is to give Clawbot more of the enrichment pipeline so the app receives pre-analyzed jobs.
-
-**Target flow:**
-
-1. Clawbot scrapes a job board or receives a URL/listing from Telegram
-2. Clawbot runs browser analysis (Playwright on the Clawbot droplet): detects `requires_cover_letter`, `application_type`, `screening_questions`
-3. Clawbot fetches resume text via a new read-scoped token and scores the job against it
-4. Clawbot sends an enriched ingest payload — the app skips analysis and scoring steps entirely
-5. For high-scoring jobs, Clawbot calls a new `POST /integrations/openclaw/jobs/{id}/prep` endpoint that runs `job_prep` and returns the cover letter + prep notes
-6. Clawbot delivers results back to Telegram
-
-**Consequences for the app:**
-- `job_analyze` can be removed from the app entirely
-- `job_search` becomes redundant once Clawbot handles all sourcing and can be removed
-- Backend Playwright/browser-use dependencies stay out of the app server
-- Two new integration additions needed: `jobs:read_resume` token scope + `/jobs/{id}/prep` endpoint
-
-Resume and all prep materials stay in the app as the source of truth. Clawbot remains stateless.

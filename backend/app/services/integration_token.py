@@ -1,5 +1,6 @@
 """Service for integration token management and verification."""
 
+import logging
 import secrets
 from datetime import UTC, datetime
 from uuid import UUID
@@ -16,7 +17,8 @@ from app.core.exceptions import (
 from app.db.models.integration_token import IntegrationScope, IntegrationToken
 from app.repositories import integration_token as integration_token_repo
 
-_OPENCLAW_ALLOWED_SCOPES = {IntegrationScope.JOBS_INGEST.value}
+_OPENCLAW_ALLOWED_SCOPES = {scope.value for scope in IntegrationScope}
+logger = logging.getLogger(__name__)
 
 
 class IntegrationTokenService:
@@ -90,6 +92,18 @@ class IntegrationTokenService:
         )
         token = await integration_token_repo.get_by_hash(self.db, token_hash)
         if token is None:
+            logger.warning(
+                "OpenClaw integration token lookup failed",
+                extra={
+                    "token_hash_prefix": token_hash[:12],
+                    "token_length": len(plaintext_token),
+                    "token_has_expected_prefix": plaintext_token.startswith("oct_"),
+                    "environment": settings.ENVIRONMENT,
+                    "postgres_host": settings.POSTGRES_HOST,
+                    "postgres_db": settings.POSTGRES_DB,
+                    "required_scope": required_scope,
+                },
+            )
             raise AuthenticationError(message="Invalid integration token")
 
         if not token.is_active:

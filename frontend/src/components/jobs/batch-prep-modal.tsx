@@ -45,7 +45,7 @@ interface PrepResult {
 
 /**
  * Modal for running the batch job prep pipeline.
- * Generates cover letters and prep notes for all NEW jobs.
+ * Generates cover letters and prep notes for analyzed jobs.
  * Uses each job's associated profile (from job_search) or falls back to default.
  */
 export function BatchPrepModal({ isOpen, onClose, onComplete }: BatchPrepModalProps) {
@@ -103,8 +103,8 @@ export function BatchPrepModal({ isOpen, onClose, onComplete }: BatchPrepModalPr
             Batch Prep Jobs
           </DialogTitle>
           <DialogDescription>
-            Generate cover letters and prep notes for all NEW jobs. Each job will use the profile it
-            was searched with.
+            Generate cover letters and prep notes for analyzed jobs. Each job will use its
+            associated profile, or your default profile when needed.
           </DialogDescription>
         </DialogHeader>
 

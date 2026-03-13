@@ -1,6 +1,6 @@
 """Batch Job Prep Pipeline.
 
-Prepares all NEW jobs in a single operation, using each job's associated profile.
+Prepares all ANALYZED jobs in a single operation, using each job's associated profile.
 """
 
 import asyncio
@@ -24,9 +24,13 @@ logger = logging.getLogger(__name__)
 class BatchJobPrepInput(BaseModel):
     """Input for the batch job prep pipeline.
 
-    Simple configuration - gets ALL new jobs and uses each job's associated profile.
+    Simple configuration - gets analyzed jobs and uses each job's associated profile.
     """
 
+    job_ids: list[UUID] | None = Field(
+        default=None,
+        description="Optional explicit set of analyzed job IDs to prep",
+    )
     tone: Literal["professional", "conversational", "enthusiastic"] = Field(
         default="professional",
         description="Tone for the cover letters",
@@ -69,10 +73,10 @@ class BatchJobPrepOutput(BaseModel):
 
 @register_pipeline
 class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]):
-    """Batch job prep pipeline that preps all NEW jobs.
+    """Batch job prep pipeline that preps analyzed jobs.
 
     This pipeline:
-    1. Fetches all jobs with status NEW
+    1. Fetches all jobs with status ANALYZED
     2. For each job, uses the profile_id saved with the job (from job_search)
     3. Falls back to user's default profile if no profile_id on job
     4. Processes jobs concurrently (up to max_concurrent)
@@ -88,7 +92,7 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
     """
 
     name = "job_prep_batch"
-    description = "Batch prepare cover letters and notes for all new jobs"
+    description = "Batch prepare cover letters and notes for analyzed jobs"
     tags: ClassVar[list[str]] = ["jobs", "ai", "writing", "batch"]
     area: ClassVar[str | None] = "jobs"
 
@@ -107,16 +111,26 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
                 error="User authentication required for batch job prep",
             )
 
-        # Step 1: Fetch all NEW jobs
+        # Step 1: Fetch analyzed jobs
         async with get_db_context() as db:
-            filters = JobFilters(
-                status=JobStatus.NEW,
-                page=1,
-                page_size=input.max_jobs,
-                sort_by="relevance_score",
-                sort_order="desc",
-            )
-            jobs, total = await job_repo.get_by_user(db, context.user_id, filters)
+            if input.job_ids:
+                selected_jobs = await job_repo.get_by_ids_and_user(db, context.user_id, input.job_ids)
+                jobs = [job for job in selected_jobs if job.job_status == JobStatus.ANALYZED]
+                total = len(jobs)
+                jobs = sorted(
+                    jobs,
+                    key=lambda job: job.relevance_score if job.relevance_score is not None else -1.0,
+                    reverse=True,
+                )[: input.max_jobs]
+            else:
+                filters = JobFilters(
+                    status=JobStatus.ANALYZED,
+                    page=1,
+                    page_size=input.max_jobs,
+                    sort_by="relevance_score",
+                    sort_order="desc",
+                )
+                jobs, total = await job_repo.get_by_user(db, context.user_id, filters)
 
             # Also get the default profile as fallback
             default_profile = await job_profile_repo.get_default_for_user(db, context.user_id)
@@ -131,10 +145,10 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
                     skipped=0,
                     results=[],
                 ),
-                metadata={"message": "No NEW jobs found to prep"},
+                metadata={"message": "No analyzed jobs found to prep"},
             )
 
-        logger.info(f"Found {len(jobs)} NEW jobs to prep (total matching: {total})")
+        logger.info(f"Found {len(jobs)} analyzed jobs to prep (total matching: {total})")
 
         # Step 2: Process jobs concurrently with semaphore
         semaphore = asyncio.Semaphore(input.max_concurrent)
@@ -195,7 +209,7 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
                         job_id=job.id,
                         profile_id=profile_id_to_use,
                         tone=input.tone,
-                        generate_screening_answers=False,
+                        generate_screening_answers=True,
                     )
                     result = await prep_pipeline.execute(prep_input, context)
 
@@ -254,6 +268,6 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
             metadata={
                 "tone": input.tone,
                 "jobs_found": len(jobs),
-                "total_new_jobs": total,
+                "total_analyzed_jobs": total,
             },
         )

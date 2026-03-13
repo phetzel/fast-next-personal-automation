@@ -33,6 +33,25 @@ async def get_by_url_and_user(db: AsyncSession, job_url: str, user_id: UUID) -> 
     return result.scalar_one_or_none()
 
 
+async def get_by_ids_and_user(
+    db: AsyncSession,
+    user_id: UUID,
+    job_ids: list[UUID],
+) -> list[Job]:
+    """Fetch a set of jobs by ID for a user, excluding soft-deleted rows."""
+    if not job_ids:
+        return []
+
+    result = await db.execute(
+        select(Job).where(
+            Job.user_id == user_id,
+            Job.id.in_(job_ids),
+            Job.deleted_at.is_(None),
+        )
+    )
+    return list(result.scalars().all())
+
+
 def _apply_filters(query: Select, user_id: UUID, filters: JobFilters) -> Select:
     """Apply filters to a job query (excludes soft-deleted jobs)."""
     query = query.where(Job.user_id == user_id, Job.deleted_at.is_(None))
@@ -284,6 +303,7 @@ async def get_stats(db: AsyncSession, user_id: UUID) -> dict:
     return {
         "total": total,
         "new": status_counts.get(JobStatus.NEW.value, 0),
+        "analyzed": status_counts.get(JobStatus.ANALYZED.value, 0),
         "prepped": status_counts.get(JobStatus.PREPPED.value, 0),
         "reviewed": status_counts.get(JobStatus.REVIEWED.value, 0),
         "applied": status_counts.get(JobStatus.APPLIED.value, 0),

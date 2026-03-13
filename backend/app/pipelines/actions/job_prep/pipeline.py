@@ -43,9 +43,13 @@ class JobPrepInput(BaseModel):
         default="professional",
         description="Tone for the cover letter",
     )
-    generate_screening_answers: bool = Field(
+    force_cover_letter: bool = Field(
         default=False,
-        description="Generate answers for detected screening questions (requires prior analysis)",
+        description="Generate a cover letter even when application analysis says one is not required",
+    )
+    generate_screening_answers: bool = Field(
+        default=True,
+        description="Generate answers for detected screening questions when they exist",
     )
 
 
@@ -122,6 +126,15 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
             return ActionResult(
                 success=False,
                 error=f"Job not found or you don't have access to it: {input.job_id}",
+            )
+
+        if job.job_status not in {JobStatus.ANALYZED, JobStatus.PREPPED, JobStatus.REVIEWED}:
+            return ActionResult(
+                success=False,
+                error=(
+                    "Job prep requires an analyzed job. Run OpenClaw analysis before preparing "
+                    "application materials."
+                ),
             )
 
         # Step 2: Get the profile
@@ -234,11 +247,15 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                 if projects_content:
                     logger.info(f"Including {len(projects_content)} projects from profile")
 
-        # Step 4: Always generate cover letter
-        # We always generate a cover letter - it's useful to have even if not strictly required
-        should_generate_cover_letter = True
-        skipped_cover_letter = False
-        logger.info("Generating cover letter (always enabled)")
+        # Step 4: Generate a cover letter only when analysis requires it or the caller forces it.
+        should_generate_cover_letter = input.force_cover_letter or job.requires_cover_letter is True
+        skipped_cover_letter = not should_generate_cover_letter
+        logger.info(
+            "Generating cover letter=%s (requires_cover_letter=%s, force=%s)",
+            should_generate_cover_letter,
+            job.requires_cover_letter,
+            input.force_cover_letter,
+        )
 
         # Step 5: Generate materials
         logger.info(f"Generating prep materials for: {job.title} at {job.company}")
@@ -298,20 +315,26 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                 update_data = {
                     "prep_notes": prep_output.prep_notes,
                     "prepped_at": datetime.now(UTC),
-                    "status": JobStatus.PREPPED.value,
+                    "status": (
+                        JobStatus.PREPPED.value
+                        if job.job_status == JobStatus.ANALYZED
+                        else job.status
+                    ),
+                    "screening_answers": screening_answers or None,
                 }
                 # Only update cover letter if we generated a real one
                 if has_real_cover_letter:
                     update_data["cover_letter"] = prep_output.cover_letter
                     logger.info(f"Saving cover letter ({cover_letter_len} chars) to job {job.id}")
                 else:
-                    logger.warning(
-                        f"No cover letter generated for job {job.id} - this should not happen!"
-                    )
+                    update_data["cover_letter"] = None
+                    update_data["cover_letter_file_path"] = None
+                    update_data["cover_letter_generated_at"] = None
+                    logger.info("Skipping cover letter persistence for job %s", job.id)
 
                 await job_repo.update(db, db_job=job, update_data=update_data)
                 await db.commit()
-                logger.info(f"Updated job {job.id} with prep materials, status set to PREPPED")
+                logger.info("Updated job %s with prep materials", job.id)
 
         # Step 8: Generate and store PDF if we have a real cover letter
         cover_letter_file_path: str | None = None
@@ -385,7 +408,7 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                 job_id=input.job_id,
                 job_title=job.title,
                 company=job.company,
-                cover_letter=prep_output.cover_letter,
+                cover_letter=prep_output.cover_letter if has_real_cover_letter else None,
                 prep_notes=prep_output.prep_notes,
                 profile_used=profile.name,
                 included_story=story_content is not None,
