@@ -14,7 +14,11 @@ from app.core.exceptions import (
     NotFoundError,
     ValidationError,
 )
-from app.db.models.integration_token import IntegrationScope, IntegrationToken
+from app.db.models.integration_token import (
+    DEFAULT_OPENCLAW_SCOPES,
+    IntegrationScope,
+    IntegrationToken,
+)
 from app.repositories import integration_token as integration_token_repo
 
 _OPENCLAW_ALLOWED_SCOPES = {scope.value for scope in IntegrationScope}
@@ -36,7 +40,7 @@ class IntegrationTokenService:
         expires_at: datetime | None = None,
     ) -> tuple[IntegrationToken, str]:
         """Create a new OpenClaw integration token and return plaintext once."""
-        requested_scopes = scopes or [IntegrationScope.JOBS_INGEST.value]
+        requested_scopes = scopes or list(DEFAULT_OPENCLAW_SCOPES)
         invalid_scopes = [
             scope for scope in requested_scopes if scope not in _OPENCLAW_ALLOWED_SCOPES
         ]

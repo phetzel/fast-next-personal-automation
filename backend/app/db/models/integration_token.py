@@ -20,6 +20,14 @@ class IntegrationScope(StrEnum):
     JOBS_APPLY = "jobs:apply"
 
 
+DEFAULT_OPENCLAW_SCOPES = [
+    IntegrationScope.JOBS_INGEST.value,
+    IntegrationScope.JOBS_ANALYZE.value,
+    IntegrationScope.JOBS_PREP.value,
+    IntegrationScope.JOBS_APPLY.value,
+]
+
+
 class IntegrationToken(Base, TimestampMixin):
     """Scoped token for external agents (e.g. OpenClaw) to call ingestion APIs."""
 

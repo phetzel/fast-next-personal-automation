@@ -42,6 +42,7 @@ POST /api/v1/integrations/openclaw/jobs/{job_id}/apply-success
 ## Token Setup
 
 1. Go to `/settings/openclaw` and create a token with the scopes OpenClaw needs.
+   - The current default is all four jobs scopes: `jobs:ingest`, `jobs:analyze`, `jobs:prep`, `jobs:apply`.
 2. Copy the plaintext `oct_...` token immediately. It is only shown once.
 3. Configure the OpenClaw droplet:
 

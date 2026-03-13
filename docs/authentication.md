@@ -192,6 +192,7 @@ OpenClaw uses scoped per-user integration tokens, separate from the global API k
 1. Authenticated user creates token:
    - `POST /api/v1/integrations/openclaw/tokens`
    - Web UI: `/settings/openclaw`
+   - Default scopes now include all current jobs actions: `jobs:ingest`, `jobs:analyze`, `jobs:prep`, `jobs:apply`
 2. Plaintext token (`oct_...`) is returned once; only hash is stored server-side.
 3. OpenClaw sends token in `X-Integration-Token` when calling one of the scoped machine routes.
 4. User can revoke token:
