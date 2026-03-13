@@ -574,7 +574,7 @@ Creates a token and returns the plaintext token once.
 Request:
 
 - `name`
-- `scopes` default `["jobs:ingest"]`
+- `scopes` default `["jobs:ingest", "jobs:analyze", "jobs:prep", "jobs:apply"]`
 - `expires_at` optional
 
 Response:

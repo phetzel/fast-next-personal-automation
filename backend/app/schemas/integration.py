@@ -6,6 +6,7 @@ from uuid import UUID
 
 from pydantic import Field, model_validator
 
+from app.db.models.integration_token import DEFAULT_OPENCLAW_SCOPES
 from app.schemas.base import BaseSchema
 
 
@@ -13,7 +14,7 @@ class OpenClawTokenCreateRequest(BaseSchema):
     """Request body for creating an OpenClaw token."""
 
     name: str = Field(..., min_length=1, max_length=255)
-    scopes: list[str] = Field(default_factory=lambda: ["jobs:ingest"], min_length=1)
+    scopes: list[str] = Field(default_factory=lambda: list(DEFAULT_OPENCLAW_SCOPES), min_length=1)
     expires_at: datetime | None = None
 
 

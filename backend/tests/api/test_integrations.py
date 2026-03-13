@@ -16,6 +16,7 @@ from app.api.deps import (
     verify_openclaw_prep_token,
     verify_openclaw_token,
 )
+from app.db.models.integration_token import DEFAULT_OPENCLAW_SCOPES
 from app.main import app
 from app.services.job import IngestionResult
 
@@ -47,7 +48,7 @@ def _mock_token(user_id, scopes: list[str] | None = None) -> SimpleNamespace:
         id=uuid4(),
         user_id=user_id,
         name="OpenClaw Prod",
-        scopes=scopes or ["jobs:ingest"],
+        scopes=scopes or list(DEFAULT_OPENCLAW_SCOPES),
         is_active=True,
         created_at=now,
         updated_at=now,
@@ -118,6 +119,12 @@ async def test_create_openclaw_token(client, mock_db_session) -> None:
     data = response.json()
     assert data["token"] == "oct_secret_value"
     assert data["token_info"]["name"] == "OpenClaw Prod"
+    token_service.create_openclaw_token.assert_awaited_once_with(
+        user_id=user.id,
+        name="OpenClaw Prod",
+        scopes=list(DEFAULT_OPENCLAW_SCOPES),
+        expires_at=None,
+    )
     mock_db_session.commit.assert_awaited_once()
 
 
