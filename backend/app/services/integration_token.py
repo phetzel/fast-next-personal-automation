@@ -99,8 +99,6 @@ class IntegrationTokenService:
                     "token_length": len(plaintext_token),
                     "token_has_expected_prefix": plaintext_token.startswith("oct_"),
                     "environment": settings.ENVIRONMENT,
-                    "postgres_host": settings.POSTGRES_HOST,
-                    "postgres_db": settings.POSTGRES_DB,
                     "required_scope": required_scope,
                 },
             )

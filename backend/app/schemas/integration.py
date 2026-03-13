@@ -98,7 +98,9 @@ class OpenClawJobInput(BaseSchema):
         if self.reasoning is not None and self.relevance_score is None:
             raise ValueError("relevance_score is required when reasoning is provided")
         if self.analyzed_at is not None and not self.has_application_analysis:
-            raise ValueError("Application analysis fields are required when analyzed_at is provided")
+            raise ValueError(
+                "Application analysis fields are required when analyzed_at is provided"
+            )
         return self
 
 

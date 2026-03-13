@@ -83,12 +83,12 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
     5. Returns a summary of results
 
     This is useful for:
-    - Batch prepping all new jobs after running job_search
-    - Catching up on job prep after multiple searches
+    - Batch prepping analyzed jobs after OpenClaw enrichment
+    - Catching up on job prep after multiple discovery runs
 
     Can be invoked via:
     - API: POST /api/v1/pipelines/job_prep_batch/execute
-    - Agent: "Prep all my new jobs"
+    - Agent: "Prep all my analyzed jobs"
     """
 
     name = "job_prep_batch"
@@ -114,12 +114,16 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
         # Step 1: Fetch analyzed jobs
         async with get_db_context() as db:
             if input.job_ids:
-                selected_jobs = await job_repo.get_by_ids_and_user(db, context.user_id, input.job_ids)
+                selected_jobs = await job_repo.get_by_ids_and_user(
+                    db, context.user_id, input.job_ids
+                )
                 jobs = [job for job in selected_jobs if job.job_status == JobStatus.ANALYZED]
                 total = len(jobs)
                 jobs = sorted(
                     jobs,
-                    key=lambda job: job.relevance_score if job.relevance_score is not None else -1.0,
+                    key=lambda job: (
+                        job.relevance_score if job.relevance_score is not None else -1.0
+                    ),
                     reverse=True,
                 )[: input.max_jobs]
             else:

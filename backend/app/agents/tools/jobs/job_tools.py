@@ -186,8 +186,8 @@ async def update_job_status(
     Use this when the user says they've reviewed a job, applied to it,
     got an interview, or received a rejection.
 
-    Status flow: new → analyzed → prepped → reviewed → applied → interviewing
-    Rejection (from employer): applied → rejected, or interviewing → rejected
+    Status flow: new → analyzed → prepped → reviewed → applied
+    Outcomes: applied → interviewing, applied → rejected, interviewing → rejected
 
     Args:
         job_id: The UUID of the job to update
@@ -216,10 +216,15 @@ async def update_job_status(
 
     job_service = JobService(db)
     try:
+        update_kwargs: dict[str, str | JobStatus] = {"status": job_status}
+        if notes:
+            job = await job_service.get_by_id(job_uuid, user_id)
+            update_kwargs["notes"] = f"{job.notes}\n\n{notes}".strip() if job.notes else notes
+
         updated = await job_service.update(
             job_uuid,
             user_id,
-            JobUpdate(status=job_status, notes=notes),
+            JobUpdate(**update_kwargs),
         )
     except Exception as exc:
         message = getattr(exc, "message", str(exc))

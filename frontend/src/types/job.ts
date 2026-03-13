@@ -144,8 +144,8 @@ export function hasCoverLetterText(coverLetter: string | null | undefined): bool
 }
 
 /**
- * Reviewed jobs should only skip PDF generation when analysis explicitly says
- * a cover letter is not required and no cover-letter text exists.
+ * Reviewed jobs only need PDF generation when a real cover letter exists or
+ * application analysis explicitly says one is required.
  */
 export function shouldGenerateReviewPdf(
   job: Pick<Job, "cover_letter" | "requires_cover_letter">,
@@ -155,7 +155,7 @@ export function shouldGenerateReviewPdf(
     return true;
   }
 
-  return job.requires_cover_letter !== false;
+  return job.requires_cover_letter === true;
 }
 
 /**

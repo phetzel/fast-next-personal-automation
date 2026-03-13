@@ -36,4 +36,13 @@ describe("job workflow helpers", () => {
       })
     ).toBe(true);
   });
+
+  it("skips review PDF generation when cover-letter requirement is unknown and no text exists", () => {
+    expect(
+      shouldGenerateReviewPdf({
+        cover_letter: null,
+        requires_cover_letter: null,
+      })
+    ).toBe(false);
+  });
 });

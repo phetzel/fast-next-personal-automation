@@ -380,9 +380,10 @@ async def test_ingest_openclaw_jobs_can_save_directly_as_analyzed(client) -> Non
     assert response.status_code == 200
     kwargs = job_service.ingest_jobs.await_args.kwargs
     assert kwargs["job_attributes_by_url"]["https://jobs.example.com/1"]["status"] == "analyzed"
-    assert kwargs["job_attributes_by_url"]["https://jobs.example.com/1"][
-        "requires_cover_letter"
-    ] is True
+    assert (
+        kwargs["job_attributes_by_url"]["https://jobs.example.com/1"]["requires_cover_letter"]
+        is True
+    )
 
 
 @pytest.mark.anyio
@@ -391,9 +392,7 @@ async def test_analyze_openclaw_job_route(client) -> None:
     user = _mock_user()
     token = _mock_token(user.id, scopes=["jobs:analyze"])
     updated_job = _mock_job(user.id, status="analyzed")
-    job_service = SimpleNamespace(
-        update_application_analysis=AsyncMock(return_value=updated_job)
-    )
+    job_service = SimpleNamespace(update_application_analysis=AsyncMock(return_value=updated_job))
 
     app.dependency_overrides[verify_openclaw_analyze_token] = lambda: token
     app.dependency_overrides[get_job_service] = lambda: job_service
