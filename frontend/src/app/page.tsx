@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Button, DottedGlowBackground } from "@/components/ui";
+import { Button } from "@/components/ui";
+import { DottedGlowBackground } from "@/components/shared/navigation";
 import { ROUTES } from "@/lib/constants";
 import { useAuthStore } from "@/stores";
 

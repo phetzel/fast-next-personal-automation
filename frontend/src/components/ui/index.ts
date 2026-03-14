@@ -2,10 +2,22 @@ export { Button, buttonVariants } from "./button";
 export { Input } from "./input";
 export { Label } from "./label";
 export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent } from "./card";
+export { Alert, AlertTitle, AlertDescription } from "./alert";
+export {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "./alert-dialog";
 export { Badge, badgeVariants } from "./badge";
 export { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "./sheet";
-export { DottedGlowBackground } from "./dotted-glow-background";
 export { Textarea } from "./textarea";
+export { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./accordion";
 export {
   Table,
   TableBody,
@@ -61,5 +73,9 @@ export {
   SelectTrigger,
   SelectValue,
 } from "./select";
+export { Skeleton } from "./skeleton";
+export { ScrollArea } from "./scroll-area";
 export { Switch } from "./switch";
 export { Separator } from "./separator";
+export { Tabs, TabsList, TabsTrigger, TabsContent } from "./tabs";
+export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip";

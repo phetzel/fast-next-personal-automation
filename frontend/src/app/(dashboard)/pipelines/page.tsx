@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { PipelineList, PipelineRunHistory } from "@/components/pipelines";
+import { PipelineList, PipelineRunHistory } from "@/components/shared/pipelines";
+import { PageHeader } from "@/components/shared/layout";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui";
 import { Workflow, History } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 type TabType = "pipelines" | "history";
 
@@ -12,46 +13,29 @@ export default function PipelinesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold sm:text-3xl">Pipelines</h1>
-        <p className="text-muted-foreground text-sm sm:text-base">
-          Run automation pipelines and track their execution history.
-        </p>
-      </div>
+      <PageHeader
+        title="Pipelines"
+        description="Run automation pipelines and track their execution history."
+      />
 
-      {/* Tab navigation */}
-      <div className="border-b">
-        <nav className="-mb-px flex gap-4">
-          <button
-            onClick={() => setActiveTab("pipelines")}
-            className={cn(
-              "flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors",
-              activeTab === "pipelines"
-                ? "border-primary text-foreground"
-                : "text-muted-foreground hover:text-foreground hover:border-muted-foreground/50 border-transparent"
-            )}
-          >
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)}>
+        <TabsList className="-mb-px flex gap-4">
+          <TabsTrigger value="pipelines" className="flex items-center gap-2">
             <Workflow className="h-4 w-4" />
             Available Pipelines
-          </button>
-          <button
-            onClick={() => setActiveTab("history")}
-            className={cn(
-              "flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors",
-              activeTab === "history"
-                ? "border-primary text-foreground"
-                : "text-muted-foreground hover:text-foreground hover:border-muted-foreground/50 border-transparent"
-            )}
-          >
+          </TabsTrigger>
+          <TabsTrigger value="history" className="flex items-center gap-2">
             <History className="h-4 w-4" />
             Run History
-          </button>
-        </nav>
-      </div>
-
-      {/* Tab content */}
-      {activeTab === "pipelines" ? <PipelineList /> : <PipelineRunHistory />}
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="pipelines" className="pt-6">
+          <PipelineList />
+        </TabsContent>
+        <TabsContent value="history" className="pt-6">
+          <PipelineRunHistory />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

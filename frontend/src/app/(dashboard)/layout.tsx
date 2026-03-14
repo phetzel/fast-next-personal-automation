@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { Header, Sidebar } from "@/components/layout";
-import { AuthGuard } from "@/components/auth";
+import { Header, Sidebar } from "@/components/shared/layout";
+import { AuthGuard } from "@/components/shared/auth";
 import { ROUTES } from "@/lib/constants";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {

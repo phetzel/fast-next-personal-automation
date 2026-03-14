@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useJobs } from "@/hooks";
-import { JobStatsCard, JobCard, JobDetailModal } from "@/components/jobs";
-import { Button, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
+import { JobStatsCard, JobCard, JobDetailModal } from "@/components/shared/jobs";
+import { PageHeader } from "@/components/shared/layout";
+import { FeatureLinkCard } from "@/components/shared/navigation";
+import { Button, Card, CardContent, CardHeader, CardTitle, Skeleton } from "@/components/ui";
 import { ROUTES } from "@/lib/constants";
 import type { Job } from "@/types";
+import Link from "next/link";
 import { LayoutList, Workflow, UserCircle, ArrowRight, Sparkles } from "lucide-react";
 
 export default function JobsOverviewPage() {
@@ -44,60 +46,34 @@ export default function JobsOverviewPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Jobs Overview</h1>
-        <p className="text-muted-foreground">
-          Your job search dashboard with quick access to everything
-        </p>
-      </div>
+      <PageHeader
+        title="Jobs Overview"
+        description="Your job search dashboard with quick access to everything"
+      />
 
       {/* Quick Actions */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <Link href={ROUTES.JOBS_LIST} className="block">
-          <Card className="hover:ring-primary/20 h-full transition-all hover:shadow-md hover:ring-2">
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className="rounded-lg bg-blue-500/10 p-3">
-                <LayoutList className="h-6 w-6 text-blue-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold">View All Jobs</h3>
-                <p className="text-muted-foreground text-sm">Browse and filter job listings</p>
-              </div>
-              <ArrowRight className="text-muted-foreground h-5 w-5" />
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href={ROUTES.JOBS_PIPELINES} className="block">
-          <Card className="hover:ring-primary/20 h-full transition-all hover:shadow-md hover:ring-2">
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className="rounded-lg bg-green-500/10 p-3">
-                <Workflow className="h-6 w-6 text-green-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold">Run Pipelines</h3>
-                <p className="text-muted-foreground text-sm">Search for jobs and more</p>
-              </div>
-              <ArrowRight className="text-muted-foreground h-5 w-5" />
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href={ROUTES.JOBS_PROFILES} className="block">
-          <Card className="hover:ring-primary/20 h-full transition-all hover:shadow-md hover:ring-2">
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className="rounded-lg bg-purple-500/10 p-3">
-                <UserCircle className="h-6 w-6 text-purple-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold">Manage Profiles</h3>
-                <p className="text-muted-foreground text-sm">Configure search profiles</p>
-              </div>
-              <ArrowRight className="text-muted-foreground h-5 w-5" />
-            </CardContent>
-          </Card>
-        </Link>
+        <FeatureLinkCard
+          href={ROUTES.JOBS_LIST}
+          icon={LayoutList}
+          title="View All Jobs"
+          description="Browse and filter job listings"
+          tone="blue"
+        />
+        <FeatureLinkCard
+          href={ROUTES.JOBS_PIPELINES}
+          icon={Workflow}
+          title="Run Pipelines"
+          description="Search for jobs and more"
+          tone="green"
+        />
+        <FeatureLinkCard
+          href={ROUTES.JOBS_PROFILES}
+          icon={UserCircle}
+          title="Manage Profiles"
+          description="Configure search profiles"
+          tone="purple"
+        />
       </div>
 
       {/* Stats */}
@@ -121,7 +97,7 @@ export default function JobsOverviewPage() {
           {isLoading ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="bg-muted h-48 animate-pulse rounded-lg" />
+                <Skeleton key={i} className="h-48 rounded-lg" />
               ))}
             </div>
           ) : jobs.slice(0, 6).length === 0 ? (
@@ -152,6 +128,7 @@ export default function JobsOverviewPage() {
         job={selectedJob}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
+        onJobChange={setSelectedJob}
         onUpdate={updateJobStatus}
         onDelete={deleteJob}
       />

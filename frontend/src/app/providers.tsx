@@ -2,7 +2,8 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { ThemeProvider } from "@/components/theme";
+import { ConfirmDialogProvider } from "@/components/shared/feedback";
+import { ThemeProvider } from "@/components/shared/theme";
 
 interface ProvidersProps {
   children: ReactNode;
@@ -23,7 +24,9 @@ export function Providers({ children }: ProvidersProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>{children}</ThemeProvider>
+      <ThemeProvider>
+        <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

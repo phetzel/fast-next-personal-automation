@@ -2,43 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { apiClient } from "@/lib/api-client";
-import { Button, Card, Badge } from "@/components/ui";
+import { useConfirmDialog } from "@/components/shared/feedback";
+import { StatusAlert } from "@/components/shared/feedback";
 import {
-  Mail,
-  RefreshCw,
-  Trash2,
-  Check,
-  AlertCircle,
-  Clock,
-  Loader2,
-  Inbox,
-  Globe,
-} from "lucide-react";
+  ConnectedAccountsCard,
+  EmailSettingsHeader,
+  HowItWorksCard,
+  SupportedSourcesCard,
+} from "@/components/screens/dashboard/settings/email";
+import { apiClient } from "@/lib/api-client";
+import { Card, Skeleton } from "@/components/ui";
+import { Check, AlertCircle } from "lucide-react";
 import type { EmailSource, EmailConfig, EmailSyncOutput } from "@/types";
 
-// Simple alert component using existing Card styles
-function Alert({
-  children,
-  variant = "default",
-  className = "",
-}: {
-  children: React.ReactNode;
-  variant?: "default" | "destructive";
-  className?: string;
-}) {
-  const baseStyles = "flex items-start gap-3 rounded-lg border p-4";
-  const variantStyles =
-    variant === "destructive" ? "border-destructive/50 bg-destructive/10" : className;
-  return <div className={`${baseStyles} ${variantStyles}`}>{children}</div>;
-}
-
-// Simple skeleton component
-function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`bg-muted animate-pulse rounded ${className}`} />;
-}
-
 export default function EmailSettingsPage() {
+  const confirmDialog = useConfirmDialog();
   const searchParams = useSearchParams();
   const [sources, setSources] = useState<EmailSource[]>([]);
   const [config, setConfig] = useState<EmailConfig | null>(null);
@@ -141,7 +119,13 @@ export default function EmailSettingsPage() {
   };
 
   const handleDelete = async (sourceId: string) => {
-    if (!confirm("Are you sure you want to disconnect this email account?")) {
+    const confirmed = await confirmDialog({
+      title: "Disconnect email account?",
+      description: "This will stop syncing the selected email account.",
+      confirmLabel: "Disconnect",
+      destructive: true,
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -163,12 +147,7 @@ export default function EmailSettingsPage() {
   if (loading) {
     return (
       <div className="container mx-auto max-w-4xl space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Email Integration</h1>
-          <p className="text-muted-foreground">
-            Connect your email to automatically sync and parse content
-          </p>
-        </div>
+        <EmailSettingsHeader />
         <Card className="p-6">
           <Skeleton className="h-24 w-full" />
         </Card>
@@ -178,170 +157,37 @@ export default function EmailSettingsPage() {
 
   return (
     <div className="container mx-auto max-w-4xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Email Integration</h1>
-        <p className="text-muted-foreground">
-          Connect your email to automatically sync and parse content
-        </p>
-      </div>
+      <EmailSettingsHeader />
 
       {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="text-destructive h-4 w-4 shrink-0" />
-          <p className="text-destructive text-sm">{error}</p>
-        </Alert>
+        <StatusAlert icon={AlertCircle} variant="destructive">
+          {error}
+        </StatusAlert>
       )}
 
       {success && (
-        <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
-          <Check className="h-4 w-4 shrink-0 text-green-600" />
-          <p className="text-sm text-green-700 dark:text-green-300">{success}</p>
-        </Alert>
+        <StatusAlert
+          icon={Check}
+          className="border-green-500 bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
+        >
+          {success}
+        </StatusAlert>
       )}
 
-      {/* Connected Accounts */}
-      <Card className="p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Connected Accounts</h2>
-          <Button onClick={handleConnect} className="gap-2" disabled={connecting}>
-            {connecting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Mail className="h-4 w-4" />
-            )}
-            Connect Gmail
-          </Button>
-        </div>
+      <ConnectedAccountsCard
+        sources={sources}
+        connecting={connecting}
+        syncingSourceId={syncing}
+        onConnect={handleConnect}
+        onSync={handleSync}
+        onToggle={handleToggle}
+        onDelete={handleDelete}
+        formatDate={formatDate}
+      />
 
-        {sources.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Inbox className="text-muted-foreground mb-4 h-12 w-12" />
-            <p className="mb-2 text-lg font-medium">No email accounts connected</p>
-            <p className="text-muted-foreground mb-4 text-sm">
-              Connect your Gmail to automatically sync emails
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {sources.map((source) => (
-              <div
-                key={source.id}
-                className="flex flex-col gap-4 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="bg-primary/10 flex h-10 w-10 items-center justify-center rounded-full">
-                    <Mail className="text-primary h-5 w-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{source.email_address}</span>
-                      <Badge variant={source.is_active ? "default" : "secondary"}>
-                        {source.is_active ? "Active" : "Paused"}
-                      </Badge>
-                    </div>
-                    <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                      <Clock className="h-3 w-3" />
-                      Last sync: {formatDate(source.last_sync_at)}
-                    </div>
-                    {source.last_sync_error && (
-                      <p className="text-destructive mt-1 text-sm">{source.last_sync_error}</p>
-                    )}
-                  </div>
-                </div>
+      {config && <SupportedSourcesCard config={config} />}
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleSync(source.id)}
-                    disabled={syncing === source.id || !source.is_active}
-                  >
-                    {syncing === source.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4" />
-                    )}
-                    <span className="ml-2">Sync Now</span>
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleToggle(source)}>
-                    {source.is_active ? "Pause" : "Resume"}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => handleDelete(source.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
-
-      {/* Supported Sources */}
-      {config && (
-        <Card className="p-6">
-          <h2 className="mb-4 text-lg font-semibold">Supported Email Sources</h2>
-          <p className="text-muted-foreground mb-4 text-sm">
-            Emails from these senders will be automatically parsed (syncs every{" "}
-            {config.sync_interval_minutes} minutes)
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-            {config.default_senders.map((sender) => (
-              <div key={sender.domain} className="flex items-center gap-3 rounded-lg border p-3">
-                <Globe className="text-muted-foreground h-5 w-5" />
-                <div>
-                  <span className="font-medium">{sender.display_name}</span>
-                  <p className="text-muted-foreground text-xs">{sender.domain}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* How It Works */}
-      <Card className="p-6">
-        <h2 className="mb-4 text-lg font-semibold">How It Works</h2>
-        <div className="space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="bg-primary text-primary-foreground flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold">
-              1
-            </div>
-            <div>
-              <p className="font-medium">Connect your Gmail</p>
-              <p className="text-muted-foreground text-sm">
-                Grant read-only access to fetch emails from specific senders
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="bg-primary text-primary-foreground flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold">
-              2
-            </div>
-            <div>
-              <p className="font-medium">Automatic syncing</p>
-              <p className="text-muted-foreground text-sm">
-                Emails are checked hourly and parsed automatically
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="bg-primary text-primary-foreground flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold">
-              3
-            </div>
-            <div>
-              <p className="font-medium">Content extracted</p>
-              <p className="text-muted-foreground text-sm">
-                Relevant data is extracted and organized in your areas
-              </p>
-            </div>
-          </div>
-        </div>
-      </Card>
+      <HowItWorksCard />
     </div>
   );
 }

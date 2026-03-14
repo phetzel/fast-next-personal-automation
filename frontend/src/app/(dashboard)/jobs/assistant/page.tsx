@@ -1,6 +1,6 @@
 "use client";
 
-import { ChatContainer, ChatSidebarToggle } from "@/components/chat";
+import { ChatContainer, ChatSidebarToggle } from "@/components/shared/chat";
 import { useAuthStore } from "@/stores";
 import { Briefcase, AlertCircle } from "lucide-react";
 import Link from "next/link";

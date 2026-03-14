@@ -12,7 +12,8 @@ import {
   OpenClawSettingsHeader,
   OpenClawTokenFormCard,
   type OpenClawExampleValue,
-} from "@/components/settings/openclaw";
+} from "@/components/screens/dashboard/settings/openclaw";
+import { useConfirmDialog } from "@/components/shared/feedback";
 import { apiClient, ApiError } from "@/lib/api-client";
 import type {
   OpenClawToken,
@@ -22,6 +23,7 @@ import type {
 } from "@/types";
 
 export default function OpenClawSettingsPage() {
+  const confirmDialog = useConfirmDialog();
   const [tokens, setTokens] = useState<OpenClawToken[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -98,11 +100,13 @@ export default function OpenClawSettingsPage() {
   };
 
   const handleRevoke = async (tokenId: string) => {
-    if (
-      !confirm(
-        "Revoke this OpenClaw token? Clawbot will stop being able to call its scoped job endpoints."
-      )
-    ) {
+    const confirmed = await confirmDialog({
+      title: "Revoke OpenClaw token?",
+      description: "Clawbot will stop being able to call its scoped job endpoints with this token.",
+      confirmLabel: "Revoke token",
+      destructive: true,
+    });
+    if (!confirmed) {
       return;
     }
 

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks";
 import { Button, Card, Input, Label, Badge } from "@/components/ui";
-import { ThemeToggle } from "@/components/theme";
+import { ThemeToggle } from "@/components/shared/theme";
 import { User, Mail, Calendar, Shield, Settings } from "lucide-react";
 
 export default function ProfilePage() {
