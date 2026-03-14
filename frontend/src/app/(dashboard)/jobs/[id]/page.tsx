@@ -685,7 +685,7 @@ function OverviewTab({
         )}
 
         {!hasPreppedMaterials && job.status === "new" && (
-          <Card className="border-blue-500/30 bg-blue-500/5 border-2 border-dashed">
+          <Card className="border-2 border-dashed border-blue-500/30 bg-blue-500/5">
             <CardContent className="py-6 text-sm text-blue-700 dark:text-blue-300">
               OpenClaw still needs to inspect the application page for this job before prep can
               generate materials.

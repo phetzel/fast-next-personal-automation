@@ -1,9 +1,20 @@
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Separator } from "@/components/ui";
-
 import {
-  getOpenClawExampleOptions,
-  type OpenClawExampleValue,
-} from "./constants";
+  Badge,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Separator,
+} from "@/components/ui";
+
+import { getOpenClawExampleOptions, type OpenClawExampleValue } from "./constants";
 
 interface OpenClawApiExamplesCardProps {
   exampleToken: string;

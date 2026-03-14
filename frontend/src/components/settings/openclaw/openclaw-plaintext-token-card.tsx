@@ -19,8 +19,7 @@ export function OpenClawPlaintextTokenCard({
       <CardHeader>
         <CardTitle>Plaintext Token</CardTitle>
         <CardDescription>
-          This value is shown once. Put it into OpenClaw as
-          `PERSONAL_AUTOMATIONS_OPENCLAW_TOKEN`.
+          This value is shown once. Put it into OpenClaw as `PERSONAL_AUTOMATIONS_OPENCLAW_TOKEN`.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

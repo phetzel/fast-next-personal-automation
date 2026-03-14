@@ -75,8 +75,8 @@ export function ManualJobModal({ isOpen, onClose, onComplete }: ManualJobModalPr
             Add Manual Job
           </DialogTitle>
           <DialogDescription>
-            Save a job manually and score it against your selected profile. Manual jobs start in
-            the `new` stage and wait for OpenClaw analysis before prep.
+            Save a job manually and score it against your selected profile. Manual jobs start in the
+            `new` stage and wait for OpenClaw analysis before prep.
           </DialogDescription>
         </DialogHeader>
 
@@ -87,7 +87,9 @@ export function ManualJobModal({ isOpen, onClose, onComplete }: ManualJobModalPr
               <Input
                 id="manual-title"
                 value={form.title}
-                onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, title: event.target.value }))
+                }
                 placeholder="Senior Backend Engineer"
                 required
               />
@@ -112,7 +114,9 @@ export function ManualJobModal({ isOpen, onClose, onComplete }: ManualJobModalPr
               id="manual-url"
               type="url"
               value={form.job_url}
-              onChange={(event) => setForm((current) => ({ ...current, job_url: event.target.value }))}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, job_url: event.target.value }))
+              }
               placeholder="https://jobs.example.com/backend-engineer"
               required
             />
@@ -135,7 +139,9 @@ export function ManualJobModal({ isOpen, onClose, onComplete }: ManualJobModalPr
               <Input
                 id="manual-source"
                 value={form.source}
-                onChange={(event) => setForm((current) => ({ ...current, source: event.target.value }))}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, source: event.target.value }))
+                }
                 placeholder="linkedin"
               />
             </div>

@@ -9,10 +9,7 @@ test.describe("Jobs Area", () => {
 
     test("should redirect to login from jobs pages", async ({ page }) => {
       await page.goto("/jobs");
-      // Should redirect to login or show auth required message
-      await expect(page.getByText(/log in|sign in|authentication required/i)).toBeVisible({
-        timeout: 10000,
-      });
+      await expect(page).toHaveURL(/\/login$/);
     });
   });
 

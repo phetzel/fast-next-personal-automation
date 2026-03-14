@@ -4,6 +4,8 @@
  * IMPORTANT: This file should only be imported in server-side code (API routes, Server Components).
  */
 
+import { extractErrorMessage } from "@/lib/error-utils";
+
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 
 export class BackendApiError extends Error {
@@ -79,4 +81,8 @@ export function getAuthHeaders(authHeader: string | null): Record<string, string
 export function backendErrorResponse(error: BackendApiError): Response {
   const body = error.data ?? { detail: error.message };
   return Response.json(body, { status: error.status });
+}
+
+export function backendErrorMessage(error: BackendApiError, fallback: string): string {
+  return extractErrorMessage(error.data, fallback);
 }

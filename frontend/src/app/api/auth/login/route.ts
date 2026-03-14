@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { backendFetch, BackendApiError } from "@/lib/server-api";
-import type { LoginResponse } from "@/types";
+import { setAuthCookies } from "@/lib/auth-cookies";
+import { backendErrorMessage, backendFetch, BackendApiError } from "@/lib/server-api";
+import type { AuthTokenResponse, User } from "@/types";
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,7 +12,7 @@ export async function POST(request: NextRequest) {
     formData.append("username", body.email);
     formData.append("password", body.password);
 
-    const data = await backendFetch<LoginResponse>("/api/v1/auth/login", {
+    const tokens = await backendFetch<AuthTokenResponse>("/api/v1/auth/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -19,34 +20,23 @@ export async function POST(request: NextRequest) {
       body: formData.toString(),
     });
 
-    // Set HTTP-only cookies for tokens
+    const user = await backendFetch<User>("/api/v1/auth/me", {
+      headers: {
+        Authorization: `Bearer ${tokens.access_token}`,
+      },
+    });
+
     const response = NextResponse.json({
-      user: data.user,
+      user,
       message: "Login successful",
     });
 
-    // Set access token cookie (short-lived)
-    response.cookies.set("access_token", data.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 15, // 15 minutes
-      path: "/",
-    });
-
-    // Set refresh token cookie (long-lived)
-    response.cookies.set("refresh_token", data.refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: "/",
-    });
+    setAuthCookies(response.cookies, tokens);
 
     return response;
   } catch (error) {
     if (error instanceof BackendApiError) {
-      const detail = (error.data as { detail?: string })?.detail || "Login failed";
+      const detail = backendErrorMessage(error, "Login failed");
       return NextResponse.json({ detail }, { status: error.status });
     }
     return NextResponse.json({ detail: "Internal server error" }, { status: 500 });

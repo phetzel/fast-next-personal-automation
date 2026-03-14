@@ -2,6 +2,13 @@ import { test, expect } from "@playwright/test";
 
 test.describe("Authentication", () => {
   test.describe("Login Page", () => {
+    test("should redirect protected dashboard routes to login", async ({ page }) => {
+      await page.context().clearCookies();
+      await page.goto("/dashboard");
+
+      await expect(page).toHaveURL(/\/login$/);
+    });
+
     test("should display login form", async ({ page }) => {
       await page.goto("/login");
 
@@ -113,8 +120,7 @@ test.describe("Authentication", () => {
       if (await logoutButton.isVisible()) {
         await logoutButton.click();
 
-        // Should be redirected to login or home
-        await expect(page).toHaveURL(/login|\/$/);
+        await expect(page).toHaveURL(/\/login$/);
       }
     });
   });

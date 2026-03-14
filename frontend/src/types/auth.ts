@@ -16,11 +16,15 @@ export interface LoginRequest {
   password: string;
 }
 
-export interface LoginResponse {
+export interface AuthTokenResponse {
   access_token: string;
   refresh_token: string;
   token_type: string;
+}
+
+export interface LoginResponse {
   user: User;
+  message: string;
 }
 
 export interface RegisterRequest {
@@ -41,6 +45,7 @@ export interface RefreshTokenRequest {
 
 export interface RefreshTokenResponse {
   access_token: string;
+  refresh_token: string;
   token_type: string;
 }
 

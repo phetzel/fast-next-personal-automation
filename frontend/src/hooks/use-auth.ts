@@ -1,40 +1,21 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores";
 import { apiClient, ApiError } from "@/lib/api-client";
-import type { User, LoginRequest, RegisterRequest } from "@/types";
+import type { LoginRequest, LoginResponse, RegisterRequest, User } from "@/types";
 import { ROUTES } from "@/lib/constants";
 
 export function useAuth() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading, setUser, setLoading, logout } = useAuthStore();
 
-  // Check auth status on mount
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const userData = await apiClient.get<User>("/auth/me");
-        setUser(userData);
-      } catch {
-        setUser(null);
-      }
-    };
-
-    if (isLoading) {
-      checkAuth();
-    }
-  }, [isLoading, setUser]);
-
   const login = useCallback(
     async (credentials: LoginRequest) => {
       setLoading(true);
       try {
-        const response = await apiClient.post<{ user: User; message: string }>(
-          "/auth/login",
-          credentials
-        );
+        const response = await apiClient.post<LoginResponse>("/auth/login", credentials);
         setUser(response.user);
         router.push(ROUTES.DASHBOARD);
         return response;
@@ -65,7 +46,6 @@ export function useAuth() {
   const refreshToken = useCallback(async () => {
     try {
       await apiClient.post("/auth/refresh");
-      // Re-fetch user after token refresh
       const userData = await apiClient.get<User>("/auth/me");
       setUser(userData);
       return true;

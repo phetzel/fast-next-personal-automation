@@ -7,10 +7,7 @@ interface OpenClawAlertProps {
   variant?: "default" | "destructive";
 }
 
-export function OpenClawAlert({
-  children,
-  variant = "default",
-}: OpenClawAlertProps) {
+export function OpenClawAlert({ children, variant = "default" }: OpenClawAlertProps) {
   return (
     <div
       className={cn("flex items-start gap-3 rounded-lg border p-4", {

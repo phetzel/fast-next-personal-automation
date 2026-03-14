@@ -1,7 +1,18 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { Header, Sidebar } from "@/components/layout";
 import { AuthGuard } from "@/components/auth";
+import { ROUTES } from "@/lib/constants";
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const cookieStore = await cookies();
+  const hasAccessToken = Boolean(cookieStore.get("access_token")?.value);
+  const hasRefreshToken = Boolean(cookieStore.get("refresh_token")?.value);
+
+  if (!hasAccessToken && !hasRefreshToken) {
+    redirect(ROUTES.LOGIN);
+  }
+
   return (
     <AuthGuard>
       <div className="flex h-screen overflow-hidden">

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { backendFetch, BackendApiError } from "@/lib/server-api";
+import { backendErrorResponse, backendFetch, BackendApiError } from "@/lib/server-api";
 import type { User } from "@/types";
 
 export async function GET(request: NextRequest) {
@@ -19,11 +19,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(data);
   } catch (error) {
     if (error instanceof BackendApiError) {
-      if (error.status === 401) {
-        // Token expired, try to refresh
-        return NextResponse.json({ detail: "Token expired" }, { status: 401 });
-      }
-      return NextResponse.json({ detail: "Failed to get user" }, { status: error.status });
+      return backendErrorResponse(error);
     }
     return NextResponse.json({ detail: "Internal server error" }, { status: 500 });
   }

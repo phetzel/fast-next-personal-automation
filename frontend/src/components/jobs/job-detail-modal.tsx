@@ -293,8 +293,7 @@ export function JobDetailModal({
                 const canTransition =
                   canTransitionTo(job.status, option.value) &&
                   !(option.value === "prepped" && job.status === "analyzed" && !onPrep);
-                const isPrepTransition =
-                  option.value === "prepped" && job.status === "analyzed";
+                const isPrepTransition = option.value === "prepped" && job.status === "analyzed";
                 const isReviewedTransition =
                   option.value === "reviewed" && job.status === "prepped";
 
@@ -326,8 +325,8 @@ export function JobDetailModal({
             </div>
             {job.status === "new" && (
               <p className="text-muted-foreground mt-2 text-xs">
-                <span className="text-blue-600 dark:text-blue-400">Next step:</span> OpenClaw
-                still needs to analyze the application page before this job can be prepped.
+                <span className="text-blue-600 dark:text-blue-400">Next step:</span> OpenClaw still
+                needs to analyze the application page before this job can be prepped.
               </p>
             )}
             {job.status === "analyzed" && (

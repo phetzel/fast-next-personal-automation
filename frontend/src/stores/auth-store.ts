@@ -1,7 +1,6 @@
 "use client";
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import type { User } from "@/types";
 
 interface AuthState {
@@ -11,54 +10,27 @@ interface AuthState {
 
   setUser: (user: User | null) => void;
   setLoading: (loading: boolean) => void;
-  checkAuth: () => Promise<void>;
   logout: () => void;
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
+export const useAuthStore = create<AuthState>()((set) => ({
+  user: null,
+  isAuthenticated: false,
+  isLoading: true,
+
+  setUser: (user) =>
+    set({
+      user,
+      isAuthenticated: user !== null,
+      isLoading: false,
+    }),
+
+  setLoading: (loading) => set({ isLoading: loading }),
+
+  logout: () =>
+    set({
       user: null,
       isAuthenticated: false,
-      isLoading: true,
-
-      setUser: (user) =>
-        set({
-          user,
-          isAuthenticated: user !== null,
-          isLoading: false,
-        }),
-
-      setLoading: (loading) => set({ isLoading: loading }),
-
-      checkAuth: async () => {
-        try {
-          set({ isLoading: true });
-          const response = await fetch("/api/auth/me");
-          if (response.ok) {
-            const user = await response.json();
-            set({ user, isAuthenticated: true, isLoading: false });
-          } else {
-            set({ user: null, isAuthenticated: false, isLoading: false });
-          }
-        } catch {
-          set({ user: null, isAuthenticated: false, isLoading: false });
-        }
-      },
-
-      logout: () =>
-        set({
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-        }),
+      isLoading: false,
     }),
-    {
-      name: "auth-storage",
-      partialize: (state) => ({
-        user: state.user,
-        isAuthenticated: state.isAuthenticated,
-      }),
-    }
-  )
-);
+}));
