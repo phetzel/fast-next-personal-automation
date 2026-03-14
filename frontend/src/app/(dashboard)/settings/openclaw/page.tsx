@@ -1,71 +1,25 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { AlertCircle, Check, Copy, KeyRound, Loader2, ShieldCheck, Trash2 } from "lucide-react";
-import { apiClient, ApiError } from "@/lib/api-client";
+import { AlertCircle, Check } from "lucide-react";
+
 import {
-  Badge,
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Input,
-  Label,
-} from "@/components/ui";
+  OPENCLAW_DEFAULT_SCOPES,
+  OpenClawAlert,
+  OpenClawApiExamplesCard,
+  OpenClawIssuedTokensCard,
+  OpenClawPlaintextTokenCard,
+  OpenClawSettingsHeader,
+  OpenClawTokenFormCard,
+  type OpenClawExampleValue,
+} from "@/components/settings/openclaw";
+import { apiClient, ApiError } from "@/lib/api-client";
 import type {
   OpenClawToken,
   OpenClawTokenCreateRequest,
   OpenClawTokenCreateResponse,
   OpenClawTokenListResponse,
 } from "@/types";
-
-const AVAILABLE_SCOPES = [
-  {
-    value: "jobs:ingest",
-    label: "jobs:ingest",
-    description: "Create new jobs from OpenClaw discovery.",
-  },
-  {
-    value: "jobs:analyze",
-    label: "jobs:analyze",
-    description: "Mark jobs analyzed and persist application requirements.",
-  },
-  {
-    value: "jobs:prep",
-    label: "jobs:prep",
-    description: "Trigger analyzed-job prep batches inside this app.",
-  },
-  {
-    value: "jobs:apply",
-    label: "jobs:apply",
-    description: "Mark reviewed jobs as successfully applied.",
-  },
-] as const;
-
-function Alert({
-  children,
-  variant = "default",
-}: {
-  children: React.ReactNode;
-  variant?: "default" | "destructive";
-}) {
-  const styles =
-    variant === "destructive"
-      ? "border-destructive/50 bg-destructive/10 text-destructive"
-      : "border-green-500/40 bg-green-50 text-green-700";
-
-  return <div className={`flex items-start gap-3 rounded-lg border p-4 ${styles}`}>{children}</div>;
-}
-
-function formatDate(value: string | null): string {
-  if (!value) {
-    return "Never";
-  }
-
-  return new Date(value).toLocaleString();
-}
 
 export default function OpenClawSettingsPage() {
   const [tokens, setTokens] = useState<OpenClawToken[]>([]);
@@ -77,9 +31,8 @@ export default function OpenClawSettingsPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [name, setName] = useState("OpenClaw Prod");
   const [expiresAt, setExpiresAt] = useState("");
-  const [selectedScopes, setSelectedScopes] = useState<string[]>(
-    AVAILABLE_SCOPES.map((scope) => scope.value)
-  );
+  const [selectedScopes, setSelectedScopes] = useState<string[]>(OPENCLAW_DEFAULT_SCOPES);
+  const [selectedExample, setSelectedExample] = useState<OpenClawExampleValue>("ingest");
   const [createdToken, setCreatedToken] = useState<OpenClawTokenCreateResponse | null>(null);
 
   useEffect(() => {
@@ -99,7 +52,7 @@ export default function OpenClawSettingsPage() {
       }
     };
 
-    fetchTokens();
+    void fetchTokens();
   }, []);
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
@@ -132,6 +85,16 @@ export default function OpenClawSettingsPage() {
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleScopeToggle = (scope: string, checked: boolean) => {
+    setSelectedScopes((current) => {
+      if (checked) {
+        return current.includes(scope) ? current : [...current, scope];
+      }
+
+      return current.filter((value) => value !== scope);
+    });
   };
 
   const handleRevoke = async (tokenId: string) => {
@@ -174,283 +137,56 @@ export default function OpenClawSettingsPage() {
     }
   };
 
-  const exampleToken = createdToken?.token ?? "oct_your_token_here";
-  const ingestExample = `curl --fail-with-body --silent --show-error \\
-  -X POST \"$APP_API_BASE_URL/api/v1/integrations/openclaw/jobs/ingest\" \\
-  -H \"Content-Type: application/json\" \\
-  -H \"X-Integration-Token: ${exampleToken}\" \\
-  --data '{
-    \"jobs\": [
-      {
-        \"title\": \"Backend Engineer\",
-        \"company\": \"Example Co\",
-        \"job_url\": \"https://jobs.example.com/backend-engineer\",
-        \"location\": \"Remote\",
-        \"source\": \"linkedin\"
-      }
-    ],
-    \"search_terms\": \"backend engineer remote\"
-  }'`;
-
-  const analyzeExample = `curl --fail-with-body --silent --show-error \\
-  -X POST \"$APP_API_BASE_URL/api/v1/integrations/openclaw/jobs/<job-id>/analyze\" \\
-  -H \"Content-Type: application/json\" \\
-  -H \"X-Integration-Token: ${exampleToken}\" \\
-  --data '{
-    \"application_type\": \"ats\",
-    \"application_url\": \"https://boards.example.com/apply/123\",
-    \"requires_cover_letter\": true,
-    \"screening_questions\": [{\"label\": \"Why this company?\"}]
-  }'`;
-
-  const prepExample = `curl --fail-with-body --silent --show-error \\
-  -X POST \"$APP_API_BASE_URL/api/v1/integrations/openclaw/jobs/prep-batch\" \\
-  -H \"Content-Type: application/json\" \\
-  -H \"X-Integration-Token: ${exampleToken}\" \\
-  --data '{\"max_jobs\": 10, \"tone\": \"professional\"}'`;
-
   return (
     <div className="container mx-auto max-w-5xl space-y-6">
-      <div className="space-y-2">
-        <div className="flex items-center gap-3">
-          <KeyRound className="h-8 w-8" />
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">OpenClaw Jobs</h1>
-            <p className="text-muted-foreground">
-              Create a scoped machine token so OpenClaw or Clawbot can ingest jobs, persist
-              application analysis, trigger prep, and record successful applications.
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {AVAILABLE_SCOPES.map((scope) => (
-            <Badge key={scope.value} variant="secondary">
-              Scope: {scope.value}
-            </Badge>
-          ))}
-          <Badge variant="secondary">Header: X-Integration-Token</Badge>
-          <Badge variant="secondary">Route: /api/v1/integrations/openclaw/jobs/ingest</Badge>
-          <Badge variant="secondary">Route: /api/v1/integrations/openclaw/jobs/:id/analyze</Badge>
-          <Badge variant="secondary">
-            Route: /api/v1/integrations/openclaw/jobs/prep-batch
-          </Badge>
-          <Badge variant="secondary">
-            Route: /api/v1/integrations/openclaw/jobs/:id/apply-success
-          </Badge>
-        </div>
-      </div>
+      <OpenClawSettingsHeader />
 
       {error && (
-        <Alert variant="destructive">
+        <OpenClawAlert variant="destructive">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <p className="text-sm">{error}</p>
-        </Alert>
+        </OpenClawAlert>
       )}
 
       {success && (
-        <Alert>
+        <OpenClawAlert>
           <Check className="h-4 w-4 shrink-0" />
           <p className="text-sm">{success}</p>
-        </Alert>
+        </OpenClawAlert>
       )}
 
       {createdToken && (
-        <Card className="border-green-500/40">
-          <CardHeader>
-            <CardTitle>Plaintext Token</CardTitle>
-            <CardDescription>
-              This value is shown once. Put it into OpenClaw as
-              `PERSONAL_AUTOMATIONS_OPENCLAW_TOKEN`.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="bg-muted rounded-lg border p-4 font-mono text-sm break-all">
-              {createdToken.token}
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Button onClick={handleCopy} type="button" variant="secondary">
-                <Copy className="h-4 w-4" />
-                {copied ? "Copied" : "Copy token"}
-              </Button>
-              <span className="text-muted-foreground text-sm">
-                Token name: {createdToken.token_info.name}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+        <OpenClawPlaintextTokenCard
+          copied={copied}
+          createdToken={createdToken}
+          onCopy={handleCopy}
+        />
       )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Create Token</CardTitle>
-            <CardDescription>
-              Select only the scopes OpenClaw needs. Leave expiry empty for a non-expiring token.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form className="space-y-4" onSubmit={handleCreate}>
-              <div className="space-y-2">
-                <Label htmlFor="token-name">Token name</Label>
-                <Input
-                  id="token-name"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="OpenClaw Prod"
-                  maxLength={255}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="token-expires-at">Expires at</Label>
-                <Input
-                  id="token-expires-at"
-                  type="datetime-local"
-                  value={expiresAt}
-                  onChange={(event) => setExpiresAt(event.target.value)}
-                />
-              </div>
-
-              <div className="space-y-3">
-                <Label>Scopes</Label>
-                <div className="space-y-2">
-                  {AVAILABLE_SCOPES.map((scope) => {
-                    const checked = selectedScopes.includes(scope.value);
-                    return (
-                      <label
-                        key={scope.value}
-                        className="flex cursor-pointer items-start gap-3 rounded-lg border p-3"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(event) => {
-                            setSelectedScopes((current) => {
-                              if (event.target.checked) {
-                                return [...current, scope.value];
-                              }
-                              return current.filter((value) => value !== scope.value);
-                            });
-                          }}
-                          className="mt-1"
-                        />
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium">{scope.label}</p>
-                          <p className="text-muted-foreground text-xs">{scope.description}</p>
-                        </div>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <Button disabled={creating || selectedScopes.length === 0} type="submit">
-                {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck />}
-                Create token
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>API Examples</CardTitle>
-            <CardDescription>
-              Use the backend API origin for `$APP_API_BASE_URL`, not the Next.js frontend proxy.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <pre className="bg-muted overflow-x-auto rounded-lg border p-4 text-xs leading-6">
-              {ingestExample}
-            </pre>
-            <pre className="bg-muted overflow-x-auto rounded-lg border p-4 text-xs leading-6">
-              {analyzeExample}
-            </pre>
-            <pre className="bg-muted overflow-x-auto rounded-lg border p-4 text-xs leading-6">
-              {prepExample}
-            </pre>
-            <p className="text-muted-foreground text-sm">
-              Use `jobs:ingest` for discovery, `jobs:analyze` for application requirements,
-              `jobs:prep` for prep batches, and `jobs:apply` to record apply success.
-            </p>
-          </CardContent>
-        </Card>
+        <OpenClawTokenFormCard
+          creating={creating}
+          expiresAt={expiresAt}
+          name={name}
+          selectedScopes={selectedScopes}
+          onExpiresAtChange={setExpiresAt}
+          onNameChange={setName}
+          onScopeToggle={handleScopeToggle}
+          onSubmit={handleCreate}
+        />
+        <OpenClawApiExamplesCard
+          exampleToken={createdToken?.token ?? "oct_your_token_here"}
+          selectedExample={selectedExample}
+          onSelectedExampleChange={setSelectedExample}
+        />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Issued Tokens</CardTitle>
-          <CardDescription>
-            These tokens are scoped to the current user. Ingested jobs will be written into this
-            user account.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {loading ? (
-            <div className="text-muted-foreground flex items-center gap-2 text-sm">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading tokens
-            </div>
-          ) : tokens.length === 0 ? (
-            <div className="text-muted-foreground rounded-lg border border-dashed p-6 text-sm">
-              No OpenClaw tokens yet.
-            </div>
-          ) : (
-            tokens.map((token) => (
-              <div
-                key={token.id}
-                className="flex flex-col gap-4 rounded-lg border p-4 lg:flex-row lg:items-start lg:justify-between"
-              >
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium">{token.name}</span>
-                    <Badge variant={token.is_active ? "secondary" : "outline"}>
-                      {token.is_active ? "Active" : "Revoked"}
-                    </Badge>
-                    {token.scopes.map((scope) => (
-                      <Badge key={scope} variant="outline">
-                        {scope}
-                      </Badge>
-                    ))}
-                  </div>
-                  <dl className="text-muted-foreground grid gap-1 text-sm sm:grid-cols-2">
-                    <div>
-                      <dt className="text-foreground font-medium">Created</dt>
-                      <dd>{formatDate(token.created_at)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-foreground font-medium">Last used</dt>
-                      <dd>{formatDate(token.last_used_at)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-foreground font-medium">Expires</dt>
-                      <dd>{formatDate(token.expires_at)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-foreground font-medium">Token ID</dt>
-                      <dd className="font-mono text-xs break-all">{token.id}</dd>
-                    </div>
-                  </dl>
-                </div>
-                <Button
-                  disabled={!token.is_active || revokingId === token.id}
-                  onClick={() => handleRevoke(token.id)}
-                  type="button"
-                  variant="outline"
-                >
-                  {revokingId === token.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4" />
-                  )}
-                  Revoke
-                </Button>
-              </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
+      <OpenClawIssuedTokensCard
+        loading={loading}
+        revokingId={revokingId}
+        tokens={tokens}
+        onRevoke={handleRevoke}
+      />
     </div>
   );
 }
