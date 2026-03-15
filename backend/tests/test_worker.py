@@ -35,4 +35,4 @@ class TestWorkerPipelineDiscovery:
 
         pipeline_names = set(list_pipeline_names())
         assert "job_prep" in pipeline_names
-        assert "job_search" in pipeline_names
+        assert "job_prep_batch" in pipeline_names

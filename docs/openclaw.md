@@ -4,14 +4,15 @@ OpenClaw now owns browser-only job work for this app: discovery, application-pag
 
 ## Current Workflow
 
-1. Jobs enter the app through manual creation, email sync, job search, or OpenClaw ingest.
-2. App-owned ingest flows still score jobs against a profile and save them as `new`.
+1. Jobs enter the app through manual creation, email sync, or OpenClaw ingest.
+2. Manual jobs and external ingest can optionally attach a `profile_id` for later prep context.
 3. OpenClaw can ingest jobs as:
    - `new` when it only has listing data
    - `analyzed` when it also sends application-page requirements
 4. OpenClaw can update existing jobs to `analyzed` after visiting the application page.
-5. OpenClaw can trigger the internal `job_prep_batch` pipeline for analyzed jobs.
-6. After manual review, OpenClaw can record a successful application and move the job to `applied`.
+5. Users can also run Manual Analyze inside the app to mark a job ready for prep without OpenClaw.
+6. OpenClaw can trigger the internal `job_prep_batch` pipeline for analyzed jobs.
+7. After manual review, OpenClaw can record a successful application and move the job to `applied`.
 
 Current lifecycle: `new -> analyzed -> prepped -> reviewed -> applied -> interviewing/rejected`
 
@@ -79,10 +80,6 @@ Top-level options:
 
 - `search_terms`
 - `profile_id`
-- `analyze_with_profile`
-- `min_score`
-- `save_all`
-- `qa_with_internal_analysis`
 
 If application-analysis fields are present, the job is persisted as `analyzed`. Otherwise it stays `new`.
 

@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { backendFetch, BackendApiError } from "@/lib/server-api";
 
-/**
- * GET /api/job-profiles/default - Get the default job profile
- */
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     const accessToken = request.cookies.get("access_token")?.value;
 
@@ -12,21 +9,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ detail: "Not authenticated" }, { status: 401 });
     }
 
-    const data = await backendFetch("/api/v1/job-profiles/default", {
+    const body = await request.json();
+
+    const data = await backendFetch("/api/v1/jobs/batch/delete", {
+      method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify(body),
     });
 
     return NextResponse.json(data);
   } catch (error) {
     if (error instanceof BackendApiError) {
-      // 404 means no default profile yet, return null
-      if (error.status === 404) {
-        return NextResponse.json(null);
-      }
       return NextResponse.json(
-        { detail: error.message || "Failed to fetch default profile" },
+        { detail: error.message || "Failed to delete jobs" },
         { status: error.status }
       );
     }

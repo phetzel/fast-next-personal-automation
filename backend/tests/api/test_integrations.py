@@ -184,38 +184,30 @@ async def test_ingest_openclaw_jobs_success(client, mock_db_session) -> None:
     app.dependency_overrides[verify_openclaw_token] = lambda: token
     app.dependency_overrides[get_job_service] = lambda: job_service
 
-    from app.api.routes.v1 import integrations as integrations_route
-
-    original_get_default_for_user = integrations_route.job_profile_repo.get_default_for_user
-    integrations_route.job_profile_repo.get_default_for_user = AsyncMock(return_value=None)
-
-    try:
-        response = await client.post(
-            "/api/v1/integrations/openclaw/jobs/ingest",
-            json={
-                "jobs": [
-                    {
-                        "title": "Backend Engineer",
-                        "company": "Acme",
-                        "job_url": "https://jobs.example.com/1",
-                        "source": "greenhouse",
-                    },
-                    {
-                        "title": "Platform Engineer",
-                        "company": "Acme",
-                        "job_url": "https://jobs.example.com/2",
-                        "source": "lever",
-                    },
-                ]
-            },
-        )
-    finally:
-        integrations_route.job_profile_repo.get_default_for_user = original_get_default_for_user
+    response = await client.post(
+        "/api/v1/integrations/openclaw/jobs/ingest",
+        json={
+            "jobs": [
+                {
+                    "title": "Backend Engineer",
+                    "company": "Acme",
+                    "job_url": "https://jobs.example.com/1",
+                    "source": "greenhouse",
+                },
+                {
+                    "title": "Platform Engineer",
+                    "company": "Acme",
+                    "job_url": "https://jobs.example.com/2",
+                    "source": "lever",
+                },
+            ]
+        },
+    )
 
     assert response.status_code == 200
     data = response.json()
     assert data["jobs_saved"] == 2
-    assert data["analysis_enabled"] is False
+    assert data["external_analysis_used"] is False
     assert data["token_id"] == str(token.id)
     job_service.ingest_jobs.assert_awaited_once()
     kwargs = job_service.ingest_jobs.await_args.kwargs
@@ -226,14 +218,28 @@ async def test_ingest_openclaw_jobs_success(client, mock_db_session) -> None:
 
 
 @pytest.mark.anyio
-async def test_ingest_openclaw_jobs_profile_without_resume_returns_422(client) -> None:
-    """Explicit profile with no resume text should fail validation."""
+async def test_ingest_openclaw_jobs_with_profile_without_resume_still_associates_profile(
+    client, mock_db_session
+) -> None:
+    """Explicit profile only needs ownership because prep can use it later."""
     user = _mock_user()
     token = _mock_token(user.id)
+    job_service = SimpleNamespace(
+        ingest_jobs=AsyncMock(
+            return_value=IngestionResult(
+                jobs_received=1,
+                jobs_analyzed=0,
+                jobs_saved=1,
+                duplicates_skipped=0,
+                high_scoring=0,
+            )
+        )
+    )
 
     profile = SimpleNamespace(id=uuid4(), user_id=user.id, resume=None, name="Default")
 
     app.dependency_overrides[verify_openclaw_token] = lambda: token
+    app.dependency_overrides[get_job_service] = lambda: job_service
 
     from app.api.routes.v1 import integrations as integrations_route
 
@@ -257,8 +263,10 @@ async def test_ingest_openclaw_jobs_profile_without_resume_returns_422(client) -
     finally:
         integrations_route.job_profile_repo.get_by_id = original_get_by_id
 
-    assert response.status_code == 422
-    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert response.status_code == 200
+    kwargs = job_service.ingest_jobs.await_args.kwargs
+    assert kwargs["profile_id"] == profile.id
+    mock_db_session.commit.assert_awaited()
 
 
 @pytest.mark.anyio
@@ -284,7 +292,6 @@ async def test_ingest_openclaw_jobs_uses_external_analysis_payload(client, mock_
     response = await client.post(
         "/api/v1/integrations/openclaw/jobs/ingest",
         json={
-            "analyze_with_profile": False,
             "jobs": [
                 {
                     "title": "Backend Engineer",
@@ -302,7 +309,6 @@ async def test_ingest_openclaw_jobs_uses_external_analysis_payload(client, mock_
     data = response.json()
     assert data["jobs_analyzed"] == 1
     assert data["external_analysis_used"] is True
-    assert data["qa_with_internal_analysis"] is False
 
     kwargs = job_service.ingest_jobs.await_args.kwargs
     assert kwargs["external_analysis_by_url"] == {
@@ -312,7 +318,6 @@ async def test_ingest_openclaw_jobs_uses_external_analysis_payload(client, mock_
         }
     }
     assert kwargs["job_attributes_by_url"] == {}
-    assert kwargs["qa_with_internal_analysis"] is False
     mock_db_session.commit.assert_awaited()
 
 
@@ -368,7 +373,6 @@ async def test_ingest_openclaw_jobs_can_save_directly_as_analyzed(client) -> Non
     response = await client.post(
         "/api/v1/integrations/openclaw/jobs/ingest",
         json={
-            "analyze_with_profile": False,
             "jobs": [
                 {
                     "title": "Backend Engineer",

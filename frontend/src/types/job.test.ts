@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasCoverLetterText, shouldGenerateReviewPdf } from "./job";
+import { getScreeningQuestionText, hasCoverLetterText, shouldGenerateReviewPdf } from "./job";
 
 describe("job workflow helpers", () => {
   it("treats placeholder cover-letter text as missing", () => {
@@ -44,5 +44,15 @@ describe("job workflow helpers", () => {
         requires_cover_letter: null,
       })
     ).toBe(false);
+  });
+
+  it("extracts the best screening question label from mixed payload shapes", () => {
+    expect(getScreeningQuestionText({ question: "Why this company?" })).toBe("Why this company?");
+    expect(getScreeningQuestionText({ label: "Years of React experience" })).toBe(
+      "Years of React experience"
+    );
+    expect(getScreeningQuestionText({ prompt: "Work authorization status" })).toBe(
+      "Work authorization status"
+    );
   });
 });

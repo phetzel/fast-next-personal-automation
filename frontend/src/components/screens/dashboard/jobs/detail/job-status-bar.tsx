@@ -69,8 +69,8 @@ export function JobStatusBar({
         </div>
         {job.status === "new" && (
           <p className="text-muted-foreground mt-2 text-xs">
-            <span className="text-blue-600 dark:text-blue-400">Next step:</span> OpenClaw still
-            needs to analyze the application page before prep can run.
+            <span className="text-blue-600 dark:text-blue-400">Next step:</span> Capture the
+            application requirements, then run prep.
           </p>
         )}
         {job.status === "analyzed" && (

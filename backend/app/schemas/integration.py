@@ -110,37 +110,10 @@ class OpenClawJobsIngestRequest(BaseSchema):
 
     jobs: list[OpenClawJobInput] = Field(..., min_length=1)
     profile_id: UUID | None = Field(
-        default=None, description="Optional profile for AI scoring context"
-    )
-    analyze_with_profile: bool = Field(
-        default=True,
-        description="If true, use profile resume text and preferences for AI scoring when available.",
-    )
-    save_all: bool = Field(
-        default=True,
-        description="If true, save jobs even when they do not meet min_score.",
-    )
-    min_score: float | None = Field(
         default=None,
-        ge=0.0,
-        le=10.0,
-        description="Optional score threshold override when analysis is enabled.",
+        description="Optional profile to associate with ingested jobs for later prep",
     )
     search_terms: str | None = Field(default=None, max_length=500)
-    qa_with_internal_analysis: bool = Field(
-        default=False,
-        description=(
-            "If true, run internal profile-based analysis for QA comparison while still storing "
-            "external scores/reasoning."
-        ),
-    )
-
-    @model_validator(mode="after")
-    def validate_qa_options(self):
-        """QA analysis requires profile analysis context to be enabled."""
-        if self.qa_with_internal_analysis and not self.analyze_with_profile:
-            raise ValueError("qa_with_internal_analysis requires analyze_with_profile=true")
-        return self
 
 
 class OpenClawJobsIngestResponse(BaseSchema):
@@ -151,11 +124,7 @@ class OpenClawJobsIngestResponse(BaseSchema):
     jobs_saved: int
     duplicates_skipped: int
     high_scoring: int
-    analysis_enabled: bool
     external_analysis_used: bool
-    qa_with_internal_analysis: bool = False
-    qa_jobs_checked: int = 0
-    qa_large_score_drift: int = 0
     profile_id: UUID | None = None
     profile_name: str | None = None
     token_id: UUID

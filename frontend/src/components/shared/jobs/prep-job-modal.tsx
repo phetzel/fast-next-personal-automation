@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   Button,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -39,6 +40,7 @@ interface PrepFormData {
   job_id: string;
   profile_id?: string;
   tone: "professional" | "conversational" | "enthusiastic";
+  force_cover_letter: boolean;
 }
 
 /**
@@ -50,6 +52,7 @@ export function PrepJobModal({ job, isOpen, onClose, onComplete }: PrepJobModalP
   const [formData, setFormData] = useState<PrepFormData>({
     job_id: "",
     tone: "professional",
+    force_cover_letter: false,
   });
 
   const execState = getExecutionState("job_prep");
@@ -97,6 +100,7 @@ export function PrepJobModal({ job, isOpen, onClose, onComplete }: PrepJobModalP
     profile_used?: string;
     included_story?: boolean;
     included_projects?: number;
+    skipped_cover_letter?: boolean;
   } | null;
 
   if (!job) return null;
@@ -127,6 +131,29 @@ export function PrepJobModal({ job, isOpen, onClose, onComplete }: PrepJobModalP
             description="Uses resume, story, and projects from your profile"
           />
 
+          <div className="space-y-3 rounded-lg border p-4">
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="force-cover-letter"
+                checked={formData.force_cover_letter}
+                onCheckedChange={(checked) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    force_cover_letter: checked === true,
+                  }))
+                }
+                disabled={isRunning}
+              />
+              <div className="space-y-1">
+                <Label htmlFor="force-cover-letter">Force cover letter</Label>
+                <p className="text-muted-foreground text-xs">
+                  Generate a cover letter even when the analysis says one is not required. By
+                  default, prep only writes one when required.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Tone selector */}
           <div className="space-y-2">
             <Label htmlFor="tone">Cover Letter Tone</Label>
@@ -150,7 +177,7 @@ export function PrepJobModal({ job, isOpen, onClose, onComplete }: PrepJobModalP
               </SelectContent>
             </Select>
             <p className="text-muted-foreground text-xs">
-              Sets the overall tone of the generated cover letter
+              Sets the tone used when prep generates a cover letter
             </p>
           </div>
 
@@ -164,7 +191,7 @@ export function PrepJobModal({ job, isOpen, onClose, onComplete }: PrepJobModalP
                     Generating materials...
                   </p>
                   <p className="text-muted-foreground text-sm">
-                    AI is crafting your cover letter and prep notes.
+                    AI is generating prep notes, question answers, and any required cover letter.
                   </p>
                 </div>
               </div>
@@ -203,6 +230,13 @@ export function PrepJobModal({ job, isOpen, onClose, onComplete }: PrepJobModalP
                   <div className="bg-background/80 max-h-48 overflow-y-auto rounded-md p-3 text-sm">
                     <p className="line-clamp-[10] whitespace-pre-wrap">{output.cover_letter}</p>
                   </div>
+                </div>
+              )}
+
+              {output.skipped_cover_letter && (
+                <div className="rounded-md border border-amber-500/20 bg-amber-500/5 p-3 text-sm text-amber-700 dark:text-amber-300">
+                  Cover letter skipped because the analysis did not require one and force cover
+                  letter was left off.
                 </div>
               )}
 

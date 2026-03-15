@@ -16,7 +16,7 @@ from app.db.session import get_db_context
 from app.email.config import get_default_sender_domains, get_parser, get_parser_for_sender
 from app.pipelines.action_base import ActionPipeline, ActionResult, PipelineContext
 from app.pipelines.registry import register_pipeline
-from app.repositories import email_source_repo, email_sync_repo
+from app.repositories import email_source_repo, email_sync_repo, job_profile_repo
 from app.services.job import JobService, RawJob
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class EmailSyncInput(BaseModel):
     )
     save_all: bool = Field(
         default=False,
-        description="If true, save all jobs regardless of score. If false, only save jobs meeting min_score threshold.",
+        description="Retained for compatibility; email-ingested jobs are always saved after deduplication.",
     )
 
 
@@ -44,10 +44,12 @@ class EmailSyncOutput(BaseModel):
 
     emails_processed: int = Field(default=0, description="Number of emails processed")
     jobs_extracted: int = Field(default=0, description="Total jobs extracted from emails")
-    jobs_analyzed: int = Field(default=0, description="Jobs analyzed with AI scoring")
+    jobs_analyzed: int = Field(default=0, description="Jobs that arrived with external scoring")
     jobs_saved: int = Field(default=0, description="New jobs saved (after deduplication)")
-    jobs_filtered: int = Field(default=0, description="Jobs filtered out due to low score")
-    high_scoring: int = Field(default=0, description="Jobs with score >= min threshold")
+    jobs_filtered: int = Field(
+        default=0, description="Jobs skipped due to duplication or filtering"
+    )
+    high_scoring: int = Field(default=0, description="Jobs with external score >= 7.0")
     sources_synced: int = Field(default=0, description="Number of email sources synced")
     errors: list[str] = Field(default_factory=list, description="Any errors encountered")
 
@@ -214,8 +216,8 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
             source: EmailSource to sync
             user_id: User ID
             sync_id: Optional sync record ID
-            force_full_sync: If true, ignore last_sync_at
-            save_all: If true, save all jobs regardless of score
+        force_full_sync: If true, ignore last_sync_at
+        save_all: Retained for compatibility; ignored during ingestion
         """
         logger.info(f"Syncing email source: {source.email_address}")
 
@@ -231,14 +233,9 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
 
         # Initialize job service
         job_service = JobService(db)
-        profile = await job_service.require_scorable_profile(
-            user_id,
-            purpose="email job ingestion",
-        )
-        resume_text = profile.resume.text_content if profile.resume else None
-        target_roles = profile.target_roles
-        min_score = profile.min_score_threshold or 7.0
-        logger.info(f"AI scoring enabled with profile '{profile.name}'")
+        profile = await job_profile_repo.get_default_for_user(db, user_id)
+        if profile:
+            logger.info("Using profile '%s' as prep context for email-ingested jobs", profile.name)
 
         # Initialize Gmail client with decrypted tokens
         access_token, refresh_token = email_source_repo.get_decrypted_tokens(source)
@@ -310,10 +307,6 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
                         jobs=raw_jobs,
                         ingestion_source="email",
                         profile_id=profile.id if profile else None,
-                        resume_text=resume_text,
-                        target_roles=target_roles,
-                        min_score=min_score,
-                        save_all=save_all,  # Respect save_all setting
                     )
                     result["jobs_analyzed"] += ingestion.jobs_analyzed
                     result["jobs_saved"] += ingestion.jobs_saved

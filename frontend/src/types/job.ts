@@ -1,5 +1,5 @@
 /**
- * Job-related types for the job search pipeline.
+ * Job-related types for the jobs workflow.
  */
 
 /**
@@ -35,22 +35,22 @@ export const JOB_STATUS_CONFIG: Record<
 > = {
   new: {
     label: "New",
-    description: "Added and scored, waiting for application-page analysis",
+    description: "Added and waiting for application requirements",
     allowedFrom: [], // Initial state, nothing transitions to new
   },
   analyzed: {
     label: "Analyzed",
-    description: "Application page inspected and requirements captured by OpenClaw",
+    description: "Application requirements captured and ready for prep",
     allowedFrom: [],
   },
   prepped: {
     label: "Prepped",
-    description: "Cover letter & notes generated",
+    description: "Prep notes and optional application materials generated",
     allowedFrom: ["analyzed"],
   },
   reviewed: {
     label: "Reviewed",
-    description: "Ready to apply, PDF generated",
+    description: "Ready to apply",
     allowedFrom: ["prepped"],
   },
   applied: {
@@ -158,6 +158,22 @@ export function shouldGenerateReviewPdf(
   return job.requires_cover_letter === true;
 }
 
+export function getScreeningQuestionText(question: Record<string, unknown>): string {
+  const candidates = [
+    question.question,
+    question.label,
+    question.prompt,
+    question.name,
+    question.text,
+  ];
+
+  const match = candidates.find(
+    (value): value is string => typeof value === "string" && value.trim().length > 0
+  );
+
+  return match?.trim() ?? "";
+}
+
 /**
  * Abbreviated job info for lists.
  */
@@ -223,6 +239,11 @@ export interface JobUpdate {
   notes?: string;
   cover_letter?: string;
   prep_notes?: string;
+}
+
+export interface ManualAnalyzeRequest {
+  requires_cover_letter?: boolean;
+  screening_questions?: string[];
 }
 
 export interface ManualJobCreateRequest {
@@ -388,37 +409,6 @@ export interface JobProfileUpdate {
   contact_email?: string | null;
   contact_location?: string | null;
   contact_website?: string | null;
-}
-
-// ===========================================================================
-// Job Search Pipeline Types
-// ===========================================================================
-
-/**
- * Input for the job search pipeline.
- */
-export interface JobSearchInput {
-  profile_id?: string;
-  terms?: string[];
-  locations?: string[];
-  is_remote?: boolean;
-  hours_old?: number;
-  results_per_term?: number;
-  min_score?: number;
-  save_all?: boolean;
-  scraper?: "jobspy" | "mock";
-}
-
-/**
- * Output from the job search pipeline.
- */
-export interface JobSearchOutput {
-  total_scraped: number;
-  total_analyzed: number;
-  jobs_saved: number;
-  high_scoring: number;
-  duplicates_skipped: number;
-  top_jobs: JobSummary[];
 }
 
 // ===========================================================================

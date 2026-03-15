@@ -1,4 +1,4 @@
-"""Job database model for storing scraped and analyzed job listings."""
+"""Job database model for storing job listings and application workflow state."""
 
 import uuid
 from datetime import datetime
@@ -34,10 +34,10 @@ class JobStatus(StrEnum):
 
 
 class Job(Base, TimestampMixin):
-    """Job model for storing scraped job listings with analysis results.
+    """Job model for storing job listings with optional analysis and prep data.
 
-    Each job is associated with a user and contains the scraped job data
-    plus AI-generated relevance scoring and reasoning.
+    Each job is associated with a user and contains the listing data plus
+    optional external scoring, application analysis, and prep artifacts.
     """
 
     __tablename__ = "jobs"
@@ -53,7 +53,7 @@ class Job(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    # Profile used to search for this job (for prep to use same profile)
+    # Optional prep-context profile to reuse later during material generation
     profile_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("job_profiles.id", ondelete="SET NULL"),
@@ -134,7 +134,7 @@ class Job(Base, TimestampMixin):
     # Soft delete - prevents re-scraping deleted jobs
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    # Additional scrape fields from python-jobspy
+    # Additional source metadata captured during ingestion
     is_remote: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     job_type: Mapped[str | None] = mapped_column(
         String(50), nullable=True

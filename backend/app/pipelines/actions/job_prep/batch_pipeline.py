@@ -77,7 +77,7 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
 
     This pipeline:
     1. Fetches all jobs with status ANALYZED
-    2. For each job, uses the profile_id saved with the job (from job_search)
+    2. For each job, uses the profile_id saved with the job when available
     3. Falls back to user's default profile if no profile_id on job
     4. Processes jobs concurrently (up to max_concurrent)
     5. Returns a summary of results
@@ -173,7 +173,7 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
                     )
 
                 # Determine which profile to use:
-                # 1. Use job's profile_id if set (from job_search)
+                # 1. Use job's profile_id if set
                 # 2. Fall back to default profile
                 profile_id_to_use = job.profile_id
                 profile_name = None

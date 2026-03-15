@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { backendFetch, BackendApiError } from "@/lib/server-api";
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const accessToken = request.cookies.get("access_token")?.value;
 
@@ -9,9 +9,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: "Not authenticated" }, { status: 401 });
     }
 
+    const { id } = await params;
     const body = await request.json();
 
-    const data = await backendFetch("/api/v1/jobs/batch/dismiss", {
+    const data = await backendFetch(`/api/v1/jobs/${id}/manual-analyze`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof BackendApiError) {
       return NextResponse.json(
-        { detail: error.message || "Failed to dismiss jobs" },
+        { detail: error.message || "Failed to analyze job" },
         { status: error.status }
       );
     }

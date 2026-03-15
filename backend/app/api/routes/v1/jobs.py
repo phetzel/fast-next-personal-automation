@@ -1,7 +1,4 @@
-"""Jobs API routes.
-
-Provides REST endpoints for managing user's job listings from the search pipeline.
-"""
+"""Jobs API routes."""
 
 import logging
 from typing import Literal
@@ -20,6 +17,7 @@ from app.schemas.job import (
     JobResponse,
     JobStatsResponse,
     JobUpdate,
+    ManualAnalyzeRequest,
     ManualJobCreateRequest,
 )
 
@@ -54,11 +52,7 @@ async def list_jobs(
     ),
     sort_order: Literal["asc", "desc"] = Query("desc", description="Sort order (asc/desc)"),
 ) -> JobListResponse:
-    """List user's jobs with filtering and pagination.
-
-    Returns scraped jobs from the job search pipeline, with their
-    analysis scores and workflow status.
-    """
+    """List user's jobs with filtering and pagination."""
     filters = JobFilters(
         status=status,
         source=source,
@@ -161,8 +155,25 @@ async def create_job(
     current_user: CurrentUser,
     job_service: JobSvc,
 ) -> JobResponse:
-    """Create a manual job and score it with the selected/default profile."""
+    """Create a manual job with optional prep-profile context."""
     job = await job_service.create_manual_job(current_user.id, job_in)
+    return JobResponse.model_validate(job)
+
+
+@router.post("/{job_id}/manual-analyze", response_model=JobResponse)
+async def manual_analyze_job(
+    job_id: UUID,
+    request: ManualAnalyzeRequest,
+    current_user: CurrentUser,
+    job_service: JobSvc,
+) -> JobResponse:
+    """Manually mark a job as ready for prep with lightweight application inputs."""
+    job = await job_service.manual_analyze(
+        job_id,
+        current_user.id,
+        requires_cover_letter=request.requires_cover_letter,
+        screening_questions=request.screening_questions,
+    )
     return JobResponse.model_validate(job)
 
 

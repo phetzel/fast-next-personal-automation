@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui";
-import { useJobs } from "@/hooks";
+import { useJobMutations } from "@/hooks";
 import { Trash2, Loader2, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 import type { JobStatus, JobStats } from "@/types";
 
@@ -29,7 +29,7 @@ interface DeleteByStatusModalProps {
 type DeletableStatus = "new" | "analyzed" | "prepped" | "reviewed";
 
 const STATUS_OPTIONS: { value: DeletableStatus; label: string; description: string }[] = [
-  { value: "new", label: "New", description: "Jobs waiting for OpenClaw analysis" },
+  { value: "new", label: "New", description: "Jobs waiting for analysis" },
   {
     value: "analyzed",
     label: "Analyzed",
@@ -50,7 +50,7 @@ export function DeleteByStatusModal({
   onComplete,
   stats,
 }: DeleteByStatusModalProps) {
-  const { deleteByStatus } = useJobs();
+  const { deleteByStatus } = useJobMutations();
   const [selectedStatus, setSelectedStatus] = useState<DeletableStatus>("new");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ count: number } | null>(null);
@@ -137,8 +137,8 @@ export function DeleteByStatusModal({
                     This will delete {selectedCount} job{selectedCount !== 1 ? "s" : ""}
                   </p>
                   <p className="text-muted-foreground mt-1 text-sm">
-                    Jobs will be removed from your list but preserved to prevent re-scraping the
-                    same jobs in future searches.
+                    Jobs will be removed from your list but preserved to prevent re-ingesting the
+                    same posting later.
                   </p>
                 </div>
               </div>

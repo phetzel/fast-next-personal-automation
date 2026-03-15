@@ -48,7 +48,10 @@ class JobBase(BaseSchema):
 class JobCreate(JobBase):
     """Schema for creating a job (internal use by pipeline)."""
 
-    profile_id: UUID | None = Field(default=None, description="Profile used to search for this job")
+    profile_id: UUID | None = Field(
+        default=None,
+        description="Optional profile to reuse later as prep context",
+    )
     relevance_score: float | None = Field(
         default=None, ge=0.0, le=10.0, description="AI-computed relevance score (0-10)"
     )
@@ -59,10 +62,26 @@ class JobCreate(JobBase):
 
 
 class ManualJobCreateRequest(JobBase):
-    """Schema for manually creating a job while still scoring it against a profile."""
+    """Schema for manually creating a job with optional prep-profile context."""
 
-    profile_id: UUID | None = Field(default=None, description="Profile to use for scoring")
+    profile_id: UUID | None = Field(
+        default=None,
+        description="Optional profile to associate for later prep",
+    )
     notes: str | None = Field(default=None, description="Optional notes for the job")
+
+
+class ManualAnalyzeRequest(BaseSchema):
+    """Schema for manually marking a job ready for prep."""
+
+    requires_cover_letter: bool = Field(
+        default=False,
+        description="Whether this application needs a cover letter",
+    )
+    screening_questions: list[str] = Field(
+        default_factory=list,
+        description="Optional custom questions to prepare answers for",
+    )
 
 
 class JobUpdate(BaseSchema):

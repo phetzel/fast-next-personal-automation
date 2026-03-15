@@ -56,11 +56,11 @@ API Routes → Services → Repositories → Database
            AI Agents → External LLM APIs
 ```
 
-| Layer | Responsibility |
-|-------|----------------|
-| **Routes** | HTTP handling, request validation, authentication |
-| **Services** | Business logic, orchestration, domain rules |
-| **Repositories** | Data access, SQL queries, database operations |
+| Layer            | Responsibility                                    |
+| ---------------- | ------------------------------------------------- |
+| **Routes**       | HTTP handling, request validation, authentication |
+| **Services**     | Business logic, orchestration, domain rules       |
+| **Repositories** | Data access, SQL queries, database operations     |
 
 ### Base Class Hierarchy
 
@@ -125,19 +125,19 @@ async def get_user(user_id: UUID, user_service: UserSvc):
 
 ### Core Models
 
-| Model | Purpose |
-|-------|---------|
-| `User` | User accounts with roles, OAuth links |
-| `Session` | Active login sessions (refresh tokens) |
-| `Conversation` | Chat conversation groups |
-| `Message` | Individual chat messages |
-| `ToolCall` | AI tool invocation records |
-| `Webhook` | Webhook subscriptions |
-| `WebhookDelivery` | Webhook delivery logs |
-| `Job` | Job listings |
-| `JobProfile` | User job preferences |
-| `Resume` | Uploaded resumes |
-| `EmailSource` | Connected email accounts |
+| Model             | Purpose                                |
+| ----------------- | -------------------------------------- |
+| `User`            | User accounts with roles, OAuth links  |
+| `Session`         | Active login sessions (refresh tokens) |
+| `Conversation`    | Chat conversation groups               |
+| `Message`         | Individual chat messages               |
+| `ToolCall`        | AI tool invocation records             |
+| `Webhook`         | Webhook subscriptions                  |
+| `WebhookDelivery` | Webhook delivery logs                  |
+| `Job`             | Job listings                           |
+| `JobProfile`      | User job preferences                   |
+| `Resume`          | Uploaded resumes                       |
+| `EmailSource`     | Connected email accounts               |
 
 ### Relationships
 
@@ -157,23 +157,23 @@ User
 
 ### Jobs Area Models
 
-| Model | Purpose |
-|-------|---------|
+| Model        | Purpose                                                         |
+| ------------ | --------------------------------------------------------------- |
 | `JobProfile` | Job search configuration (target roles, locations, preferences) |
-| `Resume` | Uploaded resume files with extracted text |
-| `Job` | Scraped job listings with AI analysis scores |
+| `Resume`     | Uploaded resume files with extracted text                       |
+| `Job`        | Scraped job listings with AI analysis scores                    |
 
 ## Frontend Architecture
 
 ### State Management (Zustand)
 
-| Store | Purpose |
-|-------|---------|
-| `auth-store` | User auth state, tokens |
-| `chat-store` | Current messages, streaming |
+| Store                | Purpose                      |
+| -------------------- | ---------------------------- |
+| `auth-store`         | User auth state, tokens      |
+| `chat-store`         | Current messages, streaming  |
 | `conversation-store` | Conversation list, selection |
-| `theme-store` | Dark/light mode |
-| `sidebar-store` | Sidebar collapse state |
+| `theme-store`        | Dark/light mode              |
+| `sidebar-store`      | Sidebar collapse state       |
 
 ### Component Hierarchy
 
@@ -195,19 +195,19 @@ App (layout.tsx)
 
 ### Custom Hooks
 
-| Hook | Purpose |
-|------|---------|
-| `useAuth` | Login, logout, register, token refresh |
-| `useChat` | WebSocket chat with persistence |
-| `useLocalChat` | Local-only chat (anonymous users) |
-| `useWebSocket` | Generic WebSocket connection |
-| `useConversations` | Fetch/manage conversation history |
-| `useJobProfiles` | Job profile CRUD operations |
-| `useResumes` | Resume upload and management (via `useCrud`) |
-| `useStories` | Career story management (via `useCrud`) |
-| `useProjects` | Project management (via `useCrud`) |
-| `usePipelines` | Pipeline list with area filtering |
-| `useCrud` | Generic CRUD hook factory |
+| Hook               | Purpose                                      |
+| ------------------ | -------------------------------------------- |
+| `useAuth`          | Login, logout, register, token refresh       |
+| `useChat`          | WebSocket chat with persistence              |
+| `useLocalChat`     | Local-only chat (anonymous users)            |
+| `useWebSocket`     | Generic WebSocket connection                 |
+| `useConversations` | Fetch/manage conversation history            |
+| `useJobProfiles`   | Job profile CRUD operations                  |
+| `useResumes`       | Resume upload and management (via `useCrud`) |
+| `useStories`       | Career story management (via `useCrud`)      |
+| `useProjects`      | Project management (via `useCrud`)           |
+| `usePipelines`     | Pipeline list with area filtering            |
+| `useCrud`          | Generic CRUD hook factory                    |
 
 ### Hook Factories
 
@@ -219,7 +219,8 @@ usePrimaryCrud<T, TSummary, TCreate, TUpdate>() // + primary/default management
 ```
 
 Example usage:
-```typescript
+
+````typescript
 const { items, createItem, updateItem, deleteItem, setPrimary } = usePrimaryCrud({
   basePath: "/resumes",
   itemName: "resume",
@@ -241,12 +242,12 @@ class AssistantAgent:
     def __init__(self, model_name, temperature, system_prompt, area_config=None):
         self.agent = Agent[Deps, str](...)
         self.area_config = area_config  # Optional area-specific config
-    
+
     async def iter(self, user_input, history, deps):
         async with self.agent.iter(...) as run:
             async for event in run:
                 yield event  # Stream to WebSocket
-```
+````
 
 ### Area-Specific Agents
 
@@ -272,22 +273,22 @@ Pipelines can be tagged with areas for filtering:
 
 ```python
 @register_pipeline
-class JobSearchPipeline(ActionPipeline[...]):
-    name = "job_search"
-    tags = ["jobs", "scraping", "ai"]
+class JobPrepPipeline(ActionPipeline[...]):
+    name = "job_prep"
+    tags = ["jobs", "ai", "writing"]
     area = "jobs"  # Primary area association
 ```
 
 ### WebSocket Events
 
-| Event Type | Direction | Description |
-|------------|-----------|-------------|
+| Event Type            | Direction     | Description              |
+| --------------------- | ------------- | ------------------------ |
 | `model_request_start` | Server→Client | New AI response starting |
-| `text_delta` | Server→Client | Streamed text chunk |
-| `tool_call` | Server→Client | Tool invocation started |
-| `tool_result` | Server→Client | Tool returned result |
-| `final_result` | Server→Client | Response complete |
-| `error` | Server→Client | Error occurred |
+| `text_delta`          | Server→Client | Streamed text chunk      |
+| `tool_call`           | Server→Client | Tool invocation started  |
+| `tool_result`         | Server→Client | Tool returned result     |
+| `final_result`        | Server→Client | Response complete        |
+| `error`               | Server→Client | Error occurred           |
 
 ## Security
 
@@ -303,14 +304,15 @@ class JobSearchPipeline(ActionPipeline[...]):
 
 ### Token Types
 
-| Token | Lifetime | Purpose |
-|-------|----------|---------|
-| Access Token | 30 minutes | API authentication |
-| Refresh Token | 7 days | Obtain new access tokens |
+| Token         | Lifetime   | Purpose                  |
+| ------------- | ---------- | ------------------------ |
+| Access Token  | 30 minutes | API authentication       |
+| Refresh Token | 7 days     | Obtain new access tokens |
 
 ### API Key Authentication
 
 For service-to-service calls:
+
 ```http
 X-API-Key: your-api-key
 ```
@@ -320,6 +322,7 @@ X-API-Key: your-api-key
 ### Logfire Integration
 
 Instrumented components:
+
 - FastAPI routes (request/response tracing)
 - AsyncPG (database queries)
 - Redis (cache operations)
@@ -329,7 +332,7 @@ Instrumented components:
 ### Logging
 
 Structured logging with contextual information:
+
 ```python
 logger.info(f"Running agent with user input: {user_input[:100]}...")
 ```
-

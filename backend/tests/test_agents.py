@@ -155,12 +155,12 @@ class TestAreaAgentConfig:
             allowed_pipeline_tags=["jobs"],
         )
         pipelines = [
-            {"name": "job_search", "tags": ["jobs", "ai"]},
+            {"name": "job_prep", "tags": ["jobs", "ai"]},
             {"name": "echo", "tags": ["utility"]},
-            {"name": "job_prep", "tags": ["jobs"]},
+            {"name": "job_prep_batch", "tags": ["jobs"]},
         ]
         allowed = config.get_allowed_pipeline_names(pipelines)
-        assert allowed == {"job_search", "job_prep"}
+        assert allowed == {"job_prep", "job_prep_batch"}
 
     def test_get_allowed_pipeline_names_explicit_list(self):
         """Test explicit pipeline list takes precedence over tags."""
@@ -171,7 +171,7 @@ class TestAreaAgentConfig:
             allowed_pipelines=["specific_pipeline"],
         )
         pipelines = [
-            {"name": "job_search", "tags": ["jobs"]},
+            {"name": "job_prep", "tags": ["jobs"]},
             {"name": "specific_pipeline", "tags": []},
         ]
         allowed = config.get_allowed_pipeline_names(pipelines)
@@ -185,7 +185,7 @@ class TestJobsAreaConfig:
         """Test JOBS_AGENT_CONFIG is properly defined."""
         assert JOBS_AGENT_CONFIG is not None
         assert JOBS_AGENT_CONFIG.area == "jobs"
-        assert "job search" in JOBS_AGENT_CONFIG.system_prompt.lower()
+        assert "prepare application materials" in JOBS_AGENT_CONFIG.system_prompt.lower()
 
     def test_jobs_config_has_pipeline_tags(self):
         """Test jobs config filters pipelines by tag."""
@@ -263,7 +263,7 @@ class TestGetAgentForArea:
         """Test jobs area agent has custom system prompt."""
         agent = get_agent_for_area("jobs")
         assert agent is not None
-        assert "job search" in agent.system_prompt.lower()
+        assert "prepare application materials" in agent.system_prompt.lower()
 
     @patch("app.agents.assistant.Agent")
     @patch("app.agents.assistant.OpenAIProvider")

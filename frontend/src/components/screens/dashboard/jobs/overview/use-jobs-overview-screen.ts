@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { useJobs } from "@/hooks";
 import type { Job } from "@/types";
+import { useManualAnalyzeDialog } from "@/components/shared/jobs";
 
 export function useJobsOverviewScreen() {
   const {
@@ -22,6 +23,17 @@ export function useJobsOverviewScreen() {
       sort_order: "desc",
     },
   });
+  const {
+    job: analyzeJob,
+    isOpen: isManualAnalyzeModalOpen,
+    open: openManualAnalyze,
+    close: closeManualAnalyze,
+    complete: completeManualAnalyze,
+  } = useManualAnalyzeDialog({
+    onComplete: (updatedJob) => {
+      setSelectedJob(updatedJob);
+    },
+  });
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleJobClick = useCallback(
@@ -37,17 +49,29 @@ export function useJobsOverviewScreen() {
     setSelectedJob(null);
   }, [setSelectedJob]);
 
+  const handleAnalyze = useCallback(
+    (job: Job) => {
+      openManualAnalyze(job);
+    },
+    [openManualAnalyze]
+  );
+
   return {
     jobs,
     isLoading,
     stats,
     statsLoading,
     selectedJob,
+    analyzeJob,
     isModalOpen,
+    isManualAnalyzeModalOpen,
     updateJobStatus,
     deleteJob,
     setSelectedJob,
     handleJobClick,
     handleCloseModal,
+    handleAnalyze,
+    handleCloseAnalyzeModal: closeManualAnalyze,
+    handleAnalyzeComplete: completeManualAnalyze,
   };
 }

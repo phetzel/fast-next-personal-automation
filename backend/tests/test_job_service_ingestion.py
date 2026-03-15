@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import pytest
 
+from app.schemas.job import ManualJobCreateRequest
 from app.schemas.job_data import RawJob
 from app.services.job import JobService
 
@@ -23,8 +24,8 @@ def job_service(mock_db: AsyncMock) -> JobService:
 
 
 @pytest.mark.anyio
-async def test_ingest_jobs_external_analysis_with_qa_tracks_drift(job_service: JobService) -> None:
-    """External analysis should be stored while QA tracks drift against internal scoring."""
+async def test_ingest_jobs_persists_external_score_when_present(job_service: JobService) -> None:
+    """External score/reasoning should be stored without any internal fallback."""
     user_id = uuid4()
     raw_job = RawJob(
         title="Backend Engineer",
@@ -33,40 +34,26 @@ async def test_ingest_jobs_external_analysis_with_qa_tracks_drift(job_service: J
         description="Build backend APIs",
     )
 
-    with (
-        patch("app.services.job.job_repo") as mock_repo,
-        patch("app.pipelines.actions.job_search.analyzer.analyze_job") as mock_analyze,
-    ):
+    with patch("app.services.job.job_repo") as mock_repo:
         mock_repo.get_by_url_and_user = AsyncMock(return_value=None)
         mock_repo.create_bulk = AsyncMock(return_value=[SimpleNamespace(id=uuid4())])
-        mock_analyze.return_value = SimpleNamespace(
-            relevance_score=5.0,
-            reasoning="Internal QA score",
-        )
 
         result = await job_service.ingest_jobs(
             user_id=user_id,
             jobs=[raw_job],
             ingestion_source="manual",
-            resume_text="Senior backend engineer resume",
-            min_score=7.0,
             external_analysis_by_url={
                 raw_job.job_url: {
                     "relevance_score": 9.0,
                     "reasoning": "Strong external fit",
                 }
             },
-            qa_with_internal_analysis=True,
-            qa_score_drift_threshold=2.0,
         )
 
     assert result.jobs_received == 1
     assert result.jobs_analyzed == 1
     assert result.jobs_saved == 1
     assert result.high_scoring == 1
-    assert result.qa_jobs_checked == 1
-    assert result.qa_large_score_drift == 1
-    assert mock_analyze.await_count == 1
 
     jobs_data = mock_repo.create_bulk.await_args.args[2]
     assert jobs_data[0]["relevance_score"] == 9.0
@@ -74,10 +61,8 @@ async def test_ingest_jobs_external_analysis_with_qa_tracks_drift(job_service: J
 
 
 @pytest.mark.anyio
-async def test_ingest_jobs_invalid_external_analysis_falls_back_to_internal(
-    job_service: JobService,
-) -> None:
-    """Invalid external analysis payload should not raise and should fallback to internal analysis."""
+async def test_ingest_jobs_allows_unscored_jobs(job_service: JobService) -> None:
+    """Jobs without external scoring should still be saved with null score fields."""
     user_id = uuid4()
     raw_job = RawJob(
         title="Platform Engineer",
@@ -86,35 +71,51 @@ async def test_ingest_jobs_invalid_external_analysis_falls_back_to_internal(
         description="Build platform systems",
     )
 
-    with (
-        patch("app.services.job.job_repo") as mock_repo,
-        patch("app.pipelines.actions.job_search.analyzer.analyze_job") as mock_analyze,
-    ):
+    with patch("app.services.job.job_repo") as mock_repo:
         mock_repo.get_by_url_and_user = AsyncMock(return_value=None)
         mock_repo.create_bulk = AsyncMock(return_value=[SimpleNamespace(id=uuid4())])
-        mock_analyze.return_value = SimpleNamespace(
-            relevance_score=8.2,
-            reasoning="Internal fallback score",
-        )
 
         result = await job_service.ingest_jobs(
             user_id=user_id,
             jobs=[raw_job],
-            ingestion_source="manual",
-            resume_text="Platform engineer resume",
-            min_score=7.0,
+            ingestion_source="openclaw",
             external_analysis_by_url={
                 raw_job.job_url: {
-                    "reasoning": "Missing score should trigger fallback",
+                    "reasoning": "Optional reasoning without score is ignored",
                 }
             },
-            qa_with_internal_analysis=True,
         )
 
     assert result.jobs_received == 1
-    assert result.jobs_analyzed == 1
+    assert result.jobs_analyzed == 0
     assert result.jobs_saved == 1
-    assert result.high_scoring == 1
-    assert result.qa_jobs_checked == 0
-    assert result.qa_large_score_drift == 0
-    assert mock_analyze.await_count == 1
+    assert result.high_scoring == 0
+
+    jobs_data = mock_repo.create_bulk.await_args.args[2]
+    assert "relevance_score" not in jobs_data[0]
+    assert jobs_data[0]["reasoning"] == "Optional reasoning without score is ignored"
+
+
+@pytest.mark.anyio
+async def test_create_manual_job_allows_missing_profile(job_service: JobService) -> None:
+    """Manual jobs should save without requiring profile-based scoring."""
+    user_id = uuid4()
+    created_job = SimpleNamespace(id=uuid4())
+
+    with patch("app.services.job.job_repo") as mock_repo:
+        mock_repo.get_by_url_and_user = AsyncMock(return_value=None)
+        mock_repo.create = AsyncMock(return_value=created_job)
+
+        result = await job_service.create_manual_job(
+            user_id,
+            ManualJobCreateRequest(
+                title="Backend Engineer",
+                company="Acme",
+                job_url="https://jobs.example.com/manual",
+            ),
+        )
+
+    assert result == created_job
+    kwargs = mock_repo.create.await_args.kwargs
+    assert kwargs["profile_id"] is None
+    assert kwargs["ingestion_source"] == "manual"

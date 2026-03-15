@@ -11,7 +11,7 @@ import {
   useJobDetailScreen,
 } from "@/components/screens/dashboard/jobs/detail";
 import { Button } from "@/components/ui";
-import { PrepJobModal } from "@/components/shared/jobs";
+import { ManualAnalyzeModal, PrepJobModal } from "@/components/shared/jobs";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
 export default function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -70,6 +70,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             setNotesDirty={screen.setNotesDirty}
             isUpdating={screen.isUpdating}
             onSaveNotes={screen.handleSaveNotes}
+            onAnalyze={screen.openManualAnalyze}
             onPrep={() => screen.setIsPrepModalOpen(true)}
             hasPreppedMaterials={screen.hasPreppedMaterials}
             isPrepping={screen.isPrepping}
@@ -92,11 +93,19 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             onPreview={screen.handlePreviewPdf}
             onDownload={screen.handleDownloadPdf}
             onRegenerate={screen.handleRegeneratePdf}
+            onAnalyze={screen.openManualAnalyze}
             onPrep={() => screen.setIsPrepModalOpen(true)}
             hasPreppedMaterials={screen.hasPreppedMaterials}
             isPrepping={screen.isPrepping}
           />
         }
+      />
+
+      <ManualAnalyzeModal
+        job={screen.analyzeJob}
+        isOpen={screen.isManualAnalyzeModalOpen}
+        onClose={screen.closeManualAnalyze}
+        onComplete={screen.handleManualAnalyzeComplete}
       />
 
       <PrepJobModal
