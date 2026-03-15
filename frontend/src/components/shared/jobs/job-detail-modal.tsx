@@ -12,7 +12,7 @@ import {
   DialogDescription,
   Textarea,
 } from "@/components/ui";
-import type { Job, JobStatus, JobUpdate } from "@/types";
+import { getScreeningQuestionText, type Job, type JobStatus, type JobUpdate } from "@/types";
 import { JOB_STATUSES, JOB_STATUS_CONFIG, canTransitionTo, shouldGenerateReviewPdf } from "@/types";
 import { cn } from "@/lib/utils";
 import { ScoreBadge } from "./score-badge";
@@ -36,6 +36,7 @@ import {
   Eye,
   RefreshCw,
   Maximize2,
+  ClipboardCheck,
 } from "lucide-react";
 
 interface JobDetailModalProps {
@@ -45,6 +46,7 @@ interface JobDetailModalProps {
   onJobChange?: (job: Job | null) => void;
   onUpdate: (jobId: string, update: JobUpdate) => Promise<Job | null>;
   onDelete: (jobId: string) => Promise<boolean>;
+  onAnalyze?: (job: Job) => void;
   onPrep?: (job: Job) => void;
 }
 
@@ -61,6 +63,7 @@ export function JobDetailModal({
   onJobChange,
   onUpdate,
   onDelete,
+  onAnalyze,
   onPrep,
 }: JobDetailModalProps) {
   const [showPrepNotes, setShowPrepNotes] = useState(false);
@@ -192,8 +195,8 @@ export function JobDetailModal({
             </div>
             {currentJob.status === "new" && (
               <p className="text-muted-foreground mt-2 text-xs">
-                <span className="text-blue-600 dark:text-blue-400">Next step:</span> OpenClaw still
-                needs to analyze the application page before this job can be prepped.
+                <span className="text-blue-600 dark:text-blue-400">Next step:</span> Capture the
+                application requirements, then run prep.
               </p>
             )}
             {currentJob.status === "analyzed" && (
@@ -213,17 +216,43 @@ export function JobDetailModal({
             )}
           </div>
 
+          {currentJob.status === "new" && onAnalyze && (
+            <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="font-medium text-blue-700 dark:text-blue-300">Ready for prep?</p>
+                  <p className="text-sm text-blue-700/80 dark:text-blue-300/80">
+                    Run Manual Analyze to mark whether a cover letter is needed and add any custom
+                    questions you want prepped.
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => onAnalyze?.(currentJob)}>
+                  <ClipboardCheck className="mr-2 h-4 w-4" />
+                  Manual Analyze
+                </Button>
+              </div>
+            </div>
+          )}
+
           {detail.hasApplicationAnalysis && (
             <div className="space-y-3 rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-4">
               <div className="flex items-center justify-between">
                 <p className="font-medium text-indigo-700 dark:text-indigo-300">
                   Application Analysis
                 </p>
-                {currentJob.analyzed_at && (
-                  <span className="text-xs text-indigo-700/80 dark:text-indigo-300/80">
-                    {format(new Date(currentJob.analyzed_at), "MMM d, h:mm a")}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {currentJob.status === "analyzed" && onAnalyze && (
+                    <Button variant="outline" size="sm" onClick={() => onAnalyze?.(currentJob)}>
+                      <ClipboardCheck className="mr-2 h-4 w-4" />
+                      Edit Analysis
+                    </Button>
+                  )}
+                  {currentJob.analyzed_at && (
+                    <span className="text-xs text-indigo-700/80 dark:text-indigo-300/80">
+                      {format(new Date(currentJob.analyzed_at), "MMM d, h:mm a")}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="grid gap-2 text-sm sm:grid-cols-2">
                 <div>
@@ -251,6 +280,30 @@ export function JobDetailModal({
                   {currentJob.screening_questions?.length ?? 0}
                 </div>
               </div>
+              {!!currentJob.screening_questions?.length && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
+                    Questions to prep
+                  </p>
+                  <ul className="space-y-1 text-sm">
+                    {currentJob.screening_questions?.map((question, index) => {
+                      const questionText = getScreeningQuestionText(question);
+                      if (!questionText) {
+                        return null;
+                      }
+
+                      return (
+                        <li
+                          key={`${currentJob.id}-screening-${index}`}
+                          className="bg-background/70 rounded-md px-3 py-2"
+                        >
+                          {questionText}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
               {currentJob.application_url && (
                 <Button variant="outline" size="sm" asChild className="w-fit">
                   <a href={currentJob.application_url} target="_blank" rel="noopener noreferrer">
@@ -436,13 +489,6 @@ export function JobDetailModal({
                   </Button>
                 </div>
               </div>
-            </div>
-          )}
-
-          {currentJob.status === "new" && (
-            <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4 text-sm text-blue-700 dark:text-blue-300">
-              This job has been scored and saved, but it still needs OpenClaw to inspect the
-              application page before prep can run.
             </div>
           )}
 

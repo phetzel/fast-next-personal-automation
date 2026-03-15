@@ -73,7 +73,7 @@ class RawJob(ScrapedJob):
 
     @classmethod
     def from_scraped(cls, job: ScrapedJob) -> "RawJob":
-        """Create from a ScrapedJob (job search pipeline)."""
+        """Create from a scraped-job payload."""
         return cls(
             title=job.title,
             company=job.company,

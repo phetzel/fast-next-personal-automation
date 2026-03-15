@@ -35,6 +35,7 @@ import {
   MapPin,
   Trash2,
   FileText,
+  ClipboardCheck,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,7 @@ interface JobTableProps {
   preppingJobId?: string | null;
   onJobClick?: (job: Job) => void;
   onDelete?: (jobId: string) => void;
+  onAnalyze?: (job: Job) => void;
   onPrep?: (job: Job) => void;
   onPageChange?: (page: number) => void;
   onSort?: (sortBy: string, sortOrder: "asc" | "desc") => void;
@@ -63,6 +65,7 @@ export function JobTable({
   preppingJobId,
   onJobClick,
   onDelete,
+  onAnalyze,
   onPrep,
   onPageChange,
   onSort,
@@ -228,6 +231,7 @@ export function JobTable({
         cell: ({ row }) => {
           const job = row.original;
           const isPrepping = preppingJobId === job.id;
+          const showAnalyzeButton = job.status === "new" && onAnalyze;
           const showPrepButton = job.status === "analyzed" && onPrep;
 
           return (
@@ -251,6 +255,19 @@ export function JobTable({
                   Prep
                 </button>
               )}
+              {showAnalyzeButton && !isPrepping && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAnalyze?.(job);
+                  }}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-500/10 px-2 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-500/20"
+                  title="Capture application requirements"
+                >
+                  <ClipboardCheck className="h-3.5 w-3.5" />
+                  Analyze
+                </button>
+              )}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -267,7 +284,7 @@ export function JobTable({
         enableSorting: false,
       },
     ],
-    [onJobClick, onDelete, onPrep, preppingJobId]
+    [onAnalyze, onDelete, onJobClick, onPrep, preppingJobId]
   );
 
   // Filter out hidden columns
@@ -304,7 +321,7 @@ export function JobTable({
       <div className={cn("py-12 text-center", className)}>
         <p className="text-muted-foreground">No jobs found</p>
         <p className="text-muted-foreground mt-1 text-sm">
-          Try adjusting your filters or run a job search
+          Try adjusting your filters or add jobs from your external workflow
         </p>
       </div>
     );

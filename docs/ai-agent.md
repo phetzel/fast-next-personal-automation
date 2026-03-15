@@ -114,7 +114,7 @@ from app.agents.tools.jobs import jobs_toolset, job_profiles_toolset
 
 JOBS_AGENT_CONFIG = AreaAgentConfig(
     area="jobs",
-    system_prompt="""You are a specialized job search assistant...""",
+    system_prompt="""You are a specialized jobs assistant...""",
     allowed_pipeline_tags=["jobs"],  # Only pipelines tagged with "jobs"
     toolsets=[
         CombinedToolset([
@@ -152,7 +152,7 @@ output, tools, deps = await agent.run(
 | Toolset | Tools | Description |
 |---------|-------|-------------|
 | `jobs_*` | `list_jobs`, `get_job`, `update_job_status`, `get_job_stats`, `delete_job` | Manage saved job listings |
-| `profiles_*` | `list_profiles`, `get_profile`, `get_default_profile`, `create_profile` | Manage job search profiles |
+| `profiles_*` | `list_profiles`, `get_profile`, `get_default_profile`, `create_profile` | Manage job profiles |
 
 ## Adding Custom Tools
 
@@ -419,4 +419,3 @@ instrument_pydantic_ai()
 ```
 
 View traces in the Logfire dashboard at https://logfire.pydantic.dev.
-

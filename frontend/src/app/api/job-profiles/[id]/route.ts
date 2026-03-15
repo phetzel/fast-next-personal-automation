@@ -6,7 +6,7 @@ interface RouteParams {
 }
 
 /**
- * GET /api/job-profiles/[id] - Get a specific job search profile
+ * GET /api/job-profiles/[id] - Get a specific job profile
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 /**
- * PATCH /api/job-profiles/[id] - Update a job search profile
+ * PATCH /api/job-profiles/[id] - Update a job profile
  */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
@@ -71,7 +71,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 }
 
 /**
- * DELETE /api/job-profiles/[id] - Delete a job search profile
+ * DELETE /api/job-profiles/[id] - Delete a job profile
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {

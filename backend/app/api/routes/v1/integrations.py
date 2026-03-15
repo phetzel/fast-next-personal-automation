@@ -133,11 +133,6 @@ async def ingest_openclaw_jobs(
     user_id = openclaw_token.user_id
 
     profile = None
-    resume_text: str | None = None
-    target_roles: list[str] | None = None
-    preferences: dict | None = None
-    analysis_enabled = False
-    min_score = payload.min_score if payload.min_score is not None else 7.0
     external_analysis_by_url = {
         job.job_url: {
             "relevance_score": job.relevance_score,
@@ -153,31 +148,10 @@ async def ingest_openclaw_jobs(
         if attributes:
             job_attributes_by_url[job.job_url] = attributes
 
-    if payload.analyze_with_profile:
-        if payload.profile_id:
-            profile = await job_profile_repo.get_by_id(db, payload.profile_id)
-            if profile is None or profile.user_id != user_id:
-                raise ValidationError(message="Profile not found or access denied")
-            if not profile.resume or not profile.resume.text_content:
-                raise ValidationError(
-                    message="Selected profile has no resume text for analysis",
-                    details={"profile_id": str(profile.id)},
-                )
-        else:
-            profile = await job_profile_repo.get_default_for_user(db, user_id)
-
-        if profile and profile.resume and profile.resume.text_content:
-            resume_text = profile.resume.text_content
-            target_roles = profile.target_roles
-            preferences = profile.preferences
-            analysis_enabled = True
-            if payload.min_score is None:
-                min_score = profile.min_score_threshold or 7.0
-
-    if payload.qa_with_internal_analysis and not resume_text:
-        raise ValidationError(
-            message="QA analysis requested but no profile resume text is available"
-        )
+    if payload.profile_id:
+        profile = await job_profile_repo.get_by_id(db, payload.profile_id)
+        if profile is None or profile.user_id != user_id:
+            raise ValidationError(message="Profile not found or access denied")
 
     raw_jobs = [
         RawJob(
@@ -201,15 +175,9 @@ async def ingest_openclaw_jobs(
         jobs=raw_jobs,
         ingestion_source="openclaw",
         profile_id=profile.id if profile else None,
-        resume_text=resume_text,
-        target_roles=target_roles,
-        preferences=preferences,
-        min_score=min_score,
-        save_all=payload.save_all,
         search_terms=payload.search_terms,
         external_analysis_by_url=external_analysis_by_url,
         job_attributes_by_url=job_attributes_by_url,
-        qa_with_internal_analysis=payload.qa_with_internal_analysis,
     )
     await db.commit()
 
@@ -219,11 +187,7 @@ async def ingest_openclaw_jobs(
         jobs_saved=ingestion.jobs_saved,
         duplicates_skipped=ingestion.duplicates_skipped,
         high_scoring=ingestion.high_scoring,
-        analysis_enabled=analysis_enabled,
         external_analysis_used=external_analysis_used,
-        qa_with_internal_analysis=payload.qa_with_internal_analysis,
-        qa_jobs_checked=ingestion.qa_jobs_checked,
-        qa_large_score_drift=ingestion.qa_large_score_drift,
         profile_id=profile.id if profile else None,
         profile_name=profile.name if profile else None,
         token_id=openclaw_token.id,

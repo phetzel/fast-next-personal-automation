@@ -132,8 +132,8 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
             return ActionResult(
                 success=False,
                 error=(
-                    "Job prep requires an analyzed job. Run OpenClaw analysis before preparing "
-                    "application materials."
+                    "Job prep requires an analyzed job. Run manual or external analysis before "
+                    "preparing application materials."
                 ),
             )
 

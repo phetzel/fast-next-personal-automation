@@ -3,8 +3,16 @@
 import type { ChangeEvent } from "react";
 import { format } from "date-fns";
 import { Button, Card, CardContent, CardHeader, CardTitle, Textarea } from "@/components/ui";
-import type { Job } from "@/types";
-import { ExternalLink, Loader2, MessageSquare, Save, Sparkles, Clock } from "lucide-react";
+import { getScreeningQuestionText, type Job } from "@/types";
+import {
+  ClipboardCheck,
+  ExternalLink,
+  Loader2,
+  MessageSquare,
+  Save,
+  Sparkles,
+  Clock,
+} from "lucide-react";
 import { TimelineItem } from "./timeline-item";
 
 interface OverviewTabProps {
@@ -16,6 +24,7 @@ interface OverviewTabProps {
   setNotesDirty: (value: boolean) => void;
   isUpdating: boolean;
   onSaveNotes: () => void;
+  onAnalyze: () => void;
   onPrep: () => void;
   hasPreppedMaterials: boolean;
   isPrepping: boolean;
@@ -30,6 +39,7 @@ export function OverviewTab({
   setNotesDirty,
   isUpdating,
   onSaveNotes,
+  onAnalyze,
   onPrep,
   hasPreppedMaterials,
   isPrepping,
@@ -67,7 +77,15 @@ export function OverviewTab({
         {hasApplicationAnalysis && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Application Requirements</CardTitle>
+              <div className="flex items-center justify-between gap-4">
+                <CardTitle className="text-lg">Application Requirements</CardTitle>
+                {job.status === "analyzed" && (
+                  <Button size="sm" variant="outline" onClick={onAnalyze}>
+                    <ClipboardCheck className="mr-2 h-4 w-4" />
+                    Edit Analysis
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div className="grid gap-2 sm:grid-cols-2">
@@ -103,6 +121,28 @@ export function OverviewTab({
                     <ExternalLink className="ml-2 h-4 w-4" />
                   </a>
                 </Button>
+              )}
+              {!!job.screening_questions?.length && (
+                <div className="space-y-2">
+                  <p className="font-medium">Questions to prep</p>
+                  <ul className="space-y-1">
+                    {job.screening_questions.map((question, index) => {
+                      const questionText = getScreeningQuestionText(question);
+                      if (!questionText) {
+                        return null;
+                      }
+
+                      return (
+                        <li
+                          key={`${job.id}-screening-${index}`}
+                          className="bg-muted/40 rounded-md px-3 py-2"
+                        >
+                          {questionText}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -169,9 +209,17 @@ export function OverviewTab({
 
         {!hasPreppedMaterials && job.status === "new" && (
           <Card className="border-2 border-dashed border-blue-500/30 bg-blue-500/5">
-            <CardContent className="py-6 text-sm text-blue-700 dark:text-blue-300">
-              OpenClaw still needs to inspect the application page for this job before prep can
-              generate materials.
+            <CardContent className="py-6">
+              <div className="space-y-3 text-sm text-blue-700 dark:text-blue-300">
+                <p>
+                  Run Manual Analyze to mark whether a cover letter is needed and add any custom
+                  questions you want prepped.
+                </p>
+                <Button variant="outline" size="sm" onClick={onAnalyze}>
+                  <ClipboardCheck className="mr-2 h-4 w-4" />
+                  Manual Analyze
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}

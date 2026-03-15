@@ -1,4 +1,4 @@
-"""Tests for JobService workflow transitions and OpenClaw-owned stages."""
+"""Tests for JobService workflow transitions and analysis stages."""
 
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -58,7 +58,7 @@ async def test_update_status_rejects_skipping_analyzed(job_service: JobService) 
 async def test_update_application_analysis_moves_new_job_to_analyzed(
     job_service: JobService,
 ) -> None:
-    """OpenClaw analysis should advance NEW jobs into ANALYZED."""
+    """Application analysis should advance NEW jobs into ANALYZED."""
     user_id = uuid4()
     job = _mock_job(status=JobStatus.NEW, user_id=user_id)
 
@@ -79,6 +79,58 @@ async def test_update_application_analysis_moves_new_job_to_analyzed(
     assert update_data["application_type"] == "ats"
     assert update_data["requires_cover_letter"] is True
     assert update_data["analyzed_at"] is not None
+
+
+@pytest.mark.anyio
+async def test_manual_analyze_defaults_to_unknown_application_and_cover_letter_off(
+    job_service: JobService,
+) -> None:
+    """Manual analyze should make a new job ready for prep with safe defaults."""
+    user_id = uuid4()
+    job = _mock_job(status=JobStatus.NEW, user_id=user_id)
+    job.application_type = None
+    job.application_url = None
+
+    with patch("app.services.job.job_repo") as mock_repo:
+        mock_repo.get_by_id_and_user = AsyncMock(return_value=job)
+        mock_repo.update = AsyncMock(return_value=job)
+
+        await job_service.manual_analyze(job.id, user_id)
+
+    update_data = mock_repo.update.await_args.kwargs["update_data"]
+    assert update_data["status"] == JobStatus.ANALYZED.value
+    assert update_data["application_type"] == "unknown"
+    assert update_data["application_url"] == job.job_url
+    assert update_data["requires_cover_letter"] is False
+    assert update_data["screening_questions"] == []
+    assert update_data["analyzed_at"] is not None
+
+
+@pytest.mark.anyio
+async def test_manual_analyze_persists_custom_questions(job_service: JobService) -> None:
+    """Manual analyze should normalize and store screening questions for prep."""
+    user_id = uuid4()
+    job = _mock_job(status=JobStatus.ANALYZED, user_id=user_id)
+    job.application_type = "unknown"
+    job.application_url = "https://jobs.example.com/apply"
+
+    with patch("app.services.job.job_repo") as mock_repo:
+        mock_repo.get_by_id_and_user = AsyncMock(return_value=job)
+        mock_repo.update = AsyncMock(return_value=job)
+
+        await job_service.manual_analyze(
+            job.id,
+            user_id,
+            requires_cover_letter=True,
+            screening_questions=[" Why this company? ", "", "Describe your salary expectations"],
+        )
+
+    update_data = mock_repo.update.await_args.kwargs["update_data"]
+    assert update_data["requires_cover_letter"] is True
+    assert update_data["screening_questions"] == [
+        {"question": "Why this company?"},
+        {"question": "Describe your salary expectations"},
+    ]
 
 
 @pytest.mark.anyio

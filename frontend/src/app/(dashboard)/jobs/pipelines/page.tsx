@@ -26,10 +26,7 @@ export default function JobPipelinesPage() {
   }, [searchParams]);
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Job Pipelines"
-        description="Run automated pipelines for job search and analysis"
-      />
+      <PageHeader title="Job Pipelines" description="Run internal prep pipelines for saved jobs" />
 
       {/* Info Card */}
       <Card className="border-green-500/20 bg-green-500/5">
@@ -40,8 +37,8 @@ export default function JobPipelinesPage() {
           <div className="space-y-1">
             <h3 className="font-medium">Job Pipelines</h3>
             <p className="text-muted-foreground text-sm">
-              These pipelines are designed to help you find and analyze job opportunities. Select a
-              pipeline below to get started.
+              These pipelines help you prep saved jobs for applications. Select a pipeline below to
+              get started.
             </p>
           </div>
         </CardContent>
@@ -66,22 +63,24 @@ export default function JobPipelinesPage() {
             <li className="flex items-start gap-2">
               <Briefcase className="text-primary mt-0.5 h-4 w-4" />
               <span>
-                <strong className="text-foreground">Profile Required:</strong> Make sure you have a
-                job profile with a linked resume before running pipelines.
+                <strong className="text-foreground">Profile Recommended:</strong> Make sure you have
+                a job profile with a linked resume before running prep pipelines.
               </span>
             </li>
             <li className="flex items-start gap-2">
               <Workflow className="text-primary mt-0.5 h-4 w-4" />
               <span>
-                <strong className="text-foreground">Smart Matching:</strong> AI analyzes each job
-                against your resume and target roles to calculate a relevance score.
+                <strong className="text-foreground">Analysis First:</strong> Jobs should be in the
+                analyzed stage before prep so the app knows whether to write a cover letter and
+                which questions to answer.
               </span>
             </li>
             <li className="flex items-start gap-2">
               <Sparkles className="text-primary mt-0.5 h-4 w-4" />
               <span>
-                <strong className="text-foreground">Automatic Filtering:</strong> Only jobs above
-                your minimum score threshold are saved, unless you enable &quot;save all&quot;.
+                <strong className="text-foreground">Prep Output:</strong> Prep always writes notes,
+                generates question answers when present, and only writes a cover letter when
+                required or explicitly forced.
               </span>
             </li>
           </ul>

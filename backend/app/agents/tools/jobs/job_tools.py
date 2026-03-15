@@ -36,9 +36,8 @@ async def list_jobs(
 ) -> dict:
     """List the user's saved job listings with optional filtering and sorting.
 
-    Use this tool to browse and search through jobs that have been scraped
-    and analyzed. You can filter by status, search terms, relevance score,
-    and source.
+    Use this tool to browse and search through saved jobs. You can filter by
+    status, search terms, relevance score, and source.
 
     Args:
         status: Filter by job status. Options: new, analyzed, prepped, reviewed, applied, rejected, interviewing
@@ -141,7 +140,7 @@ async def get_job(ctx: RunContext, job_id: str) -> dict:
 
 @jobs_toolset.tool
 async def get_job_stats(ctx: RunContext) -> dict:
-    """Get statistics about the user's job search.
+    """Get statistics about the user's saved jobs.
 
     Returns counts by status, average relevance score, and count of
     high-scoring jobs (score >= 7.0).

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { backendFetch, BackendApiError } from "@/lib/server-api";
 
 /**
- * GET /api/job-profiles - List all job search profiles for current user
+ * GET /api/job-profiles - List all job profiles for current user
  */
 export async function GET(request: NextRequest) {
   try {
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * POST /api/job-profiles - Create a new job search profile
+ * POST /api/job-profiles - Create a new job profile
  */
 export async function POST(request: NextRequest) {
   try {

@@ -53,7 +53,7 @@ export function ProfileSelectField({
                 No Job Profiles Found
               </p>
               <p className="text-muted-foreground mt-1 text-sm">
-                Create a job profile with your resume to start searching for jobs.
+                Create a job profile with your resume to prep jobs with the right context.
               </p>
               <Button asChild className="mt-3 bg-amber-500 text-white hover:bg-amber-600">
                 <Link href="/jobs/profiles">Create Profile</Link>

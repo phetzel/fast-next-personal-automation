@@ -19,14 +19,15 @@ The application supports multiple authentication methods: JWT tokens, OAuth (Goo
 
 ### Tokens
 
-| Token | Lifetime | Purpose |
-|-------|----------|---------|
-| Access Token | 30 minutes | API authentication |
-| Refresh Token | 7 days | Obtain new access tokens |
+| Token         | Lifetime   | Purpose                  |
+| ------------- | ---------- | ------------------------ |
+| Access Token  | 30 minutes | API authentication       |
+| Refresh Token | 7 days     | Obtain new access tokens |
 
 ### API Usage
 
 **Login:**
+
 ```http
 POST /api/v1/auth/login
 Content-Type: application/x-www-form-urlencoded
@@ -35,6 +36,7 @@ username=user@example.com&password=secret123
 ```
 
 Response:
+
 ```json
 {
   "access_token": "eyJ...",
@@ -44,12 +46,14 @@ Response:
 ```
 
 **Authenticated Request:**
+
 ```http
 GET /api/v1/users/me
 Authorization: Bearer eyJ...access_token...
 ```
 
 **Refresh Token:**
+
 ```http
 POST /api/v1/auth/refresh
 Content-Type: application/json
@@ -60,6 +64,7 @@ Content-Type: application/json
 ```
 
 **Logout:**
+
 ```http
 POST /api/v1/auth/logout
 Content-Type: application/json
@@ -72,6 +77,7 @@ Content-Type: application/json
 ### Session Management
 
 Each login creates a session record that tracks:
+
 - User ID
 - Refresh token hash
 - IP address
@@ -95,6 +101,7 @@ DELETE /api/v1/sessions/{id}  # Revoke session
 4. Add authorized redirect URI: `http://localhost:8000/api/v1/oauth/google/callback`
 
 5. Configure environment variables:
+
 ```env
 GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-client-secret
@@ -128,7 +135,7 @@ const handleCallback = () => {
   const params = new URLSearchParams(window.location.search);
   const accessToken = params.get("access_token");
   const refreshToken = params.get("refresh_token");
-  
+
   if (accessToken && refreshToken) {
     setAuth({ accessToken, refreshToken });
     router.push("/chat");
@@ -185,7 +192,7 @@ OpenClaw uses scoped per-user integration tokens, separate from the global API k
   - `POST /api/v1/integrations/openclaw/jobs/{job_id}/apply-success`
 - Ingest payload supports optional external analysis fields per job: `relevance_score`, `reasoning`
 - Ingest payload also supports application-analysis fields such as `application_type`, `application_url`, `requires_cover_letter`, and `screening_questions`
-- Optional `qa_with_internal_analysis` can run internal profile analysis as comparison only
+- Ingest can associate a `profile_id` for downstream prep context, but it no longer runs internal QA analysis
 
 ### Lifecycle
 
@@ -212,14 +219,15 @@ Content-Type: application/json
 
 ### Roles
 
-| Role | Description |
-|------|-------------|
-| `user` | Standard user access |
+| Role    | Description                   |
+| ------- | ----------------------------- |
+| `user`  | Standard user access          |
 | `admin` | Full access, can manage users |
 
 ### Superuser Flag
 
 The `is_superuser` flag grants access to:
+
 - Admin panel (`/admin`)
 - User management endpoints
 - System configuration
@@ -268,6 +276,7 @@ const ws = new WebSocket(wsUrl);
 ```
 
 Backend validation:
+
 ```python
 from app.api.deps import get_current_user_ws
 

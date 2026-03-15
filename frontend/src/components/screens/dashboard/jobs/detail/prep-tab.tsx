@@ -33,6 +33,7 @@ interface PrepTabProps {
   onPreview: () => void;
   onDownload: () => void;
   onRegenerate: () => void;
+  onAnalyze: () => void;
   onPrep: () => void;
   hasPreppedMaterials: boolean;
   isPrepping: boolean;
@@ -54,6 +55,7 @@ export function PrepTab({
   onPreview,
   onDownload,
   onRegenerate,
+  onAnalyze,
   onPrep,
   hasPreppedMaterials,
   isPrepping,
@@ -69,16 +71,19 @@ export function PrepTab({
         </h3>
         <p className="text-muted-foreground mb-6 max-w-md">
           {job.status === "new"
-            ? "OpenClaw needs to inspect the application page before prep can generate materials."
+            ? "Run Manual Analyze first to mark whether a cover letter is needed and add any custom questions."
             : "Run the prep pipeline to generate a tailored cover letter and interview talking points based on your resume and the job description."}
         </p>
-        <Button onClick={onPrep} disabled={isPrepping || job.status !== "analyzed"}>
+        <Button
+          onClick={job.status === "new" ? onAnalyze : onPrep}
+          disabled={isPrepping || (job.status !== "new" && job.status !== "analyzed")}
+        >
           {isPrepping ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
             <Sparkles className="mr-2 h-4 w-4" />
           )}
-          {job.status === "new" ? "Waiting on OpenClaw" : "Start Prep"}
+          {job.status === "new" ? "Run Manual Analyze" : "Start Prep"}
         </Button>
       </div>
     );

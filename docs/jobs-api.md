@@ -14,7 +14,7 @@ It describes what exists today. It does not propose changes.
 The jobs area is not a single CRUD surface. It is a set of related entry points:
 
 - Job records and cover-letter assets
-- Job profiles used for search, scoring, and prep
+- Job profiles used for prep context and application defaults
 - Jobs-tagged pipelines and pipeline run history
 - Schedules that can trigger jobs pipelines
 - Email-based job ingestion
@@ -66,12 +66,12 @@ Important implementation details:
 - Jobs are soft-deleted with `deleted_at`.
 - Duplicate detection is by `(user_id, job_url)`.
 - Duplicate detection includes soft-deleted jobs, so deleting a job does not make it re-ingestable later.
-- There is a public `POST /jobs` route for manually adding and scoring a job.
+- There is a public `POST /jobs` route for manually adding a job with optional prep context.
 - Server-side transition rules are enforced in the job service, not just in the frontend.
 
 ### Job Profile
 
-Profiles provide the context used by search, scoring, and prep:
+Profiles provide the context used by prep and application defaults:
 
 - `name`
 - `resume_id`
@@ -187,13 +187,38 @@ Notes:
 
 #### `POST /api/v1/jobs`
 
-Creates a manual job and scores it against the selected profile or the user's default profile.
+Creates a manual job with optional profile context.
 
 Behavior:
 
-- Requires a scorable profile with resume text
 - Saves jobs with `ingestion_source="manual"`
 - Saves manual jobs as `new`
+- Persists `profile_id` when provided so prep can reuse it later
+
+#### `POST /api/v1/jobs/{job_id}/manual-analyze`
+
+Marks a job ready for prep without relying on OpenClaw.
+
+Request body:
+
+```json
+{
+  "requires_cover_letter": false,
+  "screening_questions": [
+    "Why do you want to work here?",
+    "Describe your FastAPI experience."
+  ]
+}
+```
+
+Behavior:
+
+- Updates the job to `status="analyzed"`
+- Sets `analyzed_at`
+- Sets `application_type="unknown"`
+- Uses the existing `application_url` when present, otherwise falls back to `job_url`
+- Stores manual screening questions in the same structure prep already consumes
+- Leaves cover letters off by default unless `requires_cover_letter=true`
 
 #### `DELETE /api/v1/jobs/{job_id}`
 
@@ -362,61 +387,9 @@ Run history scoped to a single pipeline.
 
 These are discoverable today because `discover_pipelines()` imports them:
 
-- `job_search`
-- `job_search_batch`
 - `job_prep`
 - `job_prep_batch`
 - `email_sync_jobs`
-
-### `job_search`
-
-Purpose:
-
-- Scrape jobs from supported sources
-- Score them against the selected profile resume
-- Save matching jobs
-
-Input:
-
-- `profile_id` optional
-- `scraper`: `jobspy|mock`, default `jobspy`
-- `hours_old`, default `72`
-- `results_per_term`, default `10`
-- `save_all`, default `false`
-
-Output:
-
-- `total_scraped`
-- `total_analyzed`
-- `jobs_saved`
-- `high_scoring`
-- `duplicates_skipped`
-- `top_jobs`
-
-Persistence behavior:
-
-- Saved jobs get `ingestion_source="scrape"`
-- Saved jobs get `profile_id` for downstream prep
-
-### `job_search_batch`
-
-Purpose:
-
-- Run `job_search` across all user profiles that have resumes
-
-Input:
-
-- `hours_old`
-- `results_per_term`
-
-Output:
-
-- `total_profiles`
-- `successful`
-- `failed`
-- `total_jobs_saved`
-- `total_high_scoring`
-- per-profile result list
 
 ### `job_prep`
 
@@ -430,6 +403,7 @@ Input:
 - `profile_id` optional
 - `tone`: `professional|conversational|enthusiastic`
 - `generate_screening_answers`
+- `force_cover_letter`
 
 Output:
 
@@ -483,7 +457,7 @@ Input:
 
 - `source_id` optional
 - `force_full_sync`
-- `save_all`
+- `save_all` retained for compatibility but ignored
 
 Output:
 
@@ -499,8 +473,8 @@ Output:
 Persistence behavior:
 
 - Saved jobs get `ingestion_source="email"`
-- Uses the user's default profile for scoring when resume text is available
-- Fails the sync with a structured configuration error when no scorable profile is available
+- Uses the user's default profile as prep context when available
+- Still ingests jobs when no profile exists
 
 ## Email Routes That Feed Jobs
 
@@ -603,11 +577,7 @@ Top-level request fields:
 
 - `jobs` required, min length `1`
 - `profile_id` optional
-- `analyze_with_profile` default `true`
-- `save_all` default `true`
-- `min_score` optional
 - `search_terms` optional
-- `qa_with_internal_analysis` default `false`
 
 Per-job fields:
 
@@ -636,9 +606,7 @@ Per-job fields:
 Validation rules:
 
 - `reasoning` requires `relevance_score`
-- `qa_with_internal_analysis=true` requires `analyze_with_profile=true`
 - if `profile_id` is supplied, it must belong to the token's user
-- QA analysis also requires resume text to be available through the selected/default profile
 
 Response:
 
@@ -647,11 +615,7 @@ Response:
 - `jobs_saved`
 - `duplicates_skipped`
 - `high_scoring`
-- `analysis_enabled`
 - `external_analysis_used`
-- `qa_with_internal_analysis`
-- `qa_jobs_checked`
-- `qa_large_score_drift`
 - `profile_id`
 - `profile_name`
 - `token_id`
@@ -661,7 +625,7 @@ Persistence behavior:
 
 - Jobs are stored with `ingestion_source="openclaw"`
 - External `relevance_score` and `reasoning` are stored directly when provided
-- If external analysis is absent and profile resume context is available, internal analysis can score the jobs
+- Jobs can be saved without any score when external systems do not provide one
 - Jobs are saved directly as `analyzed` when application-analysis fields are present
 
 Important note:
@@ -779,6 +743,7 @@ These browser-facing Next.js routes exist today and mostly forward to the backen
 - `POST /api/jobs/{id}/cover-letter/generate-pdf`
 - `GET /api/jobs/{id}/cover-letter/download`
 - `GET /api/jobs/{id}/cover-letter/preview`
+- `POST /api/jobs/{id}/manual-analyze`
 
 ### Job Profiles
 
@@ -808,15 +773,13 @@ These browser-facing Next.js routes exist today and mostly forward to the backen
 
 Implementation notes:
 
-- The frontend hook `useJobs.deleteByStatus()` calls `/api/jobs/batch/delete`, but the checked-in App Router proxy file is `frontend/src/app/api/jobs/batch/dismiss/route.ts`.
-- That proxy file forwards to `/api/v1/jobs/batch/dismiss`, while the backend route is `/api/v1/jobs/batch/delete`.
-- The documented backend route in this file is the actual current backend route.
+- The frontend proxy for batch delete is `frontend/src/app/api/jobs/batch/delete/route.ts`.
+- The frontend proxy for manual analyze is `frontend/src/app/api/jobs/[id]/manual-analyze/route.ts`.
 
 ## Summary
 
-Today, jobs can enter the system through four paths:
+Today, jobs can enter the system through three paths:
 
-- `job_search` pipeline
 - `email_sync_jobs` pipeline
 - internal/manual service ingestion paths
 - `POST /api/v1/integrations/openclaw/jobs/ingest`

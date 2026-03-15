@@ -57,7 +57,7 @@ Pipeline tags: ['jobs']
 
 ### Steps
 1. In the jobs assistant chat
-2. Send message: **"What are my job search statistics?"**
+2. Send message: **"What are my job statistics?"**
 
 ### Expected Result
 - Agent should call `jobs_get_job_stats` tool
@@ -72,7 +72,7 @@ Pipeline tags: ['jobs']
 ## Test 4: Chat with Jobs Assistant - Update Job Status
 
 ### Prerequisites
-- Have at least one saved job (run job_search pipeline first if needed)
+- Have at least one saved job (via external ingest or manual entry)
 
 ### Steps
 1. First, ask: **"Show me my new jobs"**
@@ -90,7 +90,7 @@ Pipeline tags: ['jobs']
 
 ### Steps
 1. In the jobs assistant chat
-2. Send message: **"List my job search profiles"**
+2. Send message: **"List my job profiles"**
 
 ### Expected Result
 - Agent should call `profiles_list_profiles` tool
@@ -125,25 +125,7 @@ Pipeline tags: ['jobs']
 
 ---
 
-## Test 8: Chat with Jobs Assistant - Run Job Search Pipeline
-
-### Prerequisites
-- Have at least one profile with a resume linked
-
-### Steps
-1. Send message: **"Search for jobs matching my profile"**
-
-### Expected Result
-- Agent should call `run_pipeline` with `job_search` pipeline
-- Response should show:
-  - Number of jobs scraped
-  - Number analyzed
-  - Number saved
-  - Top scoring jobs
-
----
-
-## Test 9: Verify Pipeline Filtering
+## Test 8: Verify Pipeline Filtering
 
 ### Steps
 1. In the jobs assistant chat
@@ -151,11 +133,11 @@ Pipeline tags: ['jobs']
 
 ### Expected Result
 - Agent should call `list_available_pipelines` tool
-- Response should ONLY show `job_search` pipeline (not `echo` or other non-jobs pipelines)
+- Response should only show jobs-area prep pipelines (not `echo` or other non-jobs pipelines)
 
 ---
 
-## Test 10: Verify Tool Prefixes in Tool Calls
+## Test 9: Verify Tool Prefixes in Tool Calls
 
 ### Steps
 1. Open browser DevTools → Network tab
@@ -188,7 +170,7 @@ Pipeline tags: ['jobs']
 2. Try creating a profile first via web UI
 
 ### Jobs tools returning empty
-1. Run the job_search pipeline first to populate jobs
+1. Add or ingest jobs first
 2. Check `/jobs/list` to see if jobs exist
 
 ---
@@ -213,5 +195,3 @@ cd backend && uv run python -m pytest tests/test_agents.py -v
 ---
 
 *Last Updated: 2025-12-24*
-
-

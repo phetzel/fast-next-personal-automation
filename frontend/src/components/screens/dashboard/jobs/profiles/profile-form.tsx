@@ -154,8 +154,8 @@ export function ProfileForm({ profile, onSave, onCancel, isLoading }: ProfileFor
         <CardTitle>{isEditing ? "Edit Profile" : "Create New Profile"}</CardTitle>
         <CardDescription>
           {isEditing
-            ? "Update your job search profile settings"
-            : "Create a new job search profile with your resume, story, projects, and preferences"}
+            ? "Update your job profile settings"
+            : "Create a new job profile with your resume, story, projects, and preferences"}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -182,7 +182,7 @@ export function ProfileForm({ profile, onSave, onCancel, isLoading }: ProfileFor
               placeholder="Select a resume for this profile..."
             />
             <p className="text-muted-foreground mt-1 text-xs">
-              Link a resume to this profile for AI job matching.
+              Link a resume to this profile for prep notes, question answers, and cover letters.
             </p>
           </div>
 

@@ -68,8 +68,8 @@ export function JobSelectField({
               <p className="text-muted-foreground font-medium">No Jobs Found</p>
               <p className="text-muted-foreground mt-1 text-sm">
                 {statusFilter
-                  ? "No jobs match the required status. Try running a job search first."
-                  : "Run a job search to find jobs, then come back to prep."}
+                  ? "No jobs match the required status yet."
+                  : "Add or ingest jobs first, then come back to prep."}
               </p>
             </div>
           </div>

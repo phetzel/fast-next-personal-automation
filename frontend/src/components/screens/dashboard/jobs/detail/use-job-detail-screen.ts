@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useJobs } from "@/hooks";
+import { useManualAnalyzeDialog } from "@/components/shared/jobs";
 import { useJobDetail } from "@/components/shared/jobs/use-job-detail";
 import type { JobStatus } from "@/types";
 
@@ -20,6 +21,18 @@ export function useJobDetailScreen(jobId: string) {
     onUpdate: updateJobStatus,
     onDeleteSuccess: () => router.push("/jobs/list"),
     onJobChange: setSelectedJob,
+  });
+  const {
+    job: analyzeJob,
+    isOpen: isManualAnalyzeModalOpen,
+    open: openManualAnalyzeDialog,
+    close: closeManualAnalyze,
+    complete: completeManualAnalyze,
+  } = useManualAnalyzeDialog({
+    onComplete: async () => {
+      await detail.refreshJob();
+      setActiveTab("overview");
+    },
   });
 
   const handleStatusChange = useCallback(
@@ -48,13 +61,24 @@ export function useJobDetailScreen(jobId: string) {
     setActiveTab("prep");
   }, [detail]);
 
+  const openManualAnalyze = useCallback(() => {
+    if (detail.job) {
+      openManualAnalyzeDialog(detail.job);
+    }
+  }, [detail.job, openManualAnalyzeDialog]);
+
   return {
     ...detail,
     activeTab,
     setActiveTab,
+    analyzeJob,
+    isManualAnalyzeModalOpen,
+    openManualAnalyze,
+    closeManualAnalyze,
     isPrepModalOpen,
     setIsPrepModalOpen,
     handleStatusChange,
+    handleManualAnalyzeComplete: completeManualAnalyze,
     handlePrepComplete,
   };
 }

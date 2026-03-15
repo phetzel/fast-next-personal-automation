@@ -51,10 +51,10 @@ frontend/src/
 | `/jobs` | `jobs/page.tsx` | Jobs area overview |
 | `/jobs/list` | `jobs/list/page.tsx` | Job listings |
 | `/jobs/[id]` | `jobs/[id]/page.tsx` | Job detail page with prep materials |
-| `/jobs/profiles` | `jobs/profiles/page.tsx` | Job search profiles |
+| `/jobs/profiles` | `jobs/profiles/page.tsx` | Job profiles |
 | `/jobs/resumes` | `jobs/resumes/page.tsx` | Resume management |
-| `/jobs/search` | `jobs/search/page.tsx` | Job search pipelines |
-| `/jobs/chat` | `jobs/chat/page.tsx` | Jobs-specific AI chat |
+| `/jobs/pipelines` | `jobs/pipelines/page.tsx` | Job prep pipelines |
+| `/jobs/assistant` | `jobs/assistant/page.tsx` | Jobs-specific AI chat |
 | `/finances` | `finances/page.tsx` | Finance overview (net worth, budget status, spending) |
 | `/finances/accounts` | `finances/accounts/page.tsx` | Financial accounts list |
 | `/finances/transactions` | `finances/transactions/page.tsx` | Transaction list with filters |
@@ -194,7 +194,7 @@ useEffect(() => {
 
 ### useJobProfiles
 
-Manages job search profiles:
+Manages job profiles:
 
 ```typescript
 import { useJobProfiles } from "@/hooks";
@@ -532,4 +532,3 @@ Test files are in `e2e/`:
 - `chat.spec.ts` - Chat functionality
 - `home.spec.ts` - Home page
 - `jobs.spec.ts` - Jobs area functionality
-
