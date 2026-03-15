@@ -57,6 +57,8 @@ describe("AuthGuard", () => {
       expect(screen.queryByText("Protected content")).not.toBeInTheDocument();
     });
 
+    expect(screen.getByText("You are not signed in.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Go to login" })).toHaveAttribute("href", "/login");
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
   });
 });

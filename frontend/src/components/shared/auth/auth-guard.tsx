@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
+import { ROUTES } from "@/lib/constants";
 import { useAuthStore } from "@/stores";
 import type { User } from "@/types";
 
@@ -10,6 +13,7 @@ interface AuthGuardProps {
 }
 
 export function AuthGuard({ children }: AuthGuardProps) {
+  const router = useRouter();
   const { user, isAuthenticated, isLoading, setLoading, setUser } = useAuthStore();
 
   useEffect(() => {
@@ -42,6 +46,12 @@ export function AuthGuard({ children }: AuthGuardProps) {
     };
   }, [isAuthenticated, setLoading, setUser, user]);
 
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace(ROUTES.LOGIN);
+    }
+  }, [isAuthenticated, isLoading, router]);
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -54,7 +64,16 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }
 
   if (!isAuthenticated) {
-    return null;
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-muted-foreground flex flex-col items-center gap-3">
+          <span>You are not signed in.</span>
+          <Link href={ROUTES.LOGIN} className="text-primary underline underline-offset-4">
+            Go to login
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;

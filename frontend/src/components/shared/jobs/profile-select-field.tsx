@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { useJobProfiles } from "@/hooks/use-job-profiles";
 import { Combobox } from "@/components/shared/forms";
@@ -29,6 +30,10 @@ export function ProfileSelectField({
   description,
 }: ProfileSelectFieldProps) {
   const { profiles, isLoading, error, hasProfiles } = useJobProfiles();
+  const profilesById = useMemo(
+    () => new Map(profiles.map((profile) => [profile.id, profile])),
+    [profiles]
+  );
 
   // No profiles - show prominent CTA
   if (!isLoading && !hasProfiles) {
@@ -94,6 +99,7 @@ export function ProfileSelectField({
   // Find the default profile
   const defaultProfile = profiles.find((p) => p.is_default);
   const selectedValue = typeof value === "string" && value ? value : UNSET_PROFILE_VALUE;
+  const selectedProfile = typeof value === "string" ? profilesById.get(value) : undefined;
 
   return (
     <div className="space-y-2">
@@ -128,7 +134,7 @@ export function ProfileSelectField({
         }
         searchPlaceholder="Search profiles..."
         renderOption={(option) => {
-          const profile = profiles.find((item) => item.id === option.value);
+          const profile = profilesById.get(option.value);
 
           if (!profile) {
             return option.label;
@@ -151,9 +157,7 @@ export function ProfileSelectField({
       />
 
       {/* Show selected profile info */}
-      {typeof value === "string" && value && (
-        <SelectedProfileInfo profile={profiles.find((p) => p.id === value)} />
-      )}
+      {typeof value === "string" && value && <SelectedProfileInfo profile={selectedProfile} />}
 
       {/* Description */}
       {description && <p className="text-muted-foreground text-xs">{description}</p>}

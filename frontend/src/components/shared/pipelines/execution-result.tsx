@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Card,
@@ -197,7 +197,11 @@ function ProfileRequiredErrorView({
   onProfileSelect,
   onRetry,
 }: ProfileRequiredErrorViewProps) {
-  const selectedProfile = availableProfiles.find((p) => p.id === selectedProfileId);
+  const profilesById = useMemo(
+    () => new Map(availableProfiles.map((profile) => [profile.id, profile])),
+    [availableProfiles]
+  );
+  const selectedProfile = profilesById.get(selectedProfileId);
   const hasNoProfiles = availableProfiles.length === 0;
 
   return (
@@ -265,7 +269,7 @@ function ProfileRequiredErrorView({
               searchPlaceholder="Search profiles..."
               disabled={profilesLoading}
               renderOption={(option) => {
-                const profile = availableProfiles.find((item) => item.id === option.value);
+                const profile = profilesById.get(option.value);
 
                 if (!profile) {
                   return option.label;

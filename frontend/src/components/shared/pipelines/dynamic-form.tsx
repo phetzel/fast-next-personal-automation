@@ -58,13 +58,53 @@ export function DynamicForm({
     }
     return defaults;
   });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const handleChange = useCallback((key: string, value: unknown) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
+    setFieldErrors((prev) => {
+      if (!(key in prev)) {
+        return prev;
+      }
+
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const nextErrors = Object.fromEntries(
+      Object.entries(schema.properties ?? {})
+        .filter(([key, property]) => {
+          if (property["x-hidden"]) {
+            return false;
+          }
+
+          const isRequired = requiredFields.has(key);
+          const isCustomSelect =
+            Boolean(property.enum?.length) ||
+            property.format === "x-profile-select" ||
+            property.format === "x-job-select";
+
+          if (!isRequired || !isCustomSelect) {
+            return false;
+          }
+
+          const value = formData[key];
+          return value === undefined || value === null || String(value).trim() === "";
+        })
+        .map(([key]) => [key, `${formatLabel(key)} is required.`])
+    );
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFieldErrors(nextErrors);
+      return;
+    }
+
+    setFieldErrors({});
     onSubmit(formData);
   };
 
@@ -83,6 +123,7 @@ export function DynamicForm({
               value={formData[key]}
               onChange={(value) => handleChange(key, value)}
               required={requiredFields.has(key)}
+              error={fieldErrors[key]}
             />
           ))}
 
@@ -99,35 +140,42 @@ interface FormFieldProps {
   value: unknown;
   onChange: (value: unknown) => void;
   required?: boolean;
+  error?: string;
 }
 
-function FormField({ name, property, value, onChange, required }: FormFieldProps) {
+function FormField({ name, property, value, onChange, required, error }: FormFieldProps) {
   const id = `field-${name}`;
   const description = property.description;
 
   // Handle custom x-profile-select format for profile selection
   if (property.format === "x-profile-select") {
     return (
-      <ProfileSelectField
-        id={id}
-        value={value}
-        onChange={(v) => onChange(v)}
-        required={required}
-        description={description}
-      />
+      <div className="space-y-2">
+        <ProfileSelectField
+          id={id}
+          value={value}
+          onChange={(v) => onChange(v)}
+          required={required}
+          description={description}
+        />
+        {error && <p className="text-destructive text-xs">{error}</p>}
+      </div>
     );
   }
 
   // Handle custom x-job-select format for job selection
   if (property.format === "x-job-select") {
     return (
-      <JobSelectField
-        id={id}
-        value={value}
-        onChange={(v) => onChange(v)}
-        required={required}
-        description={description}
-      />
+      <div className="space-y-2">
+        <JobSelectField
+          id={id}
+          value={value}
+          onChange={(v) => onChange(v)}
+          required={required}
+          description={description}
+        />
+        {error && <p className="text-destructive text-xs">{error}</p>}
+      </div>
     );
   }
 
@@ -143,7 +191,12 @@ function FormField({ name, property, value, onChange, required }: FormFieldProps
           value={String(value ?? UNSET_ENUM_VALUE)}
           onValueChange={(nextValue) => onChange(nextValue === UNSET_ENUM_VALUE ? "" : nextValue)}
         >
-          <SelectTrigger id={id} className="w-full" aria-required={required}>
+          <SelectTrigger
+            id={id}
+            className="w-full"
+            aria-required={required}
+            aria-invalid={Boolean(error)}
+          >
             <SelectValue placeholder="Select..." />
           </SelectTrigger>
           <SelectContent>
@@ -155,6 +208,7 @@ function FormField({ name, property, value, onChange, required }: FormFieldProps
             ))}
           </SelectContent>
         </Select>
+        {error && <p className="text-destructive text-xs">{error}</p>}
         {description && <p className="text-muted-foreground text-xs">{description}</p>}
       </div>
     );

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { EmptyState } from "@/components/shared/feedback";
 import { Button, Card, CardContent, CardHeader, CardTitle, Skeleton } from "@/components/ui";
 import { ROUTES } from "@/lib/constants";
+import { formatRelativeTime } from "@/lib/formatters";
 import type { EmailSync } from "@/types";
 import {
   AlertCircle,
@@ -17,20 +18,6 @@ interface RecentSyncsPanelProps {
   syncs: EmailSync[];
   isLoading: boolean;
   sourcesCount: number;
-}
-
-function getRelativeTime(dateString: string) {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  return `${diffDays}d ago`;
 }
 
 function getStatusIcon(status: string) {
@@ -103,7 +90,7 @@ export function RecentSyncsPanel({ syncs, isLoading, sourcesCount }: RecentSyncs
                   <div>
                     <p className="font-medium">{getStatusLabel(sync.status)}</p>
                     <p className="text-muted-foreground text-sm">
-                      {getRelativeTime(sync.started_at)}
+                      {formatRelativeTime(sync.started_at)}
                     </p>
                   </div>
                 </div>

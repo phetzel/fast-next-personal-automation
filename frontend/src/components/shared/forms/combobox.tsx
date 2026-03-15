@@ -78,12 +78,13 @@ export function Combobox({
             <CommandGroup>
               {options.map((option) => {
                 const selected = option.value === value;
+                const searchKeywords = [option.label, ...(option.keywords ?? [])];
 
                 return (
                   <CommandItem
                     key={option.value}
-                    value={option.label}
-                    keywords={option.keywords}
+                    value={option.value}
+                    keywords={searchKeywords}
                     disabled={option.disabled}
                     onSelect={() => {
                       onValueChange(option.value);

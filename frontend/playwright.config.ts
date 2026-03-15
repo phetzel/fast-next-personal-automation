@@ -11,7 +11,7 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 1,
+  workers: process.env.CI ? 1 : undefined,
   reporter: [["list"], ["html", { outputFolder: "playwright-report" }]],
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000",
@@ -32,6 +32,24 @@ export default defineConfig({
       },
       dependencies: ["setup"],
     },
+    ...(process.env.PLAYWRIGHT_ALL_BROWSERS
+      ? [
+          {
+            name: "firefox",
+            use: {
+              ...devices["Desktop Firefox"],
+            },
+            dependencies: ["setup"],
+          },
+          {
+            name: "webkit",
+            use: {
+              ...devices["Desktop Safari"],
+            },
+            dependencies: ["setup"],
+          },
+        ]
+      : []),
   ],
   webServer: process.env.CI
     ? undefined
