@@ -247,9 +247,6 @@ class EmailService:
         email_content: dict,
         job_service: JobService,
         profile_id: UUID | None = None,
-        resume_text: str | None = None,
-        target_roles: list[str] | None = None,
-        min_score: float = 7.0,
     ) -> dict[str, Any]:
         """Process an email for a specific destination.
 
@@ -297,10 +294,6 @@ class EmailService:
                             jobs=raw_jobs,
                             ingestion_source="email",
                             profile_id=profile_id,
-                            resume_text=resume_text,
-                            target_roles=target_roles,
-                            min_score=min_score,
-                            save_all=True,
                         )
                         # Store created job IDs
                         if ingestion.saved_jobs:

@@ -226,7 +226,7 @@ export function JobDetailModal({
                     questions you want prepped.
                   </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => onAnalyze(currentJob)}>
+                <Button variant="outline" size="sm" onClick={() => onAnalyze?.(currentJob)}>
                   <ClipboardCheck className="mr-2 h-4 w-4" />
                   Manual Analyze
                 </Button>
@@ -242,7 +242,7 @@ export function JobDetailModal({
                 </p>
                 <div className="flex items-center gap-2">
                   {currentJob.status === "analyzed" && onAnalyze && (
-                    <Button variant="outline" size="sm" onClick={() => onAnalyze(currentJob)}>
+                    <Button variant="outline" size="sm" onClick={() => onAnalyze?.(currentJob)}>
                       <ClipboardCheck className="mr-2 h-4 w-4" />
                       Edit Analysis
                     </Button>
@@ -286,14 +286,21 @@ export function JobDetailModal({
                     Questions to prep
                   </p>
                   <ul className="space-y-1 text-sm">
-                    {currentJob.screening_questions
-                      ?.map(getScreeningQuestionText)
-                      .filter(Boolean)
-                      .map((question) => (
-                        <li key={question} className="bg-background/70 rounded-md px-3 py-2">
-                          {question}
+                    {currentJob.screening_questions?.map((question, index) => {
+                      const questionText = getScreeningQuestionText(question);
+                      if (!questionText) {
+                        return null;
+                      }
+
+                      return (
+                        <li
+                          key={`${currentJob.id}-screening-${index}`}
+                          className="bg-background/70 rounded-md px-3 py-2"
+                        >
+                          {questionText}
                         </li>
-                      ))}
+                      );
+                    })}
                   </ul>
                 </div>
               )}

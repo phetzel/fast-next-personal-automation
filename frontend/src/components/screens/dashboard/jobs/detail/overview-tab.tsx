@@ -126,14 +126,21 @@ export function OverviewTab({
                 <div className="space-y-2">
                   <p className="font-medium">Questions to prep</p>
                   <ul className="space-y-1">
-                    {job.screening_questions
-                      .map(getScreeningQuestionText)
-                      .filter(Boolean)
-                      .map((question) => (
-                        <li key={question} className="bg-muted/40 rounded-md px-3 py-2">
-                          {question}
+                    {job.screening_questions.map((question, index) => {
+                      const questionText = getScreeningQuestionText(question);
+                      if (!questionText) {
+                        return null;
+                      }
+
+                      return (
+                        <li
+                          key={`${job.id}-screening-${index}`}
+                          className="bg-muted/40 rounded-md px-3 py-2"
+                        >
+                          {questionText}
                         </li>
-                      ))}
+                      );
+                    })}
                   </ul>
                 </div>
               )}

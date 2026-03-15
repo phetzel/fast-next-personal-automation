@@ -259,7 +259,7 @@ export function JobTable({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onAnalyze(job);
+                    onAnalyze?.(job);
                   }}
                   className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-500/10 px-2 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-500/20"
                   title="Capture application requirements"
