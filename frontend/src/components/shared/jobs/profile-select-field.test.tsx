@@ -27,8 +27,6 @@ describe("ProfileSelectField", () => {
   });
 
   it("renders an onboarding state when no profiles exist", () => {
-    const fetchProfiles = vi.fn();
-
     mockUseJobProfiles.mockReturnValue({
       profiles: [],
       currentProfile: null,
@@ -37,7 +35,7 @@ describe("ProfileSelectField", () => {
       error: null,
       hasProfiles: false,
       hasCompleteProfile: false,
-      fetchProfiles,
+      fetchProfiles: vi.fn(),
       getProfile: vi.fn(),
       getDefaultProfile: vi.fn(),
       createProfile: vi.fn(),
@@ -55,7 +53,6 @@ describe("ProfileSelectField", () => {
       "href",
       "/jobs/profiles"
     );
-    expect(fetchProfiles).toHaveBeenCalledTimes(1);
   });
 
   it("shows selected profile details when a profile is chosen", () => {

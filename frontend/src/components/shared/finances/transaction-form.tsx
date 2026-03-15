@@ -1,15 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { FormDialogShell } from "@/components/shared/forms";
 import type { FinanceCategory, FinancialAccount, Transaction } from "@/types";
 import { Button, Input, Label } from "@/components/ui";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -36,6 +30,7 @@ export function TransactionForm({
   categories = [],
 }: TransactionFormProps) {
   const isEdit = !!transaction;
+  const formId = isEdit ? "edit-transaction-form" : "create-transaction-form";
   const [loading, setLoading] = useState(false);
   const defaultAccountId =
     accounts.find((account) => account.is_default && account.is_active)?.id ?? "";
@@ -74,150 +69,160 @@ export function TransactionForm({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Transaction" : "Add Transaction"}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <FormDialogShell
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          onClose();
+        }
+      }}
+      title={isEdit ? "Edit Transaction" : "Add Transaction"}
+      maxWidth="sm:max-w-md"
+      scrollable
+      footer={
+        <>
+          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form={formId}
+            disabled={loading || !formData.description || !formData.amount}
+          >
+            {loading ? "Saving..." : isEdit ? "Save Changes" : "Add Transaction"}
+          </Button>
+        </>
+      }
+    >
+      <form id={formId} onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="description">Description *</Label>
+          <Input
+            id="description"
+            value={formData.description}
+            onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
+            placeholder="e.g. Grocery run"
+            required
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label htmlFor="description">Description *</Label>
+            <Label htmlFor="amount">Amount *</Label>
             <Input
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
-              placeholder="e.g. Grocery run"
+              id="amount"
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.amount}
+              onChange={(e) => setFormData((p) => ({ ...p, amount: e.target.value }))}
+              placeholder="0.00"
               required
             />
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="amount">Amount *</Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.amount}
-                onChange={(e) => setFormData((p) => ({ ...p, amount: e.target.value }))}
-                placeholder="0.00"
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="type">Type *</Label>
-              <Select
-                value={formData.transaction_type}
-                onValueChange={(v) =>
-                  setFormData((p) => ({
-                    ...p,
-                    transaction_type: v as Transaction["transaction_type"],
-                  }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="debit">Expense (money out)</SelectItem>
-                  <SelectItem value="credit">Income (money in)</SelectItem>
-                  <SelectItem value="transfer">Transfer (label only)</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-muted-foreground text-xs">
-                Transfers are not double-entry yet. They currently save as a normal transaction with
-                a transfer label.
-              </p>
-            </div>
-          </div>
-
           <div className="space-y-1.5">
-            <Label htmlFor="transaction_date">Date *</Label>
-            <Input
-              id="transaction_date"
-              type="date"
-              value={formData.transaction_date}
-              onChange={(e) => setFormData((p) => ({ ...p, transaction_date: e.target.value }))}
-              required
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="merchant">Merchant</Label>
-            <Input
-              id="merchant"
-              value={formData.merchant}
-              onChange={(e) => setFormData((p) => ({ ...p, merchant: e.target.value }))}
-              placeholder="e.g. Whole Foods"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="category">Category</Label>
+            <Label htmlFor="type">Type *</Label>
             <Select
-              value={formData.category}
-              onValueChange={(v) => setFormData((p) => ({ ...p, category: v }))}
+              value={formData.transaction_type}
+              onValueChange={(v) =>
+                setFormData((p) => ({
+                  ...p,
+                  transaction_type: v as Transaction["transaction_type"],
+                }))
+              }
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select category..." />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.slug} value={cat.slug}>
-                    {cat.name}
+                <SelectItem value="debit">Expense (money out)</SelectItem>
+                <SelectItem value="credit">Income (money in)</SelectItem>
+                <SelectItem value="transfer">Transfer (label only)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-muted-foreground text-xs">
+              Transfers are not double-entry yet. They currently save as a normal transaction with a
+              transfer label.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="transaction_date">Date *</Label>
+          <Input
+            id="transaction_date"
+            type="date"
+            value={formData.transaction_date}
+            onChange={(e) => setFormData((p) => ({ ...p, transaction_date: e.target.value }))}
+            required
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="merchant">Merchant</Label>
+          <Input
+            id="merchant"
+            value={formData.merchant}
+            onChange={(e) => setFormData((p) => ({ ...p, merchant: e.target.value }))}
+            placeholder="e.g. Whole Foods"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="category">Category</Label>
+          <Select
+            value={formData.category}
+            onValueChange={(v) => setFormData((p) => ({ ...p, category: v }))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select category..." />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((cat) => (
+                <SelectItem key={cat.slug} value={cat.slug}>
+                  {cat.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {accounts.length > 0 && (
+          <div className="space-y-1.5">
+            <Label htmlFor="account_id">Account</Label>
+            <Select
+              value={formData.account_id || "__none__"}
+              onValueChange={(v) =>
+                setFormData((p) => ({ ...p, account_id: v === "__none__" ? "" : v }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select account..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">No account</SelectItem>
+                {accounts.map((acc) => (
+                  <SelectItem key={acc.id} value={acc.id}>
+                    {acc.name}
+                    {acc.is_default ? " (default)" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+        )}
 
-          {accounts.length > 0 && (
-            <div className="space-y-1.5">
-              <Label htmlFor="account_id">Account</Label>
-              <Select
-                value={formData.account_id || "__none__"}
-                onValueChange={(v) =>
-                  setFormData((p) => ({ ...p, account_id: v === "__none__" ? "" : v }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select account..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">No account</SelectItem>
-                  {accounts.map((acc) => (
-                    <SelectItem key={acc.id} value={acc.id}>
-                      {acc.name}
-                      {acc.is_default ? " (default)" : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <div className="space-y-1.5">
-            <Label htmlFor="notes">Notes</Label>
-            <Input
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))}
-              placeholder="Optional notes"
-            />
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading || !formData.description || !formData.amount}>
-              {loading ? "Saving..." : isEdit ? "Save Changes" : "Add Transaction"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        <div className="space-y-1.5">
+          <Label htmlFor="notes">Notes</Label>
+          <Input
+            id="notes"
+            value={formData.notes}
+            onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))}
+            placeholder="Optional notes"
+          />
+        </div>
+      </form>
+    </FormDialogShell>
   );
 }
 

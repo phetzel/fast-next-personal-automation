@@ -1,9 +1,19 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 import type { Transaction, FinancialAccount } from "@/types";
 import { CategoryBadge } from "./category-badge";
-import { Button, Skeleton } from "@/components/ui";
+import {
+  Button,
+  Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui";
 import { CheckCircle2, Circle, Pencil, Trash2, Mail, FileText, PenLine } from "lucide-react";
 
 interface TransactionTableProps {
@@ -37,15 +47,6 @@ export function TransactionTable({
 }: TransactionTableProps) {
   const accountMap = Object.fromEntries(accounts.map((a) => [a.id, a]));
 
-  const formatAmount = (amount: number) => {
-    const abs = Math.abs(amount);
-    const formatted = new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(abs);
-    return { formatted, isPositive: amount >= 0 };
-  };
-
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -68,115 +69,111 @@ export function TransactionTable({
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b">
-            <th className="text-muted-foreground pb-2 text-left font-medium">Date</th>
-            <th className="text-muted-foreground pb-2 text-left font-medium">Description</th>
-            <th className="text-muted-foreground pb-2 text-left font-medium">Category</th>
-            <th className="text-muted-foreground pb-2 text-left font-medium">Account</th>
-            <th className="text-muted-foreground pb-2 text-right font-medium">Amount</th>
-            <th className="text-muted-foreground pb-2 text-center font-medium">Source</th>
-            <th className="pb-2" />
-          </tr>
-        </thead>
-        <tbody className="divide-y">
-          {transactions.map((tx) => {
-            const { formatted, isPositive } = formatAmount(tx.amount);
-            const SourceIcon = sourceIcon[tx.source] ?? PenLine;
-            const account = tx.account_id ? accountMap[tx.account_id] : null;
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Date</TableHead>
+          <TableHead>Description</TableHead>
+          <TableHead>Category</TableHead>
+          <TableHead>Account</TableHead>
+          <TableHead className="text-right">Amount</TableHead>
+          <TableHead className="text-center">Source</TableHead>
+          <TableHead />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {transactions.map((tx) => {
+          const formattedAmount = formatCurrency(Math.abs(tx.amount));
+          const isPositive = tx.amount >= 0;
+          const SourceIcon = sourceIcon[tx.source] ?? PenLine;
+          const account = tx.account_id ? accountMap[tx.account_id] : null;
 
-            return (
-              <tr
-                key={tx.id}
+          return (
+            <TableRow
+              key={tx.id}
+              className={cn(
+                "group hover:bg-muted/40",
+                !tx.is_reviewed && "bg-amber-50/30 dark:bg-amber-500/5"
+              )}
+            >
+              <TableCell className="whitespace-nowrap">
+                {formatDate(`${tx.transaction_date}T00:00:00`, "MMM d")}
+              </TableCell>
+              <TableCell className="max-w-[240px]">
+                <p className="truncate font-medium">{tx.description}</p>
+                {tx.merchant && tx.merchant !== tx.description ? (
+                  <p className="text-muted-foreground truncate text-xs">{tx.merchant}</p>
+                ) : null}
+              </TableCell>
+              <TableCell>
+                <CategoryBadge category={tx.category} />
+              </TableCell>
+              <TableCell className="text-muted-foreground">{account?.name ?? "—"}</TableCell>
+              <TableCell
                 className={cn(
-                  "group hover:bg-muted/40 transition-colors",
-                  !tx.is_reviewed && "bg-amber-50/30 dark:bg-amber-500/5"
+                  "text-right font-semibold tabular-nums",
+                  isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
                 )}
               >
-                <td className="py-2.5 pr-4 whitespace-nowrap">
-                  {new Date(tx.transaction_date + "T00:00:00").toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </td>
-                <td className="max-w-[240px] py-2.5 pr-4">
-                  <p className="truncate font-medium">{tx.description}</p>
-                  {tx.merchant && tx.merchant !== tx.description && (
-                    <p className="text-muted-foreground truncate text-xs">{tx.merchant}</p>
-                  )}
-                </td>
-                <td className="py-2.5 pr-4">
-                  <CategoryBadge category={tx.category} />
-                </td>
-                <td className="text-muted-foreground py-2.5 pr-4">{account?.name ?? "—"}</td>
-                <td
-                  className={cn(
-                    "py-2.5 pr-2 text-right font-semibold whitespace-nowrap tabular-nums",
-                    isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
-                  )}
+                {isPositive ? "+" : ""}
+                {formattedAmount}
+              </TableCell>
+              <TableCell className="text-center">
+                <span
+                  className="text-muted-foreground inline-flex items-center gap-1 text-xs"
+                  title={sourceLabel[tx.source]}
                 >
-                  {isPositive ? "+" : ""}
-                  {formatted}
-                </td>
-                <td className="px-2 py-2.5 text-center">
-                  <span
-                    className="text-muted-foreground inline-flex items-center gap-1 text-xs"
-                    title={sourceLabel[tx.source]}
-                  >
-                    <SourceIcon className="h-3.5 w-3.5" />
-                  </span>
-                </td>
-                <td className="py-2.5 pl-1">
-                  <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                    {onMarkReviewed && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className={cn(
-                          "h-7 w-7 p-0",
-                          tx.is_reviewed
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-muted-foreground"
-                        )}
-                        title={tx.is_reviewed ? "Mark unreviewed" : "Mark reviewed"}
-                        onClick={() => onMarkReviewed(tx.id)}
-                      >
-                        {tx.is_reviewed ? (
-                          <CheckCircle2 className="h-4 w-4" />
-                        ) : (
-                          <Circle className="h-4 w-4" />
-                        )}
-                      </Button>
-                    )}
-                    {onEdit && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0"
-                        onClick={() => onEdit(tx)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                    {onDelete && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive h-7 w-7 p-0"
-                        onClick={() => onDelete(tx.id)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+                  <SourceIcon className="h-3.5 w-3.5" />
+                </span>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  {onMarkReviewed ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "h-7 w-7 p-0",
+                        tx.is_reviewed
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-muted-foreground"
+                      )}
+                      title={tx.is_reviewed ? "Mark unreviewed" : "Mark reviewed"}
+                      onClick={() => onMarkReviewed(tx.id)}
+                    >
+                      {tx.is_reviewed ? (
+                        <CheckCircle2 className="h-4 w-4" />
+                      ) : (
+                        <Circle className="h-4 w-4" />
+                      )}
+                    </Button>
+                  ) : null}
+                  {onEdit ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => onEdit(tx)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  ) : null}
+                  {onDelete ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive h-7 w-7 p-0"
+                      onClick={() => onDelete(tx.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  ) : null}
+                </div>
+              </TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
   );
 }

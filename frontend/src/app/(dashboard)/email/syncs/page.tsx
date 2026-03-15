@@ -1,30 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useEmailSyncs } from "@/hooks";
 import { EmptyState, PaginationControls } from "@/components/shared/feedback";
 import { PageHeader } from "@/components/shared/layout";
-import { SyncHistoryList } from "@/components/screens/dashboard/email/syncs";
+import { SyncHistoryList, useEmailSyncsScreen } from "@/components/screens/dashboard/email/syncs";
 import { Button, Card, CardContent, CardHeader, CardTitle, Skeleton } from "@/components/ui";
 import { RefreshCw, Loader2, AlertCircle } from "lucide-react";
 
 export default function EmailSyncsPage() {
-  const { syncs, total, isLoading, isSyncing, fetchSyncs, triggerSync } = useEmailSyncs();
-  const [page, setPage] = useState(1);
-  const [selectedSyncId, setSelectedSyncId] = useState("");
-  const limit = 20;
-
-  useEffect(() => {
-    fetchSyncs(limit, (page - 1) * limit);
-  }, [fetchSyncs, page]);
-
-  const handleTriggerSync = async () => {
-    await triggerSync();
-    setPage(1);
-    fetchSyncs(limit, 0);
-  };
-
-  const totalPages = Math.ceil(total / limit);
+  const screen = useEmailSyncsScreen();
 
   return (
     <div className="space-y-6">
@@ -32,8 +15,8 @@ export default function EmailSyncsPage() {
         title="Sync History"
         description="View all email sync operations"
         actions={
-          <Button onClick={handleTriggerSync} disabled={isSyncing}>
-            {isSyncing ? (
+          <Button onClick={screen.handleTriggerSync} disabled={screen.isSyncing}>
+            {screen.isSyncing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Syncing...
@@ -50,16 +33,16 @@ export default function EmailSyncsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Syncs ({total})</CardTitle>
+          <CardTitle>All Syncs ({screen.total})</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {screen.isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="h-20 rounded-lg" />
               ))}
             </div>
-          ) : syncs.length === 0 ? (
+          ) : screen.syncs.length === 0 ? (
             <EmptyState
               icon={AlertCircle}
               title="No syncs found"
@@ -67,18 +50,18 @@ export default function EmailSyncsPage() {
             />
           ) : (
             <SyncHistoryList
-              syncs={syncs}
-              selectedSyncId={selectedSyncId}
-              onSelectSync={setSelectedSyncId}
+              syncs={screen.syncs}
+              selectedSyncId={screen.selectedSyncId}
+              onSelectSync={screen.setSelectedSyncId}
             />
           )}
 
           <PaginationControls
-            page={page}
-            totalPages={totalPages}
-            summary={`Page ${page} of ${totalPages}`}
-            onPrevious={() => setPage(page - 1)}
-            onNext={() => setPage(page + 1)}
+            page={screen.page}
+            totalPages={screen.totalPages}
+            summary={`Page ${screen.page} of ${screen.totalPages}`}
+            onPrevious={() => screen.setPage(screen.page - 1)}
+            onNext={() => screen.setPage(screen.page + 1)}
           />
         </CardContent>
       </Card>

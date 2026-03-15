@@ -1,207 +1,196 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/query-keys";
+import { useDefaultJobProfileQuery, useJobProfileQuery, useJobProfilesQuery } from "./queries/jobs";
 import type { JobProfile, JobProfileSummary, JobProfileCreate, JobProfileUpdate } from "@/types";
 
-/**
- * Hook for managing job profiles.
- * Supports multiple profiles per user with CRUD operations.
- */
 export function useJobProfiles() {
-  const [profiles, setProfiles] = useState<JobProfileSummary[]>([]);
-  const [currentProfile, setCurrentProfile] = useState<JobProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const queryClient = useQueryClient();
+  const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const currentProfileIdRef = useRef<string | null>(null);
 
-  /**
-   * Fetch all profiles for the current user.
-   */
+  currentProfileIdRef.current = currentProfileId;
+
+  const profilesQuery = useJobProfilesQuery();
+  const currentProfileQuery = useJobProfileQuery(currentProfileId);
+  const defaultProfileQuery = useDefaultJobProfileQuery();
+
+  const invalidateProfiles = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.jobs.profiles() });
+  }, [queryClient]);
+
+  const createMutation = useMutation({
+    mutationFn: (data: JobProfileCreate) => apiClient.post<JobProfile>("/job-profiles", data),
+    onSuccess: async () => {
+      await invalidateProfiles();
+    },
+    onError: (mutationError) => {
+      setError(mutationError instanceof Error ? mutationError.message : "Failed to create profile");
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: JobProfileUpdate }) =>
+      apiClient.patch<JobProfile>(`/job-profiles/${id}`, data),
+    onSuccess: async (updated) => {
+      queryClient.setQueryData(queryKeys.jobs.profile(updated.id), updated);
+      await invalidateProfiles();
+    },
+    onError: (mutationError) => {
+      setError(mutationError instanceof Error ? mutationError.message : "Failed to update profile");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/job-profiles/${id}`),
+    onSuccess: async (_, id) => {
+      if (currentProfileIdRef.current === id) {
+        setCurrentProfileId(null);
+      }
+      await invalidateProfiles();
+    },
+    onError: (mutationError) => {
+      setError(mutationError instanceof Error ? mutationError.message : "Failed to delete profile");
+    },
+  });
+
+  const setDefaultMutation = useMutation({
+    mutationFn: (id: string) => apiClient.post<JobProfile>(`/job-profiles/${id}/set-default`),
+    onSuccess: async (updated) => {
+      queryClient.setQueryData(queryKeys.jobs.profile(updated.id), updated);
+      await invalidateProfiles();
+    },
+    onError: (mutationError) => {
+      setError(
+        mutationError instanceof Error ? mutationError.message : "Failed to set default profile"
+      );
+    },
+  });
+
   const fetchProfiles = useCallback(async (): Promise<JobProfileSummary[]> => {
-    setIsLoading(true);
     setError(null);
 
     try {
-      const data = await apiClient.get<JobProfileSummary[]>("/job-profiles");
-      setProfiles(data);
-      return data;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch profiles");
+      return await queryClient.fetchQuery({
+        queryKey: queryKeys.jobs.profiles(),
+        queryFn: () => apiClient.get<JobProfileSummary[]>("/job-profiles"),
+      });
+    } catch (queryError) {
+      const message = queryError instanceof Error ? queryError.message : "Failed to fetch profiles";
+      setError(message);
       return [];
-    } finally {
-      setIsLoading(false);
     }
-  }, []);
+  }, [queryClient]);
 
-  /**
-   * Get a specific profile by ID.
-   */
-  const getProfile = useCallback(async (id: string): Promise<JobProfile | null> => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const data = await apiClient.get<JobProfile>(`/job-profiles/${id}`);
-      setCurrentProfile(data);
-      return data;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch profile");
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  /**
-   * Get the default profile.
-   */
-  const getDefaultProfile = useCallback(async (): Promise<JobProfile | null> => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const data = await apiClient.get<JobProfile | null>("/job-profiles/default");
-      setCurrentProfile(data);
-      return data;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch default profile");
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  /**
-   * Create a new profile.
-   */
-  const createProfile = useCallback(
-    async (data: JobProfileCreate): Promise<JobProfile | null> => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const created = await apiClient.post<JobProfile>("/job-profiles", data);
-        // Refresh profiles list
-        await fetchProfiles();
-        return created;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to create profile");
-        return null;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [fetchProfiles]
-  );
-
-  /**
-   * Update an existing profile.
-   */
-  const updateProfile = useCallback(
-    async (id: string, data: JobProfileUpdate): Promise<JobProfile | null> => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const updated = await apiClient.patch<JobProfile>(`/job-profiles/${id}`, data);
-        // Update current profile if it's the one we updated
-        if (currentProfile?.id === id) {
-          setCurrentProfile(updated);
-        }
-        // Refresh profiles list
-        await fetchProfiles();
-        return updated;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to update profile");
-        return null;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [currentProfile, fetchProfiles]
-  );
-
-  /**
-   * Delete a profile.
-   */
-  const deleteProfile = useCallback(
-    async (id: string): Promise<boolean> => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        await apiClient.delete(`/job-profiles/${id}`);
-        // Clear current profile if it's the one we deleted
-        if (currentProfile?.id === id) {
-          setCurrentProfile(null);
-        }
-        // Refresh profiles list
-        await fetchProfiles();
-        return true;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to delete profile");
-        return false;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [currentProfile, fetchProfiles]
-  );
-
-  /**
-   * Set a profile as the default.
-   */
-  const setDefault = useCallback(
+  const getProfile = useCallback(
     async (id: string): Promise<JobProfile | null> => {
-      setIsLoading(true);
+      setCurrentProfileId(id);
       setError(null);
 
       try {
-        const updated = await apiClient.post<JobProfile>(`/job-profiles/${id}/set-default`);
-        // Refresh profiles list to update default status
-        await fetchProfiles();
-        return updated;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to set default profile");
+        return await queryClient.fetchQuery({
+          queryKey: queryKeys.jobs.profile(id),
+          queryFn: () => apiClient.get<JobProfile>(`/job-profiles/${id}`),
+        });
+      } catch (queryError) {
+        const message =
+          queryError instanceof Error ? queryError.message : "Failed to fetch profile";
+        setError(message);
         return null;
-      } finally {
-        setIsLoading(false);
       }
     },
-    [fetchProfiles]
+    [queryClient]
   );
 
-  /**
-   * Get the default profile from the loaded profiles.
-   */
-  const defaultProfile = profiles.find((p) => p.is_default) || null;
+  const getDefaultProfile = useCallback(async (): Promise<JobProfile | null> => {
+    setError(null);
 
-  /**
-   * Check if user has any profiles.
-   */
-  const hasProfiles = profiles.length > 0;
+    try {
+      return await queryClient.fetchQuery({
+        queryKey: [...queryKeys.jobs.profiles(), "default"],
+        queryFn: () => apiClient.get<JobProfile | null>("/job-profiles/default"),
+      });
+    } catch (queryError) {
+      const message =
+        queryError instanceof Error ? queryError.message : "Failed to fetch default profile";
+      setError(message);
+      return null;
+    }
+  }, [queryClient]);
 
-  /**
-   * Check if the current/default profile has a resume.
-   */
-  const hasCompleteProfile = defaultProfile?.has_resume ?? false;
+  const profiles = profilesQuery.data ?? [];
+  const currentProfile = currentProfileQuery.data ?? null;
+  const defaultProfile =
+    (profiles.find((profile) => profile.is_default) as JobProfileSummary | null | undefined) ??
+    defaultProfileQuery.data ??
+    null;
 
   return {
     profiles,
     currentProfile,
     defaultProfile,
-    isLoading,
-    error,
-    hasProfiles,
-    hasCompleteProfile,
+    isLoading:
+      profilesQuery.isLoading ||
+      currentProfileQuery.isFetching ||
+      defaultProfileQuery.isFetching ||
+      createMutation.isPending ||
+      updateMutation.isPending ||
+      deleteMutation.isPending ||
+      setDefaultMutation.isPending,
+    error:
+      error ??
+      (profilesQuery.error instanceof Error
+        ? profilesQuery.error.message
+        : currentProfileQuery.error instanceof Error
+          ? currentProfileQuery.error.message
+          : defaultProfileQuery.error instanceof Error
+            ? defaultProfileQuery.error.message
+            : null),
+    hasProfiles: profiles.length > 0,
+    hasCompleteProfile: Boolean(
+      defaultProfile && "has_resume" in defaultProfile ? defaultProfile.has_resume : false
+    ),
     fetchProfiles,
     getProfile,
     getDefaultProfile,
-    createProfile,
-    updateProfile,
-    deleteProfile,
-    setDefault,
-    setCurrentProfile,
+    createProfile: async (data: JobProfileCreate) => {
+      setError(null);
+      try {
+        return await createMutation.mutateAsync(data);
+      } catch {
+        return null;
+      }
+    },
+    updateProfile: async (id: string, data: JobProfileUpdate) => {
+      setError(null);
+      try {
+        return await updateMutation.mutateAsync({ id, data });
+      } catch {
+        return null;
+      }
+    },
+    deleteProfile: async (id: string) => {
+      setError(null);
+      try {
+        await deleteMutation.mutateAsync(id);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    setDefault: async (id: string) => {
+      setError(null);
+      try {
+        return await setDefaultMutation.mutateAsync(id);
+      } catch {
+        return null;
+      }
+    },
+    setCurrentProfile: (profile: JobProfile | null) => setCurrentProfileId(profile?.id ?? null),
     setError,
   };
 }

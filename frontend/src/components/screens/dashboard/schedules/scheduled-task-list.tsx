@@ -1,4 +1,5 @@
 import { describeCron } from "@/components/screens/dashboard/schedules/schedule-utils";
+import { formatDateTime } from "@/lib/formatters";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui";
 import type { ScheduledTask } from "@/types";
 import { Calendar, Clock, Edit2, PauseCircle, PlayCircle, Plus, Trash2 } from "lucide-react";
@@ -81,7 +82,7 @@ export function ScheduledTaskList({
                       {task.next_run_at && (
                         <>
                           <span>|</span>
-                          <span>Next: {new Date(task.next_run_at).toLocaleString()}</span>
+                          <span>Next: {formatDateTime(task.next_run_at)}</span>
                         </>
                       )}
                     </div>

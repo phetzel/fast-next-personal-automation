@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatDate } from "@/lib/formatters";
 import { Button } from "@/components/ui";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -44,8 +45,7 @@ function LocalConversationItem({
     setIsEditing(false);
   };
 
-  const displayTitle =
-    conversation.title || `Chat ${new Date(conversation.createdAt).toLocaleDateString()}`;
+  const displayTitle = conversation.title || `Chat ${formatDate(conversation.createdAt)}`;
 
   return (
     <div

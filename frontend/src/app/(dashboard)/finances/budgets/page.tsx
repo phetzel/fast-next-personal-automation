@@ -1,37 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useFinances } from "@/hooks";
 import { useConfirmDialog } from "@/components/shared/feedback";
 import { PageHeader } from "@/components/shared/layout";
 import { BudgetProgress, BudgetForm } from "@/components/shared/finances";
 import { Button, Card, CardContent, CardHeader, CardTitle, Skeleton } from "@/components/ui";
+import { formatMonthYear } from "@/lib/formatters";
 import { Plus, PiggyBank, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Budget } from "@/types";
 
 export default function BudgetsPage() {
   const confirmDialog = useConfirmDialog();
-  const {
-    budgetStatus,
-    budgetsLoading,
-    fetchBudgetStatus,
-    createBudget,
-    updateBudget,
-    deleteBudget,
-    categories,
-    fetchCategories,
-  } = useFinances();
-
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
+  const { budgetStatus, budgetsLoading, createBudget, updateBudget, deleteBudget, categories } =
+    useFinances({
+      budgetMonthYear: { month, year },
+    });
   const [showForm, setShowForm] = useState(false);
   const [editBudget, setEditBudget] = useState<Budget | null>(null);
-
-  useEffect(() => {
-    fetchBudgetStatus(month, year);
-    fetchCategories();
-  }, [month, year, fetchBudgetStatus, fetchCategories]);
 
   const handlePrev = () => {
     if (month === 1) {
@@ -52,14 +41,12 @@ export default function BudgetsPage() {
   };
 
   const handleCreate = async (data: object) => {
-    const ok = await createBudget(data);
-    if (ok) fetchBudgetStatus(month, year);
+    await createBudget(data);
   };
 
   const handleEdit = async (data: object) => {
     if (!editBudget) return;
-    const ok = await updateBudget(editBudget.id, data);
-    if (ok) fetchBudgetStatus(month, year);
+    await updateBudget(editBudget.id, data);
   };
 
   const handleDelete = async (budgetId: string) => {
@@ -71,13 +58,9 @@ export default function BudgetsPage() {
     });
     if (!confirmed) return;
     await deleteBudget(budgetId);
-    fetchBudgetStatus(month, year);
   };
 
-  const monthName = new Date(year, month - 1).toLocaleString("default", {
-    month: "long",
-    year: "numeric",
-  });
+  const monthName = formatMonthYear(new Date(year, month - 1, 1));
 
   const overBudgetCount = budgetStatus.filter((b) => b.is_over_budget).length;
 

@@ -1,39 +1,34 @@
 "use client";
 
-import { useEffect } from "react";
-import { useEmailSyncs } from "@/hooks";
 import {
   EmailOverviewHeader,
   EmailOverviewQuickActionsGrid,
   EmailOverviewStatsPanel,
   RecentSyncsPanel,
+  useEmailOverviewScreen,
 } from "@/components/screens/dashboard/email/overview";
 
 export default function EmailOverviewPage() {
-  const { syncs, sources, stats, isLoading, isSyncing, fetchSyncs, calculateStats, triggerSync } =
-    useEmailSyncs();
-
-  // Fetch data on mount
-  useEffect(() => {
-    calculateStats();
-    fetchSyncs(5);
-  }, [calculateStats, fetchSyncs]);
-
-  const handleTriggerSync = async () => {
-    await triggerSync();
-    calculateStats();
-  };
+  const screen = useEmailOverviewScreen();
 
   return (
     <div className="space-y-6">
       <EmailOverviewHeader
-        isSyncing={isSyncing}
-        hasSources={sources.length > 0}
-        onTriggerSync={handleTriggerSync}
+        isSyncing={screen.isSyncing}
+        hasSources={screen.sources.length > 0}
+        onTriggerSync={screen.handleTriggerSync}
       />
       <EmailOverviewQuickActionsGrid />
-      <EmailOverviewStatsPanel stats={stats} sourcesCount={sources.length} isLoading={isLoading} />
-      <RecentSyncsPanel syncs={syncs} isLoading={isLoading} sourcesCount={sources.length} />
+      <EmailOverviewStatsPanel
+        stats={screen.stats}
+        sourcesCount={screen.sources.length}
+        isLoading={screen.isLoading}
+      />
+      <RecentSyncsPanel
+        syncs={screen.syncs}
+        isLoading={screen.isLoading}
+        sourcesCount={screen.sources.length}
+      />
     </div>
   );
 }

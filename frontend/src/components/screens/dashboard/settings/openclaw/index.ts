@@ -5,3 +5,4 @@ export { OpenClawIssuedTokensCard } from "./openclaw-issued-tokens-card";
 export { OpenClawPlaintextTokenCard } from "./openclaw-plaintext-token-card";
 export { OpenClawSettingsHeader } from "./openclaw-settings-header";
 export { OpenClawTokenFormCard } from "./openclaw-token-form-card";
+export { useOpenClawSettingsScreen } from "./use-openclaw-settings-screen";

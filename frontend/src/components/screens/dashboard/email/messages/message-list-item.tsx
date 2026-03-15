@@ -1,14 +1,11 @@
 import { AccordionContent, AccordionItem, AccordionTrigger, Button } from "@/components/ui";
+import { formatDateTime } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { EmailMessage } from "@/types";
 import { CheckCircle, ExternalLink, XCircle } from "lucide-react";
 
 interface MessageListItemProps {
   message: EmailMessage;
-}
-
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleString();
 }
 
 function ParserBadge({ parser }: { parser: string | null }) {
@@ -43,7 +40,7 @@ export function MessageListItem({ message }: MessageListItemProps) {
         </div>
         <div className="ml-4 flex flex-shrink-0 items-center gap-4">
           <div className="text-right text-sm">
-            <p className="text-muted-foreground">{formatDate(message.received_at)}</p>
+            <p className="text-muted-foreground">{formatDateTime(message.received_at)}</p>
             <div className="mt-1 flex items-center justify-end gap-2">
               <ParserBadge parser={message.parser_used} />
               <span className="text-muted-foreground">
@@ -61,7 +58,7 @@ export function MessageListItem({ message }: MessageListItemProps) {
           </div>
           <div className="flex justify-between">
             <dt className="text-muted-foreground">Processed At:</dt>
-            <dd>{formatDate(message.processed_at)}</dd>
+            <dd>{formatDateTime(message.processed_at)}</dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-muted-foreground">Parser Used:</dt>

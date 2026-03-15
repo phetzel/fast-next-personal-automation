@@ -1,15 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { FormDialogShell } from "@/components/shared/forms";
+import { formatDate } from "@/lib/formatters";
 import type { Budget, FinanceCategory } from "@/types";
 import { Button, Input, Label } from "@/components/ui";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -38,6 +33,7 @@ export function BudgetForm({
   categories = [],
 }: BudgetFormProps) {
   const isEdit = !!budget;
+  const formId = isEdit ? "edit-budget-form" : "create-budget-form";
   const now = new Date();
   const [loading, setLoading] = useState(false);
   const expenseCategories = categories.filter((c) => c.category_type === "expense");
@@ -67,101 +63,106 @@ export function BudgetForm({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Budget" : "Add Budget"}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <FormDialogShell
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          onClose();
+        }
+      }}
+      title={isEdit ? "Edit Budget" : "Add Budget"}
+      maxWidth="sm:max-w-md"
+      footer={
+        <>
+          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button type="submit" form={formId} disabled={loading || !formData.amount_limit}>
+            {loading ? "Saving..." : isEdit ? "Save Changes" : "Add Budget"}
+          </Button>
+        </>
+      }
+    >
+      <form id={formId} onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="category">Category</Label>
+          <Select
+            value={formData.category ?? "__general__"}
+            onValueChange={(v) =>
+              setFormData((p) => ({ ...p, category: v === "__general__" ? null : v }))
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__general__">General (All Expenses)</SelectItem>
+              {expenseCategories.map((cat) => (
+                <SelectItem key={cat.slug} value={cat.slug}>
+                  {cat.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label htmlFor="category">Category</Label>
+            <Label htmlFor="month">Month *</Label>
             <Select
-              value={formData.category ?? "__general__"}
-              onValueChange={(v) =>
-                setFormData((p) => ({ ...p, category: v === "__general__" ? null : v }))
-              }
+              value={String(formData.month)}
+              onValueChange={(v) => setFormData((p) => ({ ...p, month: Number(v) }))}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__general__">General (All Expenses)</SelectItem>
-                {expenseCategories.map((cat) => (
-                  <SelectItem key={cat.slug} value={cat.slug}>
-                    {cat.name}
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <SelectItem key={m} value={String(m)}>
+                    {formatDate(new Date(2000, m - 1, 1), "MMMM")}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="month">Month *</Label>
-              <Select
-                value={String(formData.month)}
-                onValueChange={(v) => setFormData((p) => ({ ...p, month: Number(v) }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                    <SelectItem key={m} value={String(m)}>
-                      {new Date(2000, m - 1).toLocaleString("default", { month: "long" })}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="year">Year *</Label>
-              <Input
-                id="year"
-                type="number"
-                value={formData.year}
-                onChange={(e) => setFormData((p) => ({ ...p, year: Number(e.target.value) }))}
-                min={2020}
-                max={2100}
-                required
-              />
-            </div>
-          </div>
-
           <div className="space-y-1.5">
-            <Label htmlFor="amount_limit">Budget Limit (USD) *</Label>
+            <Label htmlFor="year">Year *</Label>
             <Input
-              id="amount_limit"
+              id="year"
               type="number"
-              step="0.01"
-              min="0.01"
-              value={formData.amount_limit}
-              onChange={(e) => setFormData((p) => ({ ...p, amount_limit: e.target.value }))}
-              placeholder="500.00"
+              value={formData.year}
+              onChange={(e) => setFormData((p) => ({ ...p, year: Number(e.target.value) }))}
+              min={2020}
+              max={2100}
               required
             />
           </div>
+        </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="notes">Notes</Label>
-            <Input
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))}
-              placeholder="Optional notes"
-            />
-          </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="amount_limit">Budget Limit (USD) *</Label>
+          <Input
+            id="amount_limit"
+            type="number"
+            step="0.01"
+            min="0.01"
+            value={formData.amount_limit}
+            onChange={(e) => setFormData((p) => ({ ...p, amount_limit: e.target.value }))}
+            placeholder="500.00"
+            required
+          />
+        </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading || !formData.amount_limit}>
-              {loading ? "Saving..." : isEdit ? "Save Changes" : "Add Budget"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        <div className="space-y-1.5">
+          <Label htmlFor="notes">Notes</Label>
+          <Input
+            id="notes"
+            value={formData.notes}
+            onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))}
+            placeholder="Optional notes"
+          />
+        </div>
+      </form>
+    </FormDialogShell>
   );
 }

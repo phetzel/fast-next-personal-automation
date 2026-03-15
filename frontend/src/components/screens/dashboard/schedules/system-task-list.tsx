@@ -1,4 +1,5 @@
 import { describeCron } from "@/components/screens/dashboard/schedules/schedule-utils";
+import { formatDateTime } from "@/lib/formatters";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui";
 import type { SystemTask } from "@/types";
 import { Lock } from "lucide-react";
@@ -46,7 +47,7 @@ export function SystemTaskList({ systemTasks }: SystemTaskListProps) {
                     {task.next_run_at && (
                       <>
                         <span>|</span>
-                        <span>Next: {new Date(task.next_run_at).toLocaleString()}</span>
+                        <span>Next: {formatDateTime(task.next_run_at)}</span>
                       </>
                     )}
                   </div>

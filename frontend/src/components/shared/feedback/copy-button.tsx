@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui";
 import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,9 +20,10 @@ export function CopyButton({ text, className, size = "sm" }: CopyButtonProps) {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
+      toast.success("Copied to clipboard");
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      console.error("Failed to copy text");
+      toast.error("Failed to copy text");
     }
   };
 

@@ -1,17 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
 import { useJobProfiles } from "@/hooks/use-job-profiles";
-import {
-  Button,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui";
+import { Combobox } from "@/components/shared/forms";
+import { Button, Label } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, User } from "lucide-react";
 
@@ -36,12 +28,7 @@ export function ProfileSelectField({
   required,
   description,
 }: ProfileSelectFieldProps) {
-  const { profiles, isLoading, error, fetchProfiles, hasProfiles } = useJobProfiles();
-
-  // Fetch profiles on mount
-  useEffect(() => {
-    fetchProfiles();
-  }, [fetchProfiles]);
+  const { profiles, isLoading, error, hasProfiles } = useJobProfiles();
 
   // No profiles - show prominent CTA
   if (!isLoading && !hasProfiles) {
@@ -114,34 +101,54 @@ export function ProfileSelectField({
         Profile
         {required && <span className="text-destructive">*</span>}
       </Label>
-      <Select
+      <Combobox
+        triggerId={id}
         value={selectedValue}
         onValueChange={(nextValue) =>
           onChange(nextValue === UNSET_PROFILE_VALUE ? undefined : nextValue)
         }
-      >
-        <SelectTrigger id={id} className="w-full" aria-required={required}>
-          <SelectValue
-            placeholder={
-              defaultProfile ? `Use default (${defaultProfile.name})` : "Select a profile..."
-            }
-          />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={UNSET_PROFILE_VALUE}>
-            {defaultProfile ? `Use default (${defaultProfile.name})` : "Select a profile..."}
-          </SelectItem>
-          {profiles.map((profile) => (
-            <SelectItem key={profile.id} value={profile.id}>
-              <span>
+        options={[
+          {
+            value: UNSET_PROFILE_VALUE,
+            label: defaultProfile ? `Use default (${defaultProfile.name})` : "Select a profile...",
+          },
+          ...profiles.map((profile) => ({
+            value: profile.id,
+            label: profile.name,
+            keywords: [
+              profile.name,
+              profile.resume_name ?? "",
+              profile.is_default ? "default" : "",
+              profile.has_resume ? "resume" : "no resume",
+            ],
+          })),
+        ]}
+        placeholder={
+          defaultProfile ? `Use default (${defaultProfile.name})` : "Select a profile..."
+        }
+        searchPlaceholder="Search profiles..."
+        renderOption={(option) => {
+          const profile = profiles.find((item) => item.id === option.value);
+
+          if (!profile) {
+            return option.label;
+          }
+
+          return (
+            <div className="flex min-w-0 flex-col">
+              <span className="truncate">
                 {profile.name}
                 {profile.is_default ? " (default)" : ""}
-                {!profile.has_resume ? " - no resume" : ""}
               </span>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+              {!profile.has_resume ? (
+                <span className="text-muted-foreground text-xs">No resume linked</span>
+              ) : profile.resume_name ? (
+                <span className="text-muted-foreground text-xs">{profile.resume_name}</span>
+              ) : null}
+            </div>
+          );
+        }}
+      />
 
       {/* Show selected profile info */}
       {typeof value === "string" && value && (

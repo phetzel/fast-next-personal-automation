@@ -1,5 +1,6 @@
 "use client";
 
+import { formatCurrency, formatDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { ACCOUNT_TYPE_LABELS } from "@/types";
 import type { FinancialAccount } from "@/types";
@@ -59,14 +60,6 @@ export function AccountCard({
 }: AccountCardProps) {
   const Icon = accountTypeIcons[account.account_type] ?? Building2;
   const colorClass = accountTypeColors[account.account_type] ?? accountTypeColors.other;
-
-  const formatBalance = (balance: number | null) => {
-    if (balance === null) return "—";
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: account.currency || "USD",
-    }).format(balance);
-  };
 
   const isNegative = account.current_balance !== null && account.current_balance < 0;
 
@@ -137,11 +130,15 @@ export function AccountCard({
             isNegative ? "text-destructive" : "text-foreground"
           )}
         >
-          {formatBalance(account.current_balance)}
+          {account.current_balance === null
+            ? "—"
+            : formatCurrency(account.current_balance, {
+                currency: account.currency || "USD",
+              })}
         </p>
         {account.balance_updated_at && (
           <p className="text-muted-foreground mt-1 text-xs">
-            Updated {new Date(account.balance_updated_at).toLocaleDateString()}
+            Updated {formatDate(account.balance_updated_at)}
           </p>
         )}
       </div>

@@ -1,173 +1,108 @@
 "use client";
 
-import { useEffect } from "react";
-import Link from "next/link";
 import { StatPill } from "@/components/shared/navigation";
-import { Card, CardContent, Skeleton } from "@/components/ui";
-import { useEmailSyncs } from "@/hooks";
+import { Skeleton } from "@/components/ui";
 import { ROUTES } from "@/lib/constants";
-import { cn } from "@/lib/utils";
-import {
-  Mail,
-  RefreshCw,
-  Inbox,
-  Server,
-  ArrowRight,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-} from "lucide-react";
+import { formatRelativeTime } from "@/lib/formatters";
+import type { EmailSyncStats } from "@/types";
+import { AlertCircle, CheckCircle, Inbox, Mail, RefreshCw, Server, XCircle } from "lucide-react";
+import { AreaOverviewCardShell } from "./area-overview-card-shell";
 
-/**
- * Email area card for the main dashboard.
- * Shows email sync stats and provides quick access to the Email area.
- */
-export function EmailAreaCard() {
-  const { stats, sources, isLoading, calculateStats } = useEmailSyncs();
+interface EmailAreaCardProps {
+  stats: EmailSyncStats | null;
+  sourcesCount: number;
+  loading: boolean;
+}
 
-  useEffect(() => {
-    calculateStats();
-  }, [calculateStats]);
+function getSyncStatusDisplay(stats: EmailSyncStats | null) {
+  if (!stats?.last_sync) {
+    return { icon: AlertCircle, color: "text-muted-foreground", label: "No syncs yet" };
+  }
 
-  // Format relative time
-  const getRelativeTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
+  if (stats.last_sync.status === "completed") {
+    return { icon: CheckCircle, color: "text-green-500", label: "Last sync successful" };
+  }
 
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${diffDays}d ago`;
-  };
+  if (stats.last_sync.status === "failed") {
+    return { icon: XCircle, color: "text-red-500", label: "Last sync failed" };
+  }
 
-  // Determine sync status icon and color
-  const getSyncStatusDisplay = () => {
-    if (!stats?.last_sync) {
-      return { icon: AlertCircle, color: "text-muted-foreground", label: "No syncs yet" };
-    }
-    if (stats.last_sync.status === "completed") {
-      return { icon: CheckCircle, color: "text-green-500", label: "Last sync successful" };
-    }
-    if (stats.last_sync.status === "failed") {
-      return { icon: XCircle, color: "text-red-500", label: "Last sync failed" };
-    }
-    if (stats.last_sync.status === "running") {
-      return { icon: RefreshCw, color: "text-blue-500 animate-spin", label: "Syncing..." };
-    }
-    return { icon: AlertCircle, color: "text-amber-500", label: "Sync pending" };
-  };
+  if (stats.last_sync.status === "running") {
+    return { icon: RefreshCw, color: "text-blue-500 animate-spin", label: "Syncing..." };
+  }
 
-  const syncStatus = getSyncStatusDisplay();
+  return { icon: AlertCircle, color: "text-amber-500", label: "Sync pending" };
+}
+
+export function EmailAreaCard({ stats, sourcesCount, loading }: EmailAreaCardProps) {
+  const syncStatus = getSyncStatusDisplay(stats);
   const SyncIcon = syncStatus.icon;
 
   return (
-    <Link href={ROUTES.EMAIL} className="group block">
-      <Card
-        className={cn(
-          "relative overflow-hidden transition-all duration-300",
-          "hover:ring-primary/20 hover:shadow-lg hover:ring-2",
-          "hover:-translate-y-0.5"
-        )}
-      >
-        {/* Decorative gradient background */}
-        <div
-          className={cn(
-            "absolute inset-0 opacity-0 transition-opacity duration-300",
-            "bg-gradient-to-br from-blue-500/5 via-transparent to-indigo-500/5",
-            "group-hover:opacity-100"
-          )}
-        />
-
-        <CardContent className="relative p-6">
-          {/* Header */}
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div
-                className={cn(
-                  "rounded-xl p-3 transition-colors",
-                  "bg-blue-500/10 text-blue-600",
-                  "dark:bg-blue-500/20 dark:text-blue-400"
-                )}
-              >
-                <Mail className="h-6 w-6" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold tracking-tight">Email</h3>
-                <p className="text-muted-foreground text-sm">Email sync & processing</p>
-              </div>
-            </div>
-            <ArrowRight
-              className={cn(
-                "text-muted-foreground h-5 w-5 transition-transform",
-                "group-hover:text-primary group-hover:translate-x-1"
-              )}
+    <AreaOverviewCardShell
+      href={ROUTES.EMAIL}
+      title="Email"
+      description="Email sync & processing"
+      icon={Mail}
+      tone="blue"
+      stats={
+        loading ? (
+          <div className="grid grid-cols-4 gap-3">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Skeleton key={index} className="h-14 rounded-lg" />
+            ))}
+          </div>
+        ) : stats ? (
+          <div className="grid grid-cols-4 gap-3">
+            <StatPill
+              icon={Server}
+              label="Sources"
+              value={sourcesCount}
+              tone="blue"
+              highlight={sourcesCount === 0}
+            />
+            <StatPill icon={RefreshCw} label="Syncs" value={stats.total_syncs} tone="cyan" />
+            <StatPill
+              icon={Inbox}
+              label="Emails"
+              value={stats.total_emails_processed}
+              tone="green"
+            />
+            <StatPill
+              icon={CheckCircle}
+              label="Jobs"
+              value={stats.total_jobs_saved}
+              tone="amber"
+              highlight={stats.total_jobs_saved > 0}
             />
           </div>
-
-          {/* Stats Grid */}
-          {isLoading ? (
-            <div className="grid grid-cols-4 gap-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-14 rounded-lg" />
-              ))}
-            </div>
-          ) : stats ? (
-            <div className="grid grid-cols-4 gap-3">
-              <StatPill
-                icon={Server}
-                label="Sources"
-                value={sources.length}
-                tone="blue"
-                highlight={sources.length === 0}
-              />
-              <StatPill icon={RefreshCw} label="Syncs" value={stats.total_syncs} tone="cyan" />
-              <StatPill
-                icon={Inbox}
-                label="Emails"
-                value={stats.total_emails_processed}
-                tone="green"
-              />
-              <StatPill
-                icon={CheckCircle}
-                label="Jobs"
-                value={stats.total_jobs_saved}
-                tone="amber"
-                highlight={stats.total_jobs_saved > 0}
-              />
-            </div>
-          ) : (
-            <div className="py-4 text-center">
-              <p className="text-muted-foreground text-sm">No stats available</p>
-            </div>
-          )}
-
-          {/* Footer Summary */}
-          <div className="border-border/50 mt-4 flex items-center justify-between border-t pt-4 text-sm">
-            <div className="flex items-center gap-2">
-              <SyncIcon className={cn("h-4 w-4", syncStatus.color)} />
-              <span className="text-muted-foreground">
-                {stats?.last_sync
-                  ? `Last sync ${getRelativeTime(stats.last_sync.started_at)}`
-                  : syncStatus.label}
-              </span>
-            </div>
-            {sources.length === 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
-                Connect email
-              </span>
-            )}
-            {stats && stats.failed_syncs > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/10 px-2.5 py-0.5 text-xs font-medium text-red-600 dark:text-red-400">
-                {stats.failed_syncs} failed
-              </span>
-            )}
+        ) : (
+          <div className="py-4 text-center">
+            <p className="text-muted-foreground text-sm">No stats available</p>
           </div>
-        </CardContent>
-      </Card>
-    </Link>
+        )
+      }
+      footer={
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <SyncIcon className={`h-4 w-4 ${syncStatus.color}`} />
+            <span className="text-muted-foreground">
+              {stats?.last_sync
+                ? `Last sync ${formatRelativeTime(stats.last_sync.started_at)}`
+                : syncStatus.label}
+            </span>
+          </div>
+          {sourcesCount === 0 ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+              Connect email
+            </span>
+          ) : stats && stats.failed_syncs > 0 ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/10 px-2.5 py-0.5 text-xs font-medium text-red-600 dark:text-red-400">
+              {stats.failed_syncs} failed
+            </span>
+          ) : null}
+        </div>
+      }
+    />
   );
 }

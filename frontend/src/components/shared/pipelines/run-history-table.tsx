@@ -1,7 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Card, Button } from "@/components/ui";
+import {
+  Button,
+  Card,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui";
+import { formatDuration, formatRelativeTime } from "@/lib/formatters";
 import { RunStatusBadge } from "./run-status-badge";
 import { TriggerBadge } from "./trigger-badge";
 import { RunDetailModal } from "./run-detail-modal";
@@ -13,34 +23,6 @@ interface RunHistoryTableProps {
   isLoading: boolean;
   hasMore: boolean;
   onLoadMore: () => void;
-}
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-
-  return date.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function formatDuration(ms: number | null): string {
-  if (ms === null) return "—";
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${(ms / 60000).toFixed(1)}m`;
 }
 
 export function RunHistoryTable({ runs, isLoading, hasMore, onLoadMore }: RunHistoryTableProps) {
@@ -65,61 +47,57 @@ export function RunHistoryTable({ runs, isLoading, hasMore, onLoadMore }: RunHis
       <Card className="overflow-hidden">
         {/* Desktop table */}
         <div className="hidden md:block">
-          <table className="w-full">
-            <thead className="bg-muted/50 border-b">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
+          <Table>
+            <TableHeader className="bg-muted/50">
+              <TableRow>
+                <TableHead className="px-4 py-3 text-xs tracking-wider uppercase">
                   Pipeline
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
+                </TableHead>
+                <TableHead className="px-4 py-3 text-xs tracking-wider uppercase">Status</TableHead>
+                <TableHead className="px-4 py-3 text-xs tracking-wider uppercase">
                   Trigger
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
+                </TableHead>
+                <TableHead className="px-4 py-3 text-xs tracking-wider uppercase">
                   Duration
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
-                  Time
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium tracking-wider uppercase">
+                </TableHead>
+                <TableHead className="px-4 py-3 text-xs tracking-wider uppercase">Time</TableHead>
+                <TableHead className="px-4 py-3 text-right text-xs tracking-wider uppercase">
                   <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {runs.map((run) => (
-                <tr
+                <TableRow
                   key={run.id}
                   className="hover:bg-muted/30 cursor-pointer transition-colors"
                   onClick={() => setSelectedRun(run)}
                 >
-                  <td className="px-4 py-3">
+                  <TableCell className="px-4 py-3">
                     <div>
                       <p className="font-medium">{run.pipeline_name}</p>
                       <p className="text-muted-foreground text-xs">{run.id.slice(0, 8)}...</p>
                     </div>
-                  </td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell className="px-4 py-3">
                     <RunStatusBadge status={run.status} />
-                  </td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell className="px-4 py-3">
                     <TriggerBadge trigger={run.trigger_type} />
-                  </td>
-                  <td className="text-muted-foreground px-4 py-3 text-sm">
+                  </TableCell>
+                  <TableCell className="text-muted-foreground px-4 py-3 text-sm">
                     {formatDuration(run.duration_ms)}
-                  </td>
-                  <td className="text-muted-foreground px-4 py-3 text-sm">
-                    {formatDate(run.created_at)}
-                  </td>
-                  <td className="px-4 py-3 text-right">
+                  </TableCell>
+                  <TableCell className="text-muted-foreground px-4 py-3 text-sm">
+                    {formatRelativeTime(run.created_at)}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-right">
                     <ChevronRight className="text-muted-foreground inline h-4 w-4" />
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
 
         {/* Mobile cards */}
@@ -133,7 +111,9 @@ export function RunHistoryTable({ runs, isLoading, hasMore, onLoadMore }: RunHis
               <div className="flex items-start justify-between">
                 <div>
                   <p className="font-medium">{run.pipeline_name}</p>
-                  <p className="text-muted-foreground text-xs">{formatDate(run.created_at)}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {formatRelativeTime(run.created_at)}
+                  </p>
                 </div>
                 <ChevronRight className="text-muted-foreground h-5 w-5" />
               </div>

@@ -1,17 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import {
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui";
-import { apiClient } from "@/lib/api-client";
+import { useMemo } from "react";
+import { useJobsListQuery } from "@/hooks/queries/jobs";
+import { Combobox } from "@/components/shared/forms";
+import { Label } from "@/components/ui";
 import { AlertTriangle, Briefcase, Loader2 } from "lucide-react";
-import type { Job, JobListResponse } from "@/types";
+import type { Job } from "@/types";
 import { ScoreBadge } from "@/components/shared/jobs/score-badge";
 import { StatusBadge } from "@/components/shared/jobs/status-badge";
 
@@ -39,42 +33,23 @@ export function JobSelectField({
   description,
   statusFilter,
 }: JobSelectFieldProps) {
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const jobsQuery = useJobsListQuery({
+    page: 1,
+    page_size: 100,
+    sort_by: "created_at",
+    sort_order: "desc",
+  });
+  const jobs = useMemo(() => {
+    const allJobs = jobsQuery.data?.jobs ?? [];
 
-  const fetchJobs = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Fetch a reasonable number of recent jobs
-      const params = new URLSearchParams();
-      params.set("page_size", "100");
-      params.set("sort_by", "created_at");
-      params.set("sort_order", "desc");
-
-      const response = await apiClient.get<JobListResponse>(`/jobs?${params.toString()}`);
-
-      let filteredJobs = response.jobs;
-
-      // Apply status filter if provided
-      if (statusFilter && statusFilter.length > 0) {
-        filteredJobs = filteredJobs.filter((job) => statusFilter.includes(job.status));
-      }
-
-      setJobs(filteredJobs);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch jobs");
-    } finally {
-      setIsLoading(false);
+    if (!statusFilter || statusFilter.length === 0) {
+      return allJobs;
     }
-  }, [statusFilter]);
 
-  // Fetch jobs on mount
-  useEffect(() => {
-    fetchJobs();
-  }, [fetchJobs]);
+    return allJobs.filter((job) => statusFilter.includes(job.status));
+  }, [jobsQuery.data?.jobs, statusFilter]);
+  const isLoading = jobsQuery.isLoading || jobsQuery.isFetching;
+  const error = jobsQuery.error instanceof Error ? jobsQuery.error.message : null;
 
   // No jobs - show message
   if (!isLoading && jobs.length === 0) {
@@ -145,27 +120,40 @@ export function JobSelectField({
         Job
         {required && <span className="text-destructive">*</span>}
       </Label>
-      <Select
+      <Combobox
+        triggerId={id}
         value={selectedValue}
         onValueChange={(nextValue) =>
           onChange(nextValue === UNSET_JOB_VALUE ? undefined : nextValue)
         }
-      >
-        <SelectTrigger id={id} className="w-full" aria-required={required}>
-          <SelectValue placeholder="Select a job..." />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={UNSET_JOB_VALUE}>Select a job...</SelectItem>
-          {jobs.map((job) => (
-            <SelectItem key={job.id} value={job.id}>
-              <span>
-                {job.title} @ {job.company}
-                {job.relevance_score ? ` (${job.relevance_score.toFixed(1)})` : ""}
+        options={[
+          { value: UNSET_JOB_VALUE, label: "Select a job..." },
+          ...jobs.map((job) => ({
+            value: job.id,
+            label: `${job.title} @ ${job.company}`,
+            keywords: [job.title, job.company, job.location ?? "", job.status],
+          })),
+        ]}
+        placeholder="Select a job..."
+        searchPlaceholder="Search jobs..."
+        renderOption={(option) => {
+          const job = jobs.find((item) => item.id === option.value);
+
+          if (!job) {
+            return option.label;
+          }
+
+          return (
+            <div className="flex min-w-0 flex-col">
+              <span className="truncate">{job.title}</span>
+              <span className="text-muted-foreground truncate text-xs">
+                {job.company}
+                {job.location ? ` · ${job.location}` : ""}
               </span>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+            </div>
+          );
+        }}
+      />
 
       {/* Show selected job info */}
       {selectedJob && <SelectedJobInfo job={selectedJob} />}

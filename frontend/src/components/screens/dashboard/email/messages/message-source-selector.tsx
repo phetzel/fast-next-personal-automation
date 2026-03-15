@@ -1,4 +1,5 @@
-import { Button } from "@/components/ui";
+import { Combobox } from "@/components/shared/forms";
+import { Label } from "@/components/ui";
 import type { EmailSource } from "@/types";
 import { Mail } from "lucide-react";
 
@@ -13,23 +14,47 @@ export function MessageSourceSelector({
   selectedSource,
   onSelectSource,
 }: MessageSourceSelectorProps) {
-  if (sources.length <= 1) {
+  if (sources.length === 0) {
     return null;
   }
 
   return (
-    <div className="flex gap-2">
-      {sources.map((source) => (
-        <Button
-          key={source.id}
-          variant={selectedSource?.id === source.id ? "default" : "outline"}
-          size="sm"
-          onClick={() => onSelectSource(source)}
-        >
-          <Mail className="mr-2 h-4 w-4" />
-          {source.email_address}
-        </Button>
-      ))}
+    <div className="space-y-2">
+      <Label htmlFor="message-source-selector">Email source</Label>
+      <Combobox
+        triggerId="message-source-selector"
+        value={selectedSource?.id ?? ""}
+        onValueChange={(value) => {
+          const nextSource = sources.find((source) => source.id === value);
+          if (nextSource) {
+            onSelectSource(nextSource);
+          }
+        }}
+        options={sources.map((source) => ({
+          value: source.id,
+          label: source.email_address,
+          keywords: [source.email_address, source.provider],
+        }))}
+        placeholder="Select an email source..."
+        searchPlaceholder="Search email sources..."
+        renderValue={(option) =>
+          option ? (
+            <span className="inline-flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              {option.label}
+            </span>
+          ) : (
+            "Select an email source..."
+          )
+        }
+        renderOption={(option) => (
+          <span className="inline-flex items-center gap-2">
+            <Mail className="h-4 w-4" />
+            {option.label}
+          </span>
+        )}
+        className="justify-between"
+      />
     </div>
   );
 }

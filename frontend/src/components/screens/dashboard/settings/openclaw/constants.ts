@@ -1,3 +1,5 @@
+import { formatDateTime } from "@/lib/formatters";
+
 export type OpenClawScopeValue = "jobs:ingest" | "jobs:analyze" | "jobs:prep" | "jobs:apply";
 
 export type OpenClawExampleValue = "ingest" | "analyze" | "prep" | "apply";
@@ -142,5 +144,5 @@ export function formatOpenClawDate(value: string | null): string {
     return "Never";
   }
 
-  return new Date(value).toLocaleString();
+  return formatDateTime(value);
 }

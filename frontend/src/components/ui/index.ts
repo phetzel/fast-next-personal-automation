@@ -19,6 +19,16 @@ export { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "./shee
 export { Textarea } from "./textarea";
 export { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./accordion";
 export {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+  CommandShortcut,
+} from "./command";
+export {
   Table,
   TableBody,
   TableCell,

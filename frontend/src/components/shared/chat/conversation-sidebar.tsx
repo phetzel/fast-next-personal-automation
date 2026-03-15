@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useConversations } from "@/hooks";
+import { formatDate } from "@/lib/formatters";
 import { Button } from "@/components/ui";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -46,8 +47,7 @@ function ConversationItem({
     setIsEditing(false);
   };
 
-  const displayTitle =
-    conversation.title || `Chat ${new Date(conversation.created_at).toLocaleDateString()}`;
+  const displayTitle = conversation.title || `Chat ${formatDate(conversation.created_at)}`;
 
   return (
     <div

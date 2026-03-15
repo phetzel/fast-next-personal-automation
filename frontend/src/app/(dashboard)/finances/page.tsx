@@ -1,74 +1,46 @@
 "use client";
 
-import { useEffect } from "react";
-import { useFinances } from "@/hooks";
 import {
   BudgetStatusPanel,
   FinancesOverviewHeader,
   FinancesQuickActionsGrid,
   FinancesStatsGrid,
   RecentTransactionsPanel,
+  useFinancesOverviewScreen,
 } from "@/components/screens/dashboard/finances/overview";
 import { Separator } from "@/components/ui";
 
-const now = new Date();
-
 export default function FinancesOverviewPage() {
-  const {
-    stats,
-    statsLoading,
-    transactions,
-    isLoading,
-    accounts,
-    budgetStatus,
-    budgetsLoading,
-    fetchStats,
-    fetchTransactions,
-    fetchAccounts,
-    fetchBudgetStatus,
-    markReviewed,
-  } = useFinances();
-
-  useEffect(() => {
-    fetchStats();
-    fetchAccounts();
-    fetchTransactions({ page: 1, page_size: 10, sort_by: "transaction_date", sort_order: "desc" });
-    fetchBudgetStatus(now.getMonth() + 1, now.getFullYear());
-  }, [fetchStats, fetchTransactions, fetchAccounts, fetchBudgetStatus]);
-
-  const formatCurrency = (n: number) =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
+  const screen = useFinancesOverviewScreen();
 
   return (
     <div className="space-y-6">
-      <FinancesOverviewHeader
-        monthLabel={now.toLocaleString("default", { month: "long", year: "numeric" })}
-      />
+      <FinancesOverviewHeader monthLabel={screen.monthLabel} />
 
       <FinancesStatsGrid
-        stats={stats}
-        statsLoading={statsLoading}
-        formatCurrency={formatCurrency}
+        stats={screen.stats}
+        statsLoading={screen.statsLoading}
+        formatCurrency={screen.formatCurrency}
       />
 
       <Separator />
 
-      <FinancesQuickActionsGrid activeRecurringCount={stats?.active_recurring_count ?? 0} />
+      <FinancesQuickActionsGrid activeRecurringCount={screen.stats?.active_recurring_count ?? 0} />
 
       <Separator />
 
       <BudgetStatusPanel
-        budgetStatus={budgetStatus}
-        budgetsLoading={budgetsLoading}
-        monthLabel={now.toLocaleString("default", { month: "long" })}
-        formatCurrency={formatCurrency}
+        budgetStatus={screen.budgetStatus}
+        budgetsLoading={screen.budgetsLoading}
+        monthLabel={screen.monthLabel}
+        formatCurrency={screen.formatCurrency}
       />
 
       <RecentTransactionsPanel
-        transactions={transactions}
-        accounts={accounts}
-        isLoading={isLoading}
-        onMarkReviewed={markReviewed}
+        transactions={screen.transactions}
+        accounts={screen.accounts}
+        isLoading={screen.isLoading}
+        onMarkReviewed={screen.markReviewed}
       />
     </div>
   );

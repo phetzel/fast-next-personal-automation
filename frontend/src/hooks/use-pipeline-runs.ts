@@ -1,168 +1,203 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
-import { usePipelineRunStore } from "@/stores";
+import { useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/query-keys";
+import {
+  usePipelineRunQuery,
+  usePipelineRunsQuery,
+  usePipelineRunStatsQuery,
+} from "./queries/pipelines";
 import type {
   PipelineRunListResponse,
   PipelineRunStats,
   PipelineRunFilters,
   PipelineRun,
 } from "@/types";
+import { toSearchParams } from "./queries/utils";
 
-/**
- * Hook for managing pipeline run history - fetching, filtering, and stats.
- */
+const defaultFilters: PipelineRunFilters = {
+  page: 1,
+  page_size: 20,
+};
+
 export function usePipelineRuns() {
-  const {
-    runs,
-    total,
-    page,
-    pageSize,
-    hasMore,
-    isLoading,
-    error,
-    filters,
-    stats,
-    statsLoading,
-    selectedRun,
-    setRuns,
-    appendRuns,
-    setLoading,
-    setError,
-    setFilters,
-    resetFilters,
-    setStats,
-    setStatsLoading,
-    setSelectedRun,
-    setPage,
-    setPageSize,
-  } = usePipelineRunStore();
+  const queryClient = useQueryClient();
+  const [filters, setFiltersState] = useState<PipelineRunFilters>(defaultFilters);
+  const [runs, setRuns] = useState<PipelineRun[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [statsConfig, setStatsConfig] = useState({
+    pipelineName: undefined as string | undefined,
+    sinceHours: 24,
+  });
 
-  // Build query string from filters
-  const buildQueryString = useCallback((f: PipelineRunFilters): string => {
-    const params = new URLSearchParams();
+  const runsQuery = usePipelineRunsQuery(filters);
+  const statsQuery = usePipelineRunStatsQuery(statsConfig.pipelineName, statsConfig.sinceHours);
+  const selectedRunQuery = usePipelineRunQuery(selectedRunId);
 
-    if (f.pipeline_name) params.set("pipeline_name", f.pipeline_name);
-    if (f.status) params.set("status", f.status);
-    if (f.trigger_type) params.set("trigger_type", f.trigger_type);
-    if (f.started_after) params.set("started_after", f.started_after);
-    if (f.started_before) params.set("started_before", f.started_before);
-    if (f.success_only) params.set("success_only", "true");
-    if (f.error_only) params.set("error_only", "true");
-    if (f.my_runs_only) params.set("my_runs_only", "true");
-    params.set("page", String(f.page || 1));
-    params.set("page_size", String(f.page_size || 20));
+  useEffect(() => {
+    if (!runsQuery.data) {
+      return;
+    }
 
-    return params.toString();
-  }, []);
+    setRuns((currentRuns) =>
+      (filters.page || 1) > 1
+        ? [
+            ...currentRuns,
+            ...runsQuery.data.runs.filter(
+              (run) => !currentRuns.some((currentRun) => currentRun.id === run.id)
+            ),
+          ]
+        : runsQuery.data.runs
+    );
+  }, [filters.page, runsQuery.data]);
 
-  // Fetch runs with current filters
   const fetchRuns = useCallback(
     async (append = false) => {
-      setLoading(true);
+      const nextFilters = append ? { ...filters, page: (filters.page || 1) + 1 } : filters;
+      const queryString = toSearchParams({
+        pipeline_name: nextFilters.pipeline_name,
+        status: nextFilters.status,
+        trigger_type: nextFilters.trigger_type,
+        started_after: nextFilters.started_after,
+        started_before: nextFilters.started_before,
+        success_only: nextFilters.success_only,
+        error_only: nextFilters.error_only,
+        my_runs_only: nextFilters.my_runs_only,
+        page: nextFilters.page || 1,
+        page_size: nextFilters.page_size || 20,
+      });
+
       setError(null);
+      if (append) {
+        setFiltersState(nextFilters);
+      }
 
       try {
-        const queryString = buildQueryString(filters);
-        const data = await apiClient.get<PipelineRunListResponse>(`/pipelines/runs?${queryString}`);
+        const data = await queryClient.fetchQuery({
+          queryKey: queryKeys.pipelines.runs(nextFilters),
+          queryFn: () => apiClient.get<PipelineRunListResponse>(`/pipelines/runs?${queryString}`),
+        });
 
-        if (append) {
-          appendRuns(data.runs, data.total, data.has_more);
-        } else {
-          setRuns(data.runs, data.total, data.page, data.has_more);
+        if (!append) {
+          setRuns(data.runs);
         }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to fetch pipeline runs";
+
+        return data;
+      } catch (queryError) {
+        const message =
+          queryError instanceof Error ? queryError.message : "Failed to fetch pipeline runs";
         setError(message);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [filters, buildQueryString, setRuns, appendRuns, setLoading, setError]
-  );
-
-  // Fetch stats
-  const fetchStats = useCallback(
-    async (pipelineName?: string, sinceHours = 24) => {
-      setStatsLoading(true);
-
-      try {
-        const params = new URLSearchParams();
-        if (pipelineName) params.set("pipeline_name", pipelineName);
-        params.set("since_hours", String(sinceHours));
-
-        const data = await apiClient.get<PipelineRunStats>(
-          `/pipelines/runs/stats?${params.toString()}`
-        );
-        setStats(data);
-      } catch (err) {
-        // Stats are non-critical, just log
-        console.error("Failed to fetch pipeline stats:", err);
-      } finally {
-        setStatsLoading(false);
-      }
-    },
-    [setStats, setStatsLoading]
-  );
-
-  // Fetch a single run by ID
-  const fetchRun = useCallback(
-    async (runId: string): Promise<PipelineRun | null> => {
-      try {
-        const run = await apiClient.get<PipelineRun>(`/pipelines/runs/${runId}`);
-        setSelectedRun(run);
-        return run;
-      } catch (err) {
-        console.error("Failed to fetch pipeline run:", err);
         return null;
       }
     },
-    [setSelectedRun]
+    [filters, queryClient]
   );
 
-  // Update filters and refetch
-  const updateFilters = useCallback(
-    (newFilters: Partial<PipelineRunFilters>) => {
-      setFilters(newFilters);
+  const fetchStats = useCallback(
+    async (pipelineName?: string, sinceHours = 24) => {
+      setStatsConfig({ pipelineName, sinceHours });
+      setError(null);
+
+      try {
+        return await queryClient.fetchQuery<PipelineRunStats>({
+          queryKey: queryKeys.pipelines.stats(pipelineName, sinceHours),
+          queryFn: () => {
+            const params = toSearchParams({
+              pipeline_name: pipelineName,
+              since_hours: sinceHours,
+            });
+            return apiClient.get<PipelineRunStats>(`/pipelines/runs/stats?${params}`);
+          },
+        });
+      } catch {
+        return null;
+      }
     },
-    [setFilters]
+    [queryClient]
   );
 
-  // Load more (next page)
-  const loadMore = useCallback(() => {
-    if (!isLoading && hasMore) {
-      setPage(page + 1);
-    }
-  }, [isLoading, hasMore, page, setPage]);
+  const fetchRun = useCallback(
+    async (runId: string): Promise<PipelineRun | null> => {
+      setSelectedRunId(runId);
+      setError(null);
 
-  // Initial fetch when filters change
-  useEffect(() => {
-    fetchRuns();
-  }, [filters]); // eslint-disable-line react-hooks/exhaustive-deps
+      try {
+        return await queryClient.fetchQuery({
+          queryKey: queryKeys.pipelines.run(runId),
+          queryFn: () => apiClient.get<PipelineRun>(`/pipelines/runs/${runId}`),
+        });
+      } catch (queryError) {
+        const message =
+          queryError instanceof Error ? queryError.message : "Failed to fetch pipeline run";
+        setError(message);
+        return null;
+      }
+    },
+    [queryClient]
+  );
+
+  const updateFilters = useCallback((newFilters: Partial<PipelineRunFilters>) => {
+    setRuns([]);
+    setFiltersState((currentFilters) => ({
+      ...currentFilters,
+      ...newFilters,
+      page: 1,
+    }));
+  }, []);
+
+  const resetFilters = useCallback(() => {
+    setRuns([]);
+    setFiltersState(defaultFilters);
+  }, []);
+
+  const setPage = useCallback((page: number) => {
+    setFiltersState((currentFilters) => ({ ...currentFilters, page }));
+  }, []);
+
+  const setPageSize = useCallback((pageSize: number) => {
+    setRuns([]);
+    setFiltersState((currentFilters) => ({ ...currentFilters, page: 1, page_size: pageSize }));
+  }, []);
+
+  const loadMore = useCallback(() => {
+    if (!runsQuery.isFetching && (runsQuery.data?.has_more ?? false)) {
+      setFiltersState((currentFilters) => ({
+        ...currentFilters,
+        page: (currentFilters.page || 1) + 1,
+      }));
+    }
+  }, [runsQuery.data?.has_more, runsQuery.isFetching]);
+
+  const selectedRun = selectedRunQuery.data ?? null;
 
   return {
-    // Data
     runs,
-    total,
-    page,
-    pageSize,
-    hasMore,
-    isLoading,
-    error,
+    total: runsQuery.data?.total ?? 0,
+    page: filters.page || 1,
+    pageSize: filters.page_size || 20,
+    hasMore: runsQuery.data?.has_more ?? false,
+    isLoading: runsQuery.isLoading || runsQuery.isFetching,
+    error:
+      error ??
+      (runsQuery.error instanceof Error
+        ? runsQuery.error.message
+        : selectedRunQuery.error instanceof Error
+          ? selectedRunQuery.error.message
+          : null),
     filters,
-    stats,
-    statsLoading,
+    stats: statsQuery.data ?? null,
+    statsLoading: statsQuery.isLoading || statsQuery.isFetching,
     selectedRun,
-
-    // Actions
     fetchRuns,
     fetchStats,
     fetchRun,
     updateFilters,
     resetFilters,
     loadMore,
-    setSelectedRun,
+    setSelectedRun: (run: PipelineRun | null) => setSelectedRunId(run?.id ?? null),
     setPage,
     setPageSize,
   };

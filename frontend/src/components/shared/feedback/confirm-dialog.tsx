@@ -3,14 +3,15 @@
 import { createContext, useContext, useMemo, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui";
-import { Button } from "@/components/ui";
 
 interface ConfirmDialogOptions {
   title: string;
@@ -51,7 +52,7 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
   return (
     <ConfirmDialogContext.Provider value={confirm}>
       {children}
-      <Dialog
+      <AlertDialog
         open={!!pendingConfirm}
         onOpenChange={(open) => {
           if (!open) {
@@ -59,31 +60,37 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
           }
         }}
       >
-        <DialogContent>
-          <DialogHeader>
+        <AlertDialogContent>
+          <AlertDialogHeader>
             <div className="mb-2 flex items-center gap-3">
               <div className="bg-destructive/10 text-destructive rounded-full p-2">
                 <AlertTriangle className="h-4 w-4" />
               </div>
               <div>
-                <DialogTitle>{pendingConfirm?.options.title}</DialogTitle>
-                <DialogDescription>{pendingConfirm?.options.description}</DialogDescription>
+                <AlertDialogTitle>{pendingConfirm?.options.title}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {pendingConfirm?.options.description}
+                </AlertDialogDescription>
               </div>
             </div>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => close(false)}>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => close(false)}>
               {pendingConfirm?.options.cancelLabel ?? "Cancel"}
-            </Button>
-            <Button
-              variant={pendingConfirm?.options.destructive ? "destructive" : "default"}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className={
+                pendingConfirm?.options.destructive
+                  ? "bg-destructive hover:bg-destructive/90"
+                  : undefined
+              }
               onClick={() => close(true)}
             >
               {pendingConfirm?.options.confirmLabel ?? "Confirm"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </ConfirmDialogContext.Provider>
   );
 }

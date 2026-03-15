@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useFinances } from "@/hooks";
 import type { Transaction, TransactionFilters } from "@/types";
 
@@ -20,9 +20,6 @@ export function useTransactionsScreen() {
     accounts,
     accountsLoading,
     categories,
-    fetchTransactions,
-    fetchAccounts,
-    fetchCategories,
     createTransaction,
     updateTransaction,
     deleteTransaction,
@@ -31,35 +28,24 @@ export function useTransactionsScreen() {
     triggerCategorize,
     setFilters,
     resetFilters,
-  } = useFinances();
+  } = useFinances({
+    initialFilters: DEFAULT_TRANSACTION_FILTERS,
+  });
 
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [editTx, setEditTx] = useState<Transaction | null>(null);
   const [categorizing, setCategorizing] = useState(false);
 
-  useEffect(() => {
-    void fetchAccounts();
-    void fetchTransactions();
-    void fetchCategories();
-  }, [fetchAccounts, fetchTransactions, fetchCategories]);
-
   const page = filters.page ?? DEFAULT_TRANSACTION_FILTERS.page ?? 1;
   const pageSize = filters.page_size ?? DEFAULT_TRANSACTION_FILTERS.page_size ?? 50;
   const totalPages = Math.ceil(total / pageSize);
 
-  const refresh = useCallback(() => {
-    void fetchTransactions();
-  }, [fetchTransactions]);
-
   const handleCreate = useCallback(
     async (data: object) => {
-      const created = await createTransaction(data);
-      if (created) {
-        void fetchTransactions();
-      }
+      await createTransaction(data);
     },
-    [createTransaction, fetchTransactions]
+    [createTransaction]
   );
 
   const handleEdit = useCallback(
@@ -75,44 +61,35 @@ export function useTransactionsScreen() {
       if (updated) {
         setShowForm(false);
         setEditTx(null);
-        void fetchTransactions();
       }
     },
-    [editTx, fetchTransactions, updateTransaction]
+    [editTx, updateTransaction]
   );
 
   const handleDelete = useCallback(
-    async (transactionId: string) => {
-      const deleted = await deleteTransaction(transactionId);
-      if (deleted) {
-        void fetchTransactions();
-      }
-    },
-    [deleteTransaction, fetchTransactions]
+    async (transactionId: string) => deleteTransaction(transactionId),
+    [deleteTransaction]
   );
 
   const handleCategorize = useCallback(async () => {
     setCategorizing(true);
     try {
       await triggerCategorize();
-      void fetchTransactions();
     } finally {
       setCategorizing(false);
     }
-  }, [fetchTransactions, triggerCategorize]);
+  }, [triggerCategorize]);
 
   const handleFilterChange = useCallback(
     (newFilters: Partial<TransactionFilters>) => {
       setFilters(newFilters);
-      void fetchTransactions(newFilters);
     },
-    [fetchTransactions, setFilters]
+    [setFilters]
   );
 
   const handleReset = useCallback(() => {
     resetFilters();
-    void fetchTransactions(DEFAULT_TRANSACTION_FILTERS);
-  }, [fetchTransactions, resetFilters]);
+  }, [resetFilters]);
 
   const handlePageChange = useCallback(
     (nextPage: number) => {
@@ -146,7 +123,6 @@ export function useTransactionsScreen() {
     setShowForm,
     setShowImport,
     setEditTx,
-    refresh,
     closeForm,
     handleCreate,
     handleEdit,

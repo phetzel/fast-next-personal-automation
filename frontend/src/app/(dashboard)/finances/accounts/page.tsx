@@ -1,33 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useFinances } from "@/hooks";
 import { useConfirmDialog } from "@/components/shared/feedback";
 import { PageHeader } from "@/components/shared/layout";
 import { AccountCard, AccountForm, UpdateBalanceForm } from "@/components/shared/finances";
 import { Button, Skeleton } from "@/components/ui";
+import { formatCurrency } from "@/lib/formatters";
 import { Plus, Building2 } from "lucide-react";
 import type { FinancialAccount } from "@/types";
 
 export default function AccountsPage() {
   const confirmDialog = useConfirmDialog();
-  const {
-    accounts,
-    accountsLoading,
-    fetchAccounts,
-    createAccount,
-    updateAccount,
-    deleteAccount,
-    updateBalance,
-  } = useFinances();
+  const { accounts, accountsLoading, createAccount, updateAccount, deleteAccount, updateBalance } =
+    useFinances();
 
   const [showForm, setShowForm] = useState(false);
   const [editAccount, setEditAccount] = useState<FinancialAccount | null>(null);
   const [balanceAccount, setBalanceAccount] = useState<FinancialAccount | null>(null);
-
-  useEffect(() => {
-    fetchAccounts();
-  }, [fetchAccounts]);
 
   const handleCreate = async (data: Partial<FinancialAccount>) => {
     const result = await createAccount(data);
@@ -72,9 +62,7 @@ export default function AccountsPage() {
           <>
             {accounts.length} account{accounts.length !== 1 ? "s" : ""} · Net balance:{" "}
             <span className={totalBalance >= 0 ? "text-emerald-600" : "text-destructive"}>
-              {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
-                totalBalance
-              )}
+              {formatCurrency(totalBalance)}
             </span>
           </>
         }

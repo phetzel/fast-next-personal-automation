@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useFinances } from "@/hooks";
 import { useConfirmDialog } from "@/components/shared/feedback";
 import { RecurringExpenseRow, RecurringForm } from "@/components/shared/finances";
@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui";
+import { formatCurrency } from "@/lib/formatters";
 import { Plus, RefreshCw } from "lucide-react";
 import type { RecurringExpense } from "@/types";
 
@@ -26,25 +27,18 @@ export default function RecurringPage() {
   const {
     recurringExpenses,
     recurringLoading,
-    fetchRecurring,
     createRecurring,
     updateRecurring,
     deleteRecurring,
     categories,
-    fetchCategories,
     accounts,
-    fetchAccounts,
-  } = useFinances();
+  } = useFinances({
+    recurringActiveOnly: false,
+  });
 
   const [showForm, setShowForm] = useState(false);
   const [editExpense, setEditExpense] = useState<RecurringExpense | null>(null);
   const [showInactive, setShowInactive] = useState(false);
-
-  useEffect(() => {
-    fetchRecurring(false); // fetch all including inactive
-    fetchCategories();
-    fetchAccounts();
-  }, [fetchRecurring, fetchCategories, fetchAccounts]);
 
   const displayed = showInactive ? recurringExpenses : recurringExpenses.filter((e) => e.is_active);
 
@@ -91,14 +85,11 @@ export default function RecurringPage() {
       }
     }, 0);
 
-  const fmt = (n: number) =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
-
   return (
     <div className="space-y-6">
       <PageHeader
         title="Recurring Expenses"
-        description={`${recurringExpenses.filter((e) => e.is_active).length} active · ~${fmt(totalMonthly)}/mo estimated`}
+        description={`${recurringExpenses.filter((e) => e.is_active).length} active · ~${formatCurrency(totalMonthly)}/mo estimated`}
         actions={
           <Button onClick={() => setShowForm(true)}>
             <Plus className="mr-2 h-4 w-4" />

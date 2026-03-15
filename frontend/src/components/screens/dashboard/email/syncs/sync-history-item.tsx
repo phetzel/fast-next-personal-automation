@@ -1,4 +1,5 @@
 import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui";
+import { formatDateTime, formatDuration } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { EmailSync } from "@/types";
 import { CheckCircle, Clock, Loader2, XCircle } from "lucide-react";
@@ -6,25 +7,6 @@ import { CheckCircle, Clock, Loader2, XCircle } from "lucide-react";
 interface SyncHistoryItemProps {
   sync: EmailSync;
   isSelected: boolean;
-}
-
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleString();
-}
-
-function formatDuration(sync: EmailSync) {
-  if (!sync.completed_at) return "In progress";
-  const start = new Date(sync.started_at);
-  const end = new Date(sync.completed_at);
-  const diffMs = end.getTime() - start.getTime();
-  const diffSecs = Math.floor(diffMs / 1000);
-
-  if (diffSecs < 60) {
-    return `${diffSecs}s`;
-  }
-
-  const diffMins = Math.floor(diffSecs / 60);
-  return `${diffMins}m ${diffSecs % 60}s`;
 }
 
 function SyncStatusBadge({ status }: { status: EmailSync["status"] }) {
@@ -74,8 +56,15 @@ export function SyncHistoryItem({ sync, isSelected }: SyncHistoryItemProps) {
         <div className="flex items-center gap-4">
           <SyncStatusBadge status={sync.status} />
           <div>
-            <p className="font-medium">{formatDate(sync.started_at)}</p>
-            <p className="text-muted-foreground text-sm">Duration: {formatDuration(sync)}</p>
+            <p className="font-medium">{formatDateTime(sync.started_at)}</p>
+            <p className="text-muted-foreground text-sm">
+              Duration:{" "}
+              {sync.completed_at
+                ? formatDuration(
+                    new Date(sync.completed_at).getTime() - new Date(sync.started_at).getTime()
+                  )
+                : "In progress"}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-6 text-sm">
@@ -108,11 +97,11 @@ export function SyncHistoryItem({ sync, isSelected }: SyncHistoryItemProps) {
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Started:</dt>
-                <dd>{formatDate(sync.started_at)}</dd>
+                <dd>{formatDateTime(sync.started_at)}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Completed:</dt>
-                <dd>{sync.completed_at ? formatDate(sync.completed_at) : "N/A"}</dd>
+                <dd>{sync.completed_at ? formatDateTime(sync.completed_at) : "N/A"}</dd>
               </div>
             </dl>
           </div>

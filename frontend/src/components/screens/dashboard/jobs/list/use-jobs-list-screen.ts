@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useJobs } from "@/hooks";
 import { usePipelines } from "@/hooks/use-pipelines";
 import type { Job } from "@/types";
@@ -35,26 +35,6 @@ export function useJobsListScreen() {
   const [isDeleteByStatusModalOpen, setIsDeleteByStatusModalOpen] = useState(false);
   const [prepJob, setPrepJob] = useState<Job | null>(null);
 
-  useEffect(() => {
-    void fetchJobs();
-  }, [
-    fetchJobs,
-    filters.page,
-    filters.status,
-    filters.source,
-    filters.min_score,
-    filters.max_score,
-    filters.sort_by,
-    filters.sort_order,
-    filters.search,
-    filters.posted_within_hours,
-    filters.ingestion_source,
-  ]);
-
-  useEffect(() => {
-    void fetchStats();
-  }, [fetchStats]);
-
   const refresh = useCallback(() => {
     void fetchJobs();
     void fetchStats();
@@ -85,13 +65,9 @@ export function useJobsListScreen() {
 
   const handleDelete = useCallback(
     async (jobId: string): Promise<boolean> => {
-      const success = await deleteJob(jobId);
-      if (success) {
-        void fetchStats();
-      }
-      return success;
+      return deleteJob(jobId);
     },
-    [deleteJob, fetchStats]
+    [deleteJob]
   );
 
   const handlePrep = useCallback((job: Job) => {

@@ -1,4 +1,6 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { JobSelectField } from "./job-select-field";
 import { apiClient } from "@/lib/api-client";
@@ -10,6 +12,18 @@ vi.mock("@/lib/api-client", () => ({
 }));
 
 const mockGet = vi.mocked(apiClient.get);
+
+function renderWithQueryClient(ui: ReactNode) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
 
 describe("JobSelectField", () => {
   beforeEach(() => {
@@ -25,7 +39,7 @@ describe("JobSelectField", () => {
       has_more: false,
     });
 
-    render(<JobSelectField id="job" value={undefined} onChange={vi.fn()} />);
+    renderWithQueryClient(<JobSelectField id="job" value={undefined} onChange={vi.fn()} />);
 
     expect(await screen.findByText("No Jobs Found")).toBeInTheDocument();
   });
@@ -50,7 +64,7 @@ describe("JobSelectField", () => {
       has_more: false,
     });
 
-    render(<JobSelectField id="job" value="job-1" onChange={vi.fn()} />);
+    renderWithQueryClient(<JobSelectField id="job" value="job-1" onChange={vi.fn()} />);
 
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalled();

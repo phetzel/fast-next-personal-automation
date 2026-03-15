@@ -9,14 +9,12 @@ import {
   CardTitle,
   Button,
   Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  ScrollArea,
 } from "@/components/ui";
 import { CopyButton } from "@/components/shared/feedback/copy-button";
+import { Combobox } from "@/components/shared/forms";
 import { useJobProfiles } from "@/hooks/use-job-profiles";
+import { formatDuration } from "@/lib/formatters";
 import type { ExecutionState, ProfileRequiredError } from "@/types";
 import { CheckCircle, XCircle, Loader2, Clock, User, Plus, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -71,10 +69,7 @@ export function ExecutionResult({ state, onReset, onRetryWithProfile }: Executio
     return null;
   }
 
-  const duration =
-    startedAt && completedAt
-      ? Math.round(((completedAt.getTime() - startedAt.getTime()) / 1000) * 100) / 100
-      : null;
+  const duration = startedAt && completedAt ? completedAt.getTime() - startedAt.getTime() : null;
 
   const statusConfig = {
     running: {
@@ -124,7 +119,9 @@ export function ExecutionResult({ state, onReset, onRetryWithProfile }: Executio
             <StatusIcon className={cn("h-5 w-5", config.color, config.animate && "animate-spin")} />
             <CardTitle className="text-sm font-medium">{config.label}</CardTitle>
           </div>
-          {duration !== null && <span className="text-muted-foreground text-xs">{duration}s</span>}
+          {duration !== null && (
+            <span className="text-muted-foreground text-xs">{formatDuration(duration)}</span>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -154,9 +151,9 @@ export function ExecutionResult({ state, onReset, onRetryWithProfile }: Executio
               <p className="text-muted-foreground text-xs font-medium">Output:</p>
               <CopyButton text={outputText} className="opacity-0 group-hover:opacity-100" />
             </div>
-            <pre className="bg-background max-h-64 overflow-auto rounded-md border p-3 text-xs">
-              {outputText}
-            </pre>
+            <ScrollArea className="bg-background max-h-64 rounded-md border">
+              <pre className="p-3 text-xs">{outputText}</pre>
+            </ScrollArea>
           </div>
         )}
 
@@ -248,25 +245,47 @@ function ProfileRequiredErrorView({
             <Label htmlFor="profile-select" className="text-sm font-medium">
               Select a profile to continue
             </Label>
-            <Select
+            <Combobox
+              triggerId="profile-select"
               value={selectedProfileId || UNSET_PROFILE_VALUE}
               onValueChange={(value) => onProfileSelect(value === UNSET_PROFILE_VALUE ? "" : value)}
+              options={[
+                { value: UNSET_PROFILE_VALUE, label: "Select a profile..." },
+                ...availableProfiles.map((profile) => ({
+                  value: profile.id,
+                  label: profile.name,
+                  keywords: [
+                    profile.name,
+                    profile.resume_name ?? "",
+                    profile.is_default ? "default" : "",
+                  ],
+                })),
+              ]}
+              placeholder="Select a profile..."
+              searchPlaceholder="Search profiles..."
               disabled={profilesLoading}
-            >
-              <SelectTrigger id="profile-select" className="w-full">
-                <SelectValue placeholder="Select a profile..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={UNSET_PROFILE_VALUE}>Select a profile...</SelectItem>
-                {availableProfiles.map((profile) => (
-                  <SelectItem key={profile.id} value={profile.id}>
-                    {profile.name}
-                    {profile.is_default ? " (default)" : ""}
-                    {!profile.has_resume ? " - no resume" : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              renderOption={(option) => {
+                const profile = availableProfiles.find((item) => item.id === option.value);
+
+                if (!profile) {
+                  return option.label;
+                }
+
+                return (
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate">
+                      {profile.name}
+                      {profile.is_default ? " (default)" : ""}
+                    </span>
+                    {!profile.has_resume ? (
+                      <span className="text-muted-foreground text-xs">No resume linked</span>
+                    ) : profile.resume_name ? (
+                      <span className="text-muted-foreground text-xs">{profile.resume_name}</span>
+                    ) : null}
+                  </div>
+                );
+              }}
+            />
           </div>
 
           {/* Selected profile warning if no resume */}

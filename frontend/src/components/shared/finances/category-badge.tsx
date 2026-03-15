@@ -1,7 +1,7 @@
 "use client";
 
+import { useCategoriesQuery } from "@/hooks/queries/finances";
 import { cn } from "@/lib/utils";
-import { useFinanceStore } from "@/stores/finance-store";
 
 interface CategoryBadgeProps {
   category: string | null | undefined;
@@ -20,7 +20,7 @@ function hexToRgb(hex: string): string | null {
 }
 
 export function CategoryBadge({ category, className, size = "sm" }: CategoryBadgeProps) {
-  const categories = useFinanceStore((s) => s.categories);
+  const categories = useCategoriesQuery(false).data ?? [];
 
   if (!category) {
     return (

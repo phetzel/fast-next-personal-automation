@@ -1,5 +1,6 @@
 "use client";
 
+import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { BudgetStatus } from "@/types";
 import { AlertTriangle, Pencil, Trash2 } from "lucide-react";
@@ -17,9 +18,6 @@ export function BudgetProgress({ status, onEdit, onDelete }: BudgetProgressProps
 
   const pct =
     budget.amount_limit > 0 ? Math.min((spent_amount / budget.amount_limit) * 100, 100) : 0;
-
-  const fmt = (n: number) =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 
   const barColor = is_over_budget
     ? "bg-destructive"
@@ -72,9 +70,11 @@ export function BudgetProgress({ status, onEdit, onDelete }: BudgetProgressProps
               is_over_budget ? "text-destructive font-medium" : "text-muted-foreground"
             )}
           >
-            {fmt(spent_amount)} spent
+            {formatCurrency(spent_amount)} spent
           </span>
-          <span className="text-muted-foreground">{fmt(budget.amount_limit)} budget</span>
+          <span className="text-muted-foreground">
+            {formatCurrency(budget.amount_limit)} budget
+          </span>
         </div>
       </div>
 
@@ -83,7 +83,7 @@ export function BudgetProgress({ status, onEdit, onDelete }: BudgetProgressProps
         {is_over_budget ? (
           <span className="text-destructive flex items-center gap-1 text-xs font-medium">
             <AlertTriangle className="h-3.5 w-3.5" />
-            Over by {fmt(Math.abs(remaining))}
+            Over by {formatCurrency(Math.abs(remaining))}
           </span>
         ) : (
           <span
@@ -94,7 +94,7 @@ export function BudgetProgress({ status, onEdit, onDelete }: BudgetProgressProps
                 : "text-emerald-600 dark:text-emerald-400"
             )}
           >
-            {fmt(remaining)} remaining
+            {formatCurrency(remaining)} remaining
           </span>
         )}
       </div>

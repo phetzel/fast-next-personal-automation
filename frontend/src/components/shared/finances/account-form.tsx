@@ -1,16 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { FormDialogShell } from "@/components/shared/forms";
 import { ACCOUNT_TYPE_LABELS } from "@/types";
 import type { FinancialAccount } from "@/types";
 import { Button, Checkbox, Input, Label } from "@/components/ui";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -33,6 +27,7 @@ const accountTypes = Object.entries(ACCOUNT_TYPE_LABELS) as [
 
 export function AccountForm({ open, onClose, onSubmit, account }: AccountFormProps) {
   const isEdit = !!account;
+  const formId = isEdit ? "edit-account-form" : "create-account-form";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -82,104 +77,109 @@ export function AccountForm({ open, onClose, onSubmit, account }: AccountFormPro
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Account" : "Add Account"}</DialogTitle>
-        </DialogHeader>
+    <FormDialogShell
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          handleClose();
+        }
+      }}
+      title={isEdit ? "Edit Account" : "Add Account"}
+      maxWidth="sm:max-w-md"
+      scrollable
+      footer={
+        <>
+          <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button type="submit" form={formId} disabled={loading || !formData.name}>
+            {loading ? "Saving..." : isEdit ? "Save Changes" : "Add Account"}
+          </Button>
+        </>
+      }
+    >
+      <form id={formId} onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="name">Account Name *</Label>
+          <Input
+            id="name"
+            value={formData.name}
+            onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
+            placeholder="e.g. Chase Checking"
+            required
+          />
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="name">Account Name *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
-              placeholder="e.g. Chase Checking"
-              required
-            />
-          </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="account_type">Account Type *</Label>
+          <Select
+            value={formData.account_type}
+            onValueChange={(v) =>
+              setFormData((p) => ({ ...p, account_type: v as FinancialAccount["account_type"] }))
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {accountTypes.map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="account_type">Account Type *</Label>
-            <Select
-              value={formData.account_type}
-              onValueChange={(v) =>
-                setFormData((p) => ({ ...p, account_type: v as FinancialAccount["account_type"] }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {accountTypes.map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="institution">Institution</Label>
+          <Input
+            id="institution"
+            value={formData.institution}
+            onChange={(e) => setFormData((p) => ({ ...p, institution: e.target.value }))}
+            placeholder="e.g. Chase"
+          />
+        </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="institution">Institution</Label>
-            <Input
-              id="institution"
-              value={formData.institution}
-              onChange={(e) => setFormData((p) => ({ ...p, institution: e.target.value }))}
-              placeholder="e.g. Chase"
-            />
-          </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="currency">Currency</Label>
+          <Input
+            id="currency"
+            value={formData.currency}
+            onChange={(e) =>
+              setFormData((p) => ({ ...p, currency: e.target.value.toUpperCase().slice(0, 3) }))
+            }
+            placeholder="USD"
+            maxLength={3}
+          />
+        </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="currency">Currency</Label>
-            <Input
-              id="currency"
-              value={formData.currency}
-              onChange={(e) =>
-                setFormData((p) => ({ ...p, currency: e.target.value.toUpperCase().slice(0, 3) }))
-              }
-              placeholder="USD"
-              maxLength={3}
-            />
-          </div>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            checked={formData.is_default}
+            id="is_default"
+            onCheckedChange={(checked) =>
+              setFormData((p) => ({ ...p, is_default: checked === true }))
+            }
+          />
+          <Label htmlFor="is_default" className="cursor-pointer font-normal">
+            Use as default account for new transactions and recurring expenses
+          </Label>
+        </div>
 
-          <div className="flex items-center gap-2">
-            <Checkbox
-              checked={formData.is_default}
-              id="is_default"
-              onCheckedChange={(checked) =>
-                setFormData((p) => ({ ...p, is_default: checked === true }))
-              }
-            />
-            <Label htmlFor="is_default" className="cursor-pointer font-normal">
-              Use as default account for new transactions and recurring expenses
-            </Label>
-          </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="notes">Notes</Label>
+          <Input
+            id="notes"
+            value={formData.notes}
+            onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))}
+            placeholder="Optional notes"
+          />
+        </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="notes">Notes</Label>
-            <Input
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))}
-              placeholder="Optional notes"
-            />
-          </div>
-
-          {error && <p className="text-destructive text-sm">{error}</p>}
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading || !formData.name}>
-              {loading ? "Saving..." : isEdit ? "Save Changes" : "Add Account"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        {error && <p className="text-destructive text-sm">{error}</p>}
+      </form>
+    </FormDialogShell>
   );
 }
 
@@ -191,6 +191,7 @@ interface UpdateBalanceFormProps {
 }
 
 export function UpdateBalanceForm({ open, onClose, onSubmit, account }: UpdateBalanceFormProps) {
+  const formId = "update-balance-form";
   const [loading, setLoading] = useState(false);
   const [balance, setBalance] = useState(String(account?.current_balance ?? ""));
 
@@ -206,37 +207,43 @@ export function UpdateBalanceForm({ open, onClose, onSubmit, account }: UpdateBa
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Update Balance</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <p className="text-muted-foreground text-sm">
-            Enter the current balance for <strong>{account?.name}</strong>.
-          </p>
-          <div className="space-y-1.5">
-            <Label htmlFor="balance">Balance ({account?.currency ?? "USD"})</Label>
-            <Input
-              id="balance"
-              type="number"
-              step="0.01"
-              value={balance}
-              onChange={(e) => setBalance(e.target.value)}
-              placeholder="0.00"
-              required
-            />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading || balance === ""}>
-              {loading ? "Saving..." : "Update Balance"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <FormDialogShell
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          onClose();
+        }
+      }}
+      title="Update Balance"
+      maxWidth="sm:max-w-sm"
+      footer={
+        <>
+          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button type="submit" form={formId} disabled={loading || balance === ""}>
+            {loading ? "Saving..." : "Update Balance"}
+          </Button>
+        </>
+      }
+    >
+      <form id={formId} onSubmit={handleSubmit} className="space-y-4">
+        <p className="text-muted-foreground text-sm">
+          Enter the current balance for <strong>{account?.name}</strong>.
+        </p>
+        <div className="space-y-1.5">
+          <Label htmlFor="balance">Balance ({account?.currency ?? "USD"})</Label>
+          <Input
+            id="balance"
+            type="number"
+            step="0.01"
+            value={balance}
+            onChange={(e) => setBalance(e.target.value)}
+            placeholder="0.00"
+            required
+          />
+        </div>
+      </form>
+    </FormDialogShell>
   );
 }

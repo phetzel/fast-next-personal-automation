@@ -1,5 +1,6 @@
 "use client";
 
+import { formatCurrency, formatDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { BILLING_CYCLE_LABELS } from "@/types";
 import type { FinancialAccount, RecurringExpense } from "@/types";
@@ -41,20 +42,6 @@ export function RecurringExpenseRow({
     : false;
 
   const isPastDue = expense.next_due_date ? new Date(expense.next_due_date) < new Date() : false;
-
-  const formatAmount = (amount: number | null) => {
-    if (amount === null) return "—";
-    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
-  };
-
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return "—";
-    return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-  };
-
   return (
     <TableRow
       className={cn(
@@ -93,7 +80,7 @@ export function RecurringExpenseRow({
 
       {/* Amount */}
       <TableCell className="py-3 pr-4 text-right font-medium tabular-nums">
-        {formatAmount(expense.expected_amount)}
+        {expense.expected_amount === null ? "—" : formatCurrency(expense.expected_amount)}
       </TableCell>
 
       {/* Cycle */}
@@ -113,7 +100,7 @@ export function RecurringExpenseRow({
                 : "text-muted-foreground"
           )}
         >
-          {formatDate(expense.next_due_date)}
+          {formatDate(expense.next_due_date, "MMM d")}
           {isPastDue && !isSeenThisMonth && " ⚠"}
         </span>
       </TableCell>
@@ -128,7 +115,7 @@ export function RecurringExpenseRow({
         ) : expense.last_seen_date ? (
           <span className="text-muted-foreground flex items-center gap-1 text-sm">
             <CalendarClock className="h-3.5 w-3.5" />
-            {formatDate(expense.last_seen_date)}
+            {formatDate(expense.last_seen_date, "MMM d")}
           </span>
         ) : (
           <span className="text-muted-foreground text-sm">Never</span>

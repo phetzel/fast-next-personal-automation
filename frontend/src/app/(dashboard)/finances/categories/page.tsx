@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useFinances } from "@/hooks";
 import { useConfirmDialog } from "@/components/shared/feedback";
 import { PageHeader } from "@/components/shared/layout";
@@ -12,34 +12,22 @@ import type { FinanceCategory } from "@/types";
 
 export default function CategoriesPage() {
   const confirmDialog = useConfirmDialog();
-  const {
-    categories,
-    categoriesLoading,
-    fetchCategories,
-    createCategory,
-    updateCategory,
-    deleteCategory,
-  } = useFinances();
+  const { categories, categoriesLoading, createCategory, updateCategory, deleteCategory } =
+    useFinances();
 
   const [showForm, setShowForm] = useState(false);
   const [editCategory, setEditCategory] = useState<FinanceCategory | null>(null);
-
-  useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
 
   const incomeCategories = categories.filter((c) => c.category_type === "income" && c.is_active);
   const expenseCategories = categories.filter((c) => c.category_type === "expense" && c.is_active);
 
   const handleCreate = async (data: object) => {
     await createCategory(data);
-    fetchCategories();
   };
 
   const handleEdit = async (data: object) => {
     if (!editCategory) return;
     await updateCategory(editCategory.id, data);
-    fetchCategories();
   };
 
   const handleDelete = async (id: string) => {
@@ -52,7 +40,6 @@ export default function CategoriesPage() {
     });
     if (!confirmed) return;
     await deleteCategory(id);
-    fetchCategories();
   };
 
   const openEdit = (cat: FinanceCategory) => {
