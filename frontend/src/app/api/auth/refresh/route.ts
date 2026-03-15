@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { backendFetch, BackendApiError } from "@/lib/server-api";
+import { clearAuthCookies, setAuthCookies } from "@/lib/auth-cookies";
+import { backendErrorMessage, backendFetch, BackendApiError } from "@/lib/server-api";
 import type { RefreshTokenResponse } from "@/types";
 
 export async function POST(request: NextRequest) {
@@ -16,24 +17,16 @@ export async function POST(request: NextRequest) {
     });
 
     const response = NextResponse.json({ message: "Token refreshed" });
-
-    // Update access token cookie
-    response.cookies.set("access_token", data.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 15, // 15 minutes
-      path: "/",
-    });
+    setAuthCookies(response.cookies, data);
 
     return response;
   } catch (error) {
     if (error instanceof BackendApiError) {
-      // Clear cookies on refresh failure
-      const response = NextResponse.json({ detail: "Session expired" }, { status: 401 });
-
-      response.cookies.set("access_token", "", { maxAge: 0, path: "/" });
-      response.cookies.set("refresh_token", "", { maxAge: 0, path: "/" });
+      const response = NextResponse.json(
+        { detail: backendErrorMessage(error, "Session expired") },
+        { status: 401 }
+      );
+      clearAuthCookies(response.cookies);
 
       return response;
     }

@@ -1,65 +1,112 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/query-keys";
+import { useScheduleOccurrencesQuery, useSchedulesQuery } from "./queries/schedules";
 import type {
   ScheduledTask,
   ScheduledTaskCreate,
   ScheduledTaskUpdate,
-  ScheduledTaskListResponse,
   CalendarOccurrence,
+  ScheduledTaskListResponse,
   CalendarOccurrencesResponse,
 } from "@/types";
 
-interface SchedulesState {
-  schedules: ScheduledTask[];
-  occurrences: CalendarOccurrence[];
-  total: number;
-  isLoading: boolean;
-  error: string | null;
+interface OccurrenceRange {
+  startDate: Date;
+  endDate: Date;
 }
 
-interface UseSchedulesResult extends SchedulesState {
-  fetchSchedules: () => Promise<ScheduledTask[]>;
-  fetchOccurrences: (startDate: Date, endDate: Date) => Promise<CalendarOccurrence[]>;
-  createSchedule: (data: ScheduledTaskCreate) => Promise<ScheduledTask | null>;
-  updateSchedule: (id: string, data: ScheduledTaskUpdate) => Promise<ScheduledTask | null>;
-  deleteSchedule: (id: string) => Promise<boolean>;
-  toggleSchedule: (id: string) => Promise<ScheduledTask | null>;
-  setError: (error: string | null) => void;
-}
-
-/**
- * Hook for managing scheduled tasks and calendar occurrences.
- */
-export function useSchedules(): UseSchedulesResult {
-  const [schedules, setSchedules] = useState<ScheduledTask[]>([]);
-  const [occurrences, setOccurrences] = useState<CalendarOccurrence[]>([]);
-  const [total, setTotal] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+export function useSchedules() {
+  const queryClient = useQueryClient();
+  const [occurrenceRange, setOccurrenceRange] = useState<OccurrenceRange | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const occurrenceRangeRef = useRef<OccurrenceRange | null>(null);
+
+  occurrenceRangeRef.current = occurrenceRange;
+
+  const schedulesQuery = useSchedulesQuery();
+  const occurrencesQuery = useScheduleOccurrencesQuery(
+    occurrenceRange?.startDate ?? new Date(),
+    occurrenceRange?.endDate ?? new Date(),
+    occurrenceRange !== null
+  );
+
+  const invalidateSchedules = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.schedules.all });
+    if (occurrenceRangeRef.current) {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.schedules.occurrences({
+          start_date: occurrenceRangeRef.current.startDate.toISOString(),
+          end_date: occurrenceRangeRef.current.endDate.toISOString(),
+        }),
+      });
+    }
+  }, [queryClient]);
+
+  const createMutation = useMutation({
+    mutationFn: (data: ScheduledTaskCreate) => apiClient.post<ScheduledTask>("/schedules", data),
+    onSuccess: invalidateSchedules,
+    onError: (mutationError) => {
+      setError(
+        mutationError instanceof Error ? mutationError.message : "Failed to create schedule"
+      );
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: ScheduledTaskUpdate }) =>
+      apiClient.put<ScheduledTask>(`/schedules/${id}`, data),
+    onSuccess: invalidateSchedules,
+    onError: (mutationError) => {
+      setError(
+        mutationError instanceof Error ? mutationError.message : "Failed to update schedule"
+      );
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/schedules/${id}`),
+    onSuccess: invalidateSchedules,
+    onError: (mutationError) => {
+      setError(
+        mutationError instanceof Error ? mutationError.message : "Failed to delete schedule"
+      );
+    },
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: (id: string) => apiClient.post<ScheduledTask>(`/schedules/${id}/toggle`),
+    onSuccess: invalidateSchedules,
+    onError: (mutationError) => {
+      setError(
+        mutationError instanceof Error ? mutationError.message : "Failed to toggle schedule"
+      );
+    },
+  });
 
   const fetchSchedules = useCallback(async (): Promise<ScheduledTask[]> => {
-    setIsLoading(true);
     setError(null);
 
     try {
-      const response = await apiClient.get<ScheduledTaskListResponse>("/schedules");
-      setSchedules(response.tasks);
-      setTotal(response.total);
+      const response = await queryClient.fetchQuery({
+        queryKey: queryKeys.schedules.list(),
+        queryFn: () => apiClient.get<ScheduledTaskListResponse>("/schedules"),
+      });
       return response.tasks;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to fetch schedules";
+    } catch (queryError) {
+      const message =
+        queryError instanceof Error ? queryError.message : "Failed to fetch schedules";
       setError(message);
       return [];
-    } finally {
-      setIsLoading(false);
     }
-  }, []);
+  }, [queryClient]);
 
   const fetchOccurrences = useCallback(
     async (startDate: Date, endDate: Date): Promise<CalendarOccurrence[]> => {
-      setIsLoading(true);
+      setOccurrenceRange({ startDate, endDate });
       setError(null);
 
       try {
@@ -67,114 +114,79 @@ export function useSchedules(): UseSchedulesResult {
           start_date: startDate.toISOString(),
           end_date: endDate.toISOString(),
         });
-        const response = await apiClient.get<CalendarOccurrencesResponse>(
-          `/schedules/occurrences?${params}`
-        );
-        setOccurrences(response.occurrences);
+        const response = await queryClient.fetchQuery({
+          queryKey: queryKeys.schedules.occurrences({
+            start_date: startDate.toISOString(),
+            end_date: endDate.toISOString(),
+          }),
+          queryFn: () =>
+            apiClient.get<CalendarOccurrencesResponse>(`/schedules/occurrences?${params}`),
+        });
         return response.occurrences;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to fetch calendar events";
+      } catch (queryError) {
+        const message =
+          queryError instanceof Error ? queryError.message : "Failed to fetch calendar events";
         setError(message);
         return [];
-      } finally {
-        setIsLoading(false);
       }
     },
-    []
-  );
-
-  const createSchedule = useCallback(
-    async (data: ScheduledTaskCreate): Promise<ScheduledTask | null> => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const created = await apiClient.post<ScheduledTask>("/schedules", data);
-        await fetchSchedules();
-        return created;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to create schedule";
-        setError(message);
-        return null;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [fetchSchedules]
-  );
-
-  const updateSchedule = useCallback(
-    async (id: string, data: ScheduledTaskUpdate): Promise<ScheduledTask | null> => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const updated = await apiClient.put<ScheduledTask>(`/schedules/${id}`, data);
-        await fetchSchedules();
-        return updated;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to update schedule";
-        setError(message);
-        return null;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [fetchSchedules]
-  );
-
-  const deleteSchedule = useCallback(
-    async (id: string): Promise<boolean> => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        await apiClient.delete(`/schedules/${id}`);
-        await fetchSchedules();
-        return true;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to delete schedule";
-        setError(message);
-        return false;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [fetchSchedules]
-  );
-
-  const toggleSchedule = useCallback(
-    async (id: string): Promise<ScheduledTask | null> => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const toggled = await apiClient.post<ScheduledTask>(`/schedules/${id}/toggle`);
-        await fetchSchedules();
-        return toggled;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to toggle schedule";
-        setError(message);
-        return null;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [fetchSchedules]
+    [queryClient]
   );
 
   return {
-    schedules,
-    occurrences,
-    total,
-    isLoading,
-    error,
+    schedules: schedulesQuery.data?.tasks ?? [],
+    occurrences: occurrencesQuery.data?.occurrences ?? [],
+    total: schedulesQuery.data?.total ?? 0,
+    isLoading:
+      schedulesQuery.isLoading ||
+      schedulesQuery.isFetching ||
+      occurrencesQuery.isFetching ||
+      createMutation.isPending ||
+      updateMutation.isPending ||
+      deleteMutation.isPending ||
+      toggleMutation.isPending,
+    error:
+      error ??
+      (schedulesQuery.error instanceof Error
+        ? schedulesQuery.error.message
+        : occurrencesQuery.error instanceof Error
+          ? occurrencesQuery.error.message
+          : null),
     fetchSchedules,
     fetchOccurrences,
-    createSchedule,
-    updateSchedule,
-    deleteSchedule,
-    toggleSchedule,
+    createSchedule: async (data: ScheduledTaskCreate) => {
+      setError(null);
+      try {
+        return await createMutation.mutateAsync(data);
+      } catch {
+        return null;
+      }
+    },
+    updateSchedule: async (id: string, data: ScheduledTaskUpdate) => {
+      setError(null);
+      try {
+        return await updateMutation.mutateAsync({ id, data });
+      } catch {
+        return null;
+      }
+    },
+    deleteSchedule: async (id: string) => {
+      setError(null);
+      try {
+        await deleteMutation.mutateAsync(id);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    toggleSchedule: async (id: string) => {
+      setError(null);
+      try {
+        return await toggleMutation.mutateAsync(id);
+      } catch {
+        return null;
+      }
+    },
     setError,
   };
 }

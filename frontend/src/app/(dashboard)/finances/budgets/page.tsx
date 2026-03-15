@@ -1,34 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useFinances } from "@/hooks";
-import { BudgetProgress, BudgetForm } from "@/components/finances";
-import { Button, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
+import { useConfirmDialog } from "@/components/shared/feedback";
+import { PageHeader } from "@/components/shared/layout";
+import { BudgetProgress, BudgetForm } from "@/components/shared/finances";
+import { Button, Card, CardContent, CardHeader, CardTitle, Skeleton } from "@/components/ui";
+import { formatMonthYear } from "@/lib/formatters";
 import { Plus, PiggyBank, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Budget } from "@/types";
 
 export default function BudgetsPage() {
-  const {
-    budgetStatus,
-    budgetsLoading,
-    fetchBudgetStatus,
-    createBudget,
-    updateBudget,
-    deleteBudget,
-    categories,
-    fetchCategories,
-  } = useFinances();
-
+  const confirmDialog = useConfirmDialog();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
+  const { budgetStatus, budgetsLoading, createBudget, updateBudget, deleteBudget, categories } =
+    useFinances({
+      budgetMonthYear: { month, year },
+    });
   const [showForm, setShowForm] = useState(false);
   const [editBudget, setEditBudget] = useState<Budget | null>(null);
-
-  useEffect(() => {
-    fetchBudgetStatus(month, year);
-    fetchCategories();
-  }, [month, year, fetchBudgetStatus, fetchCategories]);
 
   const handlePrev = () => {
     if (month === 1) {
@@ -49,48 +41,50 @@ export default function BudgetsPage() {
   };
 
   const handleCreate = async (data: object) => {
-    const ok = await createBudget(data);
-    if (ok) fetchBudgetStatus(month, year);
+    await createBudget(data);
   };
 
   const handleEdit = async (data: object) => {
     if (!editBudget) return;
-    const ok = await updateBudget(editBudget.id, data);
-    if (ok) fetchBudgetStatus(month, year);
+    await updateBudget(editBudget.id, data);
   };
 
   const handleDelete = async (budgetId: string) => {
-    if (!confirm("Delete this budget?")) return;
+    const confirmed = await confirmDialog({
+      title: "Delete budget?",
+      description: "This will permanently remove the selected budget.",
+      confirmLabel: "Delete budget",
+      destructive: true,
+    });
+    if (!confirmed) return;
     await deleteBudget(budgetId);
-    fetchBudgetStatus(month, year);
   };
 
-  const monthName = new Date(year, month - 1).toLocaleString("default", {
-    month: "long",
-    year: "numeric",
-  });
+  const monthName = formatMonthYear(new Date(year, month - 1, 1));
 
   const overBudgetCount = budgetStatus.filter((b) => b.is_over_budget).length;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Budgets</h1>
-          <p className="text-muted-foreground">
+      <PageHeader
+        title="Budgets"
+        description={
+          <>
             {budgetStatus.length} budget{budgetStatus.length !== 1 ? "s" : ""}
             {overBudgetCount > 0 && (
               <span className="bg-destructive/10 text-destructive ml-2 rounded-full px-2 py-0.5 text-xs font-medium">
                 {overBudgetCount} over budget
               </span>
             )}
-          </p>
-        </div>
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Budget
-        </Button>
-      </div>
+          </>
+        }
+        actions={
+          <Button onClick={() => setShowForm(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Budget
+          </Button>
+        }
+      />
 
       {/* Month selector */}
       <Card>
@@ -117,7 +111,7 @@ export default function BudgetsPage() {
           {budgetsLoading ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="bg-muted h-28 animate-pulse rounded-lg" />
+                <Skeleton key={i} className="h-28 rounded-lg" />
               ))}
             </div>
           ) : budgetStatus.length === 0 ? (

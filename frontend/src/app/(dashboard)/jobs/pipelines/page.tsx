@@ -2,7 +2,8 @@
 
 import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
-import { PipelineList } from "@/components/pipelines";
+import { PageHeader } from "@/components/shared/layout";
+import { PipelineList } from "@/components/shared/pipelines";
 import { Card, CardContent } from "@/components/ui";
 import { Workflow, Briefcase, Sparkles } from "lucide-react";
 
@@ -25,11 +26,10 @@ export default function JobPipelinesPage() {
   }, [searchParams]);
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Job Pipelines</h1>
-        <p className="text-muted-foreground">Run automated pipelines for job search and analysis</p>
-      </div>
+      <PageHeader
+        title="Job Pipelines"
+        description="Run automated pipelines for job search and analysis"
+      />
 
       {/* Info Card */}
       <Card className="border-green-500/20 bg-green-500/5">

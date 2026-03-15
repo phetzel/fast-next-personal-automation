@@ -1,8 +1,17 @@
 "use client";
 
-import { useCallback } from "react";
-import { useFinanceStore } from "@/stores/finance-store";
+import { useCallback, useRef, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/query-keys";
+import {
+  useAccountsQuery,
+  useBudgetStatusQuery,
+  useCategoriesQuery,
+  useFinanceStatsQuery,
+  useRecurringExpensesQuery,
+  useTransactionsQuery,
+} from "./queries/finances";
 import type {
   BudgetStatus,
   CSVImportRequest,
@@ -12,540 +21,525 @@ import type {
   FinanceStats,
   RecurringExpense,
   Transaction,
+  TransactionCreate,
   TransactionFilters,
   TransactionListResponse,
   TransactionUpdate,
 } from "@/types";
+import { toSearchParams } from "./queries/utils";
 
-/**
- * Hook for managing finances data and API interactions.
- */
-export function useFinances() {
-  const {
-    accounts,
-    accountsLoading,
-    transactions,
-    total,
-    isLoading,
-    error,
-    filters,
-    stats,
-    statsLoading,
-    budgetStatus,
-    budgetsLoading,
-    recurringExpenses,
-    recurringLoading,
-    categories,
-    categoriesLoading,
-    selectedTransaction,
-    setAccounts,
-    setAccountsLoading,
-    updateAccount,
-    removeAccount,
-    setTransactions,
-    setLoading,
-    setError,
-    setFilters,
-    resetFilters,
-    setSelectedTransaction,
-    updateTransaction,
-    removeTransaction,
-    setStats,
-    setStatsLoading,
-    setBudgetStatus,
-    setBudgetsLoading,
-    setRecurringExpenses,
-    setRecurringLoading,
-    updateRecurring,
-    removeRecurring,
-    setCategories,
-    setCategoriesLoading,
-    updateCategory,
-    removeCategory,
-  } = useFinanceStore();
+const defaultFilters: TransactionFilters = {
+  page: 1,
+  page_size: 50,
+  sort_by: "transaction_date",
+  sort_order: "desc",
+};
 
-  // ──────────────────── Accounts ────────────────────────────────────────
+interface UseFinancesOptions {
+  initialFilters?: Partial<TransactionFilters>;
+  budgetMonthYear?: { month: number; year: number } | null;
+  categoriesActiveOnly?: boolean;
+  recurringActiveOnly?: boolean;
+}
+
+export function useFinances(options?: UseFinancesOptions) {
+  const queryClient = useQueryClient();
+  const initialFilters = { ...defaultFilters, ...options?.initialFilters };
+  const [filters, setFiltersState] = useState<TransactionFilters>(initialFilters);
+  const [localBudgetRequest, setLocalBudgetRequest] = useState<{
+    month: number;
+    year: number;
+  } | null>(options?.budgetMonthYear ?? null);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const filtersRef = useRef(initialFilters);
+
+  filtersRef.current = filters;
+  const budgetRequest = options?.budgetMonthYear ?? localBudgetRequest;
+
+  const accountsQuery = useAccountsQuery();
+  const statsQuery = useFinanceStatsQuery();
+  const transactionsQuery = useTransactionsQuery(filters);
+  const categoriesQuery = useCategoriesQuery(options?.categoriesActiveOnly ?? true);
+  const recurringQuery = useRecurringExpensesQuery(options?.recurringActiveOnly ?? true);
+  const budgetStatusQuery = useBudgetStatusQuery(
+    budgetRequest?.month ?? 1,
+    budgetRequest?.year ?? 1970,
+    budgetRequest !== null
+  );
+
+  const invalidateAllFinances = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.finances.all });
+  }, [queryClient]);
+
+  const createAccountMutation = useMutation({
+    mutationFn: (data: Partial<FinancialAccount>) =>
+      apiClient.post<FinancialAccount>("/finances/accounts", data),
+    onSuccess: invalidateAllFinances,
+    onError: (mutationError) => {
+      setError(mutationError instanceof Error ? mutationError.message : "Failed to create account");
+    },
+  });
+
+  const updateAccountMutation = useMutation({
+    mutationFn: ({ accountId, data }: { accountId: string; data: Partial<FinancialAccount> }) =>
+      apiClient.patch<FinancialAccount>(`/finances/accounts/${accountId}`, data),
+    onSuccess: invalidateAllFinances,
+    onError: (mutationError) => {
+      setError(mutationError instanceof Error ? mutationError.message : "Failed to update account");
+    },
+  });
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: (accountId: string) => apiClient.delete(`/finances/accounts/${accountId}`),
+    onSuccess: invalidateAllFinances,
+    onError: () => {
+      setError("Failed to delete account");
+    },
+  });
+
+  const updateBalanceMutation = useMutation({
+    mutationFn: ({ accountId, balance }: { accountId: string; balance: number }) =>
+      apiClient.patch<FinancialAccount>(`/finances/accounts/${accountId}/balance`, {
+        current_balance: balance,
+      }),
+    onSuccess: invalidateAllFinances,
+    onError: () => {
+      setError("Failed to update balance");
+    },
+  });
+
+  const createTransactionMutation = useMutation({
+    mutationFn: (data: TransactionCreate | object) =>
+      apiClient.post<Transaction>("/finances/transactions", data),
+    onSuccess: invalidateAllFinances,
+    onError: (mutationError) => {
+      setError(
+        mutationError instanceof Error ? mutationError.message : "Failed to create transaction"
+      );
+    },
+  });
+
+  const updateTransactionMutation = useMutation({
+    mutationFn: ({ txId, data }: { txId: string; data: TransactionUpdate }) =>
+      apiClient.patch<Transaction>(`/finances/transactions/${txId}`, data),
+    onSuccess: invalidateAllFinances,
+    onError: () => {
+      setError("Failed to update transaction");
+    },
+  });
+
+  const deleteTransactionMutation = useMutation({
+    mutationFn: (txId: string) => apiClient.delete(`/finances/transactions/${txId}`),
+    onSuccess: invalidateAllFinances,
+    onError: () => {
+      setError("Failed to delete transaction");
+    },
+  });
+
+  const markReviewedMutation = useMutation({
+    mutationFn: (txId: string) =>
+      apiClient.post<Transaction>(`/finances/transactions/${txId}/review`, {}),
+    onSuccess: invalidateAllFinances,
+  });
+
+  const createBudgetMutation = useMutation({
+    mutationFn: (data: object) => apiClient.post("/finances/budgets", data),
+    onSuccess: invalidateAllFinances,
+    onError: () => {
+      setError("Failed to create budget");
+    },
+  });
+
+  const updateBudgetMutation = useMutation({
+    mutationFn: ({ budgetId, data }: { budgetId: string; data: object }) =>
+      apiClient.patch(`/finances/budgets/${budgetId}`, data),
+    onSuccess: invalidateAllFinances,
+    onError: () => {
+      setError("Failed to update budget");
+    },
+  });
+
+  const deleteBudgetMutation = useMutation({
+    mutationFn: (budgetId: string) => apiClient.delete(`/finances/budgets/${budgetId}`),
+    onSuccess: invalidateAllFinances,
+    onError: () => {
+      setError("Failed to delete budget");
+    },
+  });
+
+  const createRecurringMutation = useMutation({
+    mutationFn: (data: object) => apiClient.post<RecurringExpense>("/finances/recurring", data),
+    onSuccess: invalidateAllFinances,
+    onError: () => {
+      setError("Failed to create recurring expense");
+    },
+  });
+
+  const updateRecurringMutation = useMutation({
+    mutationFn: ({ recurringId, data }: { recurringId: string; data: object }) =>
+      apiClient.patch<RecurringExpense>(`/finances/recurring/${recurringId}`, data),
+    onSuccess: invalidateAllFinances,
+    onError: () => {
+      setError("Failed to update recurring expense");
+    },
+  });
+
+  const deleteRecurringMutation = useMutation({
+    mutationFn: (recurringId: string) => apiClient.delete(`/finances/recurring/${recurringId}`),
+    onSuccess: invalidateAllFinances,
+    onError: () => {
+      setError("Failed to delete recurring expense");
+    },
+  });
+
+  const createCategoryMutation = useMutation({
+    mutationFn: (data: object) => apiClient.post<FinanceCategory>("/finances/categories", data),
+    onSuccess: invalidateAllFinances,
+    onError: (mutationError) => {
+      setError(
+        mutationError instanceof Error ? mutationError.message : "Failed to create category"
+      );
+    },
+  });
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: ({ categoryId, data }: { categoryId: string; data: object }) =>
+      apiClient.patch<FinanceCategory>(`/finances/categories/${categoryId}`, data),
+    onSuccess: invalidateAllFinances,
+    onError: (mutationError) => {
+      setError(
+        mutationError instanceof Error ? mutationError.message : "Failed to update category"
+      );
+    },
+  });
+
+  const deleteCategoryMutation = useMutation({
+    mutationFn: (categoryId: string) => apiClient.delete(`/finances/categories/${categoryId}`),
+    onSuccess: invalidateAllFinances,
+    onError: () => {
+      setError("Failed to delete category");
+    },
+  });
 
   const fetchAccounts = useCallback(async () => {
-    setAccountsLoading(true);
+    setError(null);
     try {
-      const data = await apiClient.get<FinancialAccount[]>("/finances/accounts");
-      setAccounts(data);
+      return await queryClient.fetchQuery({
+        queryKey: queryKeys.finances.accounts(),
+        queryFn: () => apiClient.get<FinancialAccount[]>("/finances/accounts"),
+      });
     } catch {
-      // Silently fail — not critical
-    } finally {
-      setAccountsLoading(false);
+      return [];
     }
-  }, [setAccounts, setAccountsLoading]);
-
-  const createAccount = useCallback(
-    async (data: Partial<FinancialAccount>): Promise<FinancialAccount | null> => {
-      try {
-        const account = await apiClient.post<FinancialAccount>("/finances/accounts", data);
-        // Re-fetch to avoid stale closure over the accounts list
-        const updated = await apiClient.get<FinancialAccount[]>("/finances/accounts");
-        setAccounts(updated);
-        return account;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to create account");
-        return null;
-      }
-    },
-    [setAccounts, setError]
-  );
-
-  const updateAccountData = useCallback(
-    async (
-      accountId: string,
-      data: Partial<FinancialAccount>
-    ): Promise<FinancialAccount | null> => {
-      try {
-        const account = await apiClient.patch<FinancialAccount>(
-          `/finances/accounts/${accountId}`,
-          data
-        );
-        updateAccount(account);
-
-        try {
-          const updated = await apiClient.get<FinancialAccount[]>("/finances/accounts");
-          setAccounts(updated);
-        } catch {
-          // Keep the local optimistic update if the refresh fails.
-        }
-
-        return account;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to update account");
-        return null;
-      }
-    },
-    [setAccounts, setError, updateAccount]
-  );
-
-  const deleteAccount = useCallback(
-    async (accountId: string): Promise<boolean> => {
-      try {
-        await apiClient.delete(`/finances/accounts/${accountId}`);
-        removeAccount(accountId);
-
-        try {
-          const updated = await apiClient.get<FinancialAccount[]>("/finances/accounts");
-          setAccounts(updated);
-        } catch {
-          // The delete succeeded; keep the optimistic removal if refresh fails.
-        }
-
-        return true;
-      } catch {
-        setError("Failed to delete account");
-        return false;
-      }
-    },
-    [removeAccount, setAccounts, setError]
-  );
-
-  const updateBalance = useCallback(
-    async (accountId: string, balance: number): Promise<FinancialAccount | null> => {
-      try {
-        const account = await apiClient.patch<FinancialAccount>(
-          `/finances/accounts/${accountId}/balance`,
-          { current_balance: balance }
-        );
-        updateAccount(account);
-        return account;
-      } catch {
-        setError("Failed to update balance");
-        return null;
-      }
-    },
-    [updateAccount, setError]
-  );
-
-  // ──────────────────── Transactions ────────────────────────────────────
+  }, [queryClient]);
 
   const fetchTransactions = useCallback(
     async (customFilters?: Partial<TransactionFilters>) => {
-      setLoading(true);
+      const nextFilters = { ...filtersRef.current, ...customFilters };
+      const queryString = toSearchParams(nextFilters);
+
+      setFiltersState(nextFilters);
       setError(null);
 
       try {
-        const applied = { ...filters, ...customFilters };
-        const params = new URLSearchParams();
-
-        if (applied.account_id) params.set("account_id", applied.account_id);
-        if (applied.category) params.set("category", applied.category);
-        if (applied.source) params.set("source", applied.source);
-        if (applied.transaction_type) params.set("transaction_type", applied.transaction_type);
-        if (applied.date_from) params.set("date_from", applied.date_from);
-        if (applied.date_to) params.set("date_to", applied.date_to);
-        if (applied.min_amount !== undefined) params.set("min_amount", String(applied.min_amount));
-        if (applied.max_amount !== undefined) params.set("max_amount", String(applied.max_amount));
-        if (applied.search) params.set("search", applied.search);
-        if (applied.is_reviewed !== undefined)
-          params.set("is_reviewed", String(applied.is_reviewed));
-        if (applied.page) params.set("page", String(applied.page));
-        if (applied.page_size) params.set("page_size", String(applied.page_size));
-        if (applied.sort_by) params.set("sort_by", applied.sort_by);
-        if (applied.sort_order) params.set("sort_order", applied.sort_order);
-
-        const response = await apiClient.get<TransactionListResponse>(
-          `/finances/transactions?${params.toString()}`
-        );
-        setTransactions(response.transactions, response.total);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch transactions");
-      } finally {
-        setLoading(false);
+        const response = await queryClient.fetchQuery({
+          queryKey: queryKeys.finances.transactions(nextFilters),
+          queryFn: () =>
+            apiClient.get<TransactionListResponse>(
+              queryString ? `/finances/transactions?${queryString}` : "/finances/transactions"
+            ),
+        });
+        return response.transactions;
+      } catch (queryError) {
+        const message =
+          queryError instanceof Error ? queryError.message : "Failed to fetch transactions";
+        setError(message);
+        return [];
       }
     },
-    [filters, setTransactions, setLoading, setError]
+    [queryClient]
   );
 
   const fetchStats = useCallback(async () => {
-    setStatsLoading(true);
+    setError(null);
+
     try {
-      const data = await apiClient.get<FinanceStats>("/finances/stats");
-      setStats(data);
+      return await queryClient.fetchQuery({
+        queryKey: queryKeys.finances.stats(),
+        queryFn: () => apiClient.get<FinanceStats>("/finances/stats"),
+      });
     } catch {
-      setStats(null);
-    } finally {
-      setStatsLoading(false);
+      return null;
     }
-  }, [setStats, setStatsLoading]);
-
-  const createTransaction = useCallback(
-    async (data: object): Promise<Transaction | null> => {
-      try {
-        const tx = await apiClient.post<Transaction>("/finances/transactions", data);
-        return tx;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to create transaction");
-        return null;
-      }
-    },
-    [setError]
-  );
-
-  const updateTransactionData = useCallback(
-    async (txId: string, data: TransactionUpdate): Promise<Transaction | null> => {
-      try {
-        const tx = await apiClient.patch<Transaction>(`/finances/transactions/${txId}`, data);
-        updateTransaction(tx);
-        return tx;
-      } catch {
-        setError("Failed to update transaction");
-        return null;
-      }
-    },
-    [updateTransaction, setError]
-  );
-
-  const deleteTransaction = useCallback(
-    async (txId: string): Promise<boolean> => {
-      try {
-        await apiClient.delete(`/finances/transactions/${txId}`);
-        removeTransaction(txId);
-        return true;
-      } catch {
-        setError("Failed to delete transaction");
-        return false;
-      }
-    },
-    [removeTransaction, setError]
-  );
-
-  const markReviewed = useCallback(
-    async (txId: string): Promise<Transaction | null> => {
-      try {
-        const tx = await apiClient.post<Transaction>(`/finances/transactions/${txId}/review`, {});
-        updateTransaction(tx);
-        return tx;
-      } catch {
-        return null;
-      }
-    },
-    [updateTransaction]
-  );
-
-  const importCSV = useCallback(
-    async (data: CSVImportRequest): Promise<CSVImportResponse | null> => {
-      try {
-        return await apiClient.post<CSVImportResponse>("/finances/transactions/import-csv", data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to import CSV");
-        return null;
-      }
-    },
-    [setError]
-  );
-
-  const triggerCategorize = useCallback(
-    async (
-      limit = 100,
-      accountId?: string
-    ): Promise<{ categorized: number; failed: number } | null> => {
-      try {
-        return await apiClient.post("/finances/transactions/categorize", {
-          limit,
-          account_id: accountId ?? null,
-        });
-      } catch {
-        return null;
-      }
-    },
-    []
-  );
-
-  // ──────────────────── Budgets ──────────────────────────────────────────
+  }, [queryClient]);
 
   const fetchBudgetStatus = useCallback(
     async (month: number, year: number) => {
-      setBudgetsLoading(true);
+      setLocalBudgetRequest({ month, year });
+      setError(null);
+
       try {
-        const data = await apiClient.get<BudgetStatus[]>(
-          `/finances/budgets/status?month=${month}&year=${year}`
-        );
-        setBudgetStatus(data);
+        return await queryClient.fetchQuery({
+          queryKey: queryKeys.finances.budgetStatus(month, year),
+          queryFn: () =>
+            apiClient.get<BudgetStatus[]>(`/finances/budgets/status?month=${month}&year=${year}`),
+        });
       } catch {
-        setBudgetStatus([]);
-      } finally {
-        setBudgetsLoading(false);
+        return [];
       }
     },
-    [setBudgetStatus, setBudgetsLoading]
+    [queryClient]
   );
-
-  const createBudget = useCallback(
-    async (data: object): Promise<boolean> => {
-      try {
-        await apiClient.post("/finances/budgets", data);
-        return true;
-      } catch {
-        setError("Failed to create budget");
-        return false;
-      }
-    },
-    [setError]
-  );
-
-  const updateBudget = useCallback(
-    async (budgetId: string, data: object): Promise<boolean> => {
-      try {
-        await apiClient.patch(`/finances/budgets/${budgetId}`, data);
-        return true;
-      } catch {
-        setError("Failed to update budget");
-        return false;
-      }
-    },
-    [setError]
-  );
-
-  const deleteBudget = useCallback(
-    async (budgetId: string): Promise<boolean> => {
-      try {
-        await apiClient.delete(`/finances/budgets/${budgetId}`);
-        return true;
-      } catch {
-        setError("Failed to delete budget");
-        return false;
-      }
-    },
-    [setError]
-  );
-
-  // ──────────────────── Recurring Expenses ──────────────────────────────
 
   const fetchRecurring = useCallback(
     async (activeOnly = true) => {
-      setRecurringLoading(true);
+      setError(null);
+
       try {
-        const data = await apiClient.get<RecurringExpense[]>(
-          `/finances/recurring?active_only=${activeOnly}`
-        );
-        setRecurringExpenses(data);
+        return await queryClient.fetchQuery({
+          queryKey: queryKeys.finances.recurring({ activeOnly }),
+          queryFn: () =>
+            apiClient.get<RecurringExpense[]>(`/finances/recurring?active_only=${activeOnly}`),
+        });
       } catch {
-        setRecurringExpenses([]);
-      } finally {
-        setRecurringLoading(false);
+        return [];
       }
     },
-    [setRecurringExpenses, setRecurringLoading]
+    [queryClient]
   );
-
-  const createRecurring = useCallback(
-    async (data: object): Promise<RecurringExpense | null> => {
-      try {
-        const recurring = await apiClient.post<RecurringExpense>("/finances/recurring", data);
-        // Re-fetch to avoid stale closure over the recurringExpenses list
-        const updated = await apiClient.get<RecurringExpense[]>(
-          "/finances/recurring?active_only=false"
-        );
-        setRecurringExpenses(updated);
-        return recurring;
-      } catch {
-        setError("Failed to create recurring expense");
-        return null;
-      }
-    },
-    [setRecurringExpenses, setError]
-  );
-
-  const updateRecurringData = useCallback(
-    async (recurringId: string, data: object): Promise<RecurringExpense | null> => {
-      try {
-        const recurring = await apiClient.patch<RecurringExpense>(
-          `/finances/recurring/${recurringId}`,
-          data
-        );
-        updateRecurring(recurring);
-        return recurring;
-      } catch {
-        setError("Failed to update recurring expense");
-        return null;
-      }
-    },
-    [updateRecurring, setError]
-  );
-
-  const deleteRecurring = useCallback(
-    async (recurringId: string): Promise<boolean> => {
-      try {
-        await apiClient.delete(`/finances/recurring/${recurringId}`);
-        removeRecurring(recurringId);
-        return true;
-      } catch {
-        setError("Failed to delete recurring expense");
-        return false;
-      }
-    },
-    [removeRecurring, setError]
-  );
-
-  // ──────────────────── Categories ──────────────────────────────────────
 
   const fetchCategories = useCallback(
     async (activeOnly = true) => {
-      setCategoriesLoading(true);
+      setError(null);
+
       try {
-        const data = await apiClient.get<FinanceCategory[]>(
-          `/finances/categories?active_only=${activeOnly}`
-        );
-        setCategories(data);
+        return await queryClient.fetchQuery({
+          queryKey: queryKeys.finances.categories({ activeOnly }),
+          queryFn: () =>
+            apiClient.get<FinanceCategory[]>(`/finances/categories?active_only=${activeOnly}`),
+        });
       } catch {
-        setCategories([]);
-      } finally {
-        setCategoriesLoading(false);
+        return [];
       }
     },
-    [setCategories, setCategoriesLoading]
+    [queryClient]
   );
 
-  const createCategory = useCallback(
-    async (data: object): Promise<FinanceCategory | null> => {
+  return {
+    accounts: accountsQuery.data ?? [],
+    accountsLoading: accountsQuery.isLoading || accountsQuery.isFetching,
+    transactions: transactionsQuery.data?.transactions ?? [],
+    total: transactionsQuery.data?.total ?? 0,
+    isLoading:
+      transactionsQuery.isLoading ||
+      transactionsQuery.isFetching ||
+      createTransactionMutation.isPending ||
+      updateTransactionMutation.isPending ||
+      deleteTransactionMutation.isPending,
+    error:
+      error ??
+      (transactionsQuery.error instanceof Error
+        ? transactionsQuery.error.message
+        : accountsQuery.error instanceof Error
+          ? accountsQuery.error.message
+          : null),
+    filters,
+    stats: statsQuery.data ?? null,
+    statsLoading: statsQuery.isLoading || statsQuery.isFetching,
+    budgetStatus: budgetStatusQuery.data ?? [],
+    budgetsLoading: budgetStatusQuery.isLoading || budgetStatusQuery.isFetching,
+    recurringExpenses: recurringQuery.data ?? [],
+    recurringLoading: recurringQuery.isLoading || recurringQuery.isFetching,
+    categories: categoriesQuery.data ?? [],
+    categoriesLoading: categoriesQuery.isLoading || categoriesQuery.isFetching,
+    selectedTransaction,
+    hasMore:
+      transactionsQuery.data?.has_more ??
+      (filters.page ?? 1) * (filters.page_size ?? 50) < (transactionsQuery.data?.total ?? 0),
+    fetchAccounts,
+    createAccount: async (data: Partial<FinancialAccount>) => {
+      setError(null);
       try {
-        const category = await apiClient.post<FinanceCategory>("/finances/categories", data);
-        const updated = await apiClient.get<FinanceCategory[]>("/finances/categories");
-        setCategories(updated);
-        return category;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to create category");
+        return await createAccountMutation.mutateAsync(data);
+      } catch {
         return null;
       }
     },
-    [setCategories, setError]
-  );
-
-  const updateCategoryData = useCallback(
-    async (categoryId: string, data: object): Promise<FinanceCategory | null> => {
+    updateAccount: async (accountId: string, data: Partial<FinancialAccount>) => {
+      setError(null);
       try {
-        const category = await apiClient.patch<FinanceCategory>(
-          `/finances/categories/${categoryId}`,
-          data
-        );
-        updateCategory(category);
-        return category;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to update category");
+        return await updateAccountMutation.mutateAsync({ accountId, data });
+      } catch {
         return null;
       }
     },
-    [updateCategory, setError]
-  );
-
-  const deleteCategory = useCallback(
-    async (categoryId: string): Promise<boolean> => {
+    deleteAccount: async (accountId: string) => {
+      setError(null);
       try {
-        await apiClient.delete(`/finances/categories/${categoryId}`);
-        removeCategory(categoryId);
+        await deleteAccountMutation.mutateAsync(accountId);
         return true;
       } catch {
-        setError("Failed to delete category");
         return false;
       }
     },
-    [removeCategory, setError]
-  );
-
-  const goToPage = useCallback((page: number) => setFilters({ page }), [setFilters]);
-
-  return {
-    // State
-    accounts,
-    accountsLoading,
-    transactions,
-    total,
-    isLoading,
-    error,
-    filters,
-    stats,
-    statsLoading,
-    budgetStatus,
-    budgetsLoading,
-    recurringExpenses,
-    recurringLoading,
-    categories,
-    categoriesLoading,
-    selectedTransaction,
-    hasMore: (filters.page ?? 1) * (filters.page_size ?? 50) < total,
-
-    // Accounts
-    fetchAccounts,
-    createAccount,
-    updateAccount: updateAccountData,
-    deleteAccount,
-    updateBalance,
-
-    // Transactions
+    updateBalance: async (accountId: string, balance: number) => {
+      setError(null);
+      try {
+        return await updateBalanceMutation.mutateAsync({ accountId, balance });
+      } catch {
+        return null;
+      }
+    },
     fetchTransactions,
     fetchStats,
-    createTransaction,
-    updateTransaction: updateTransactionData,
-    deleteTransaction,
-    markReviewed,
-    importCSV,
-    triggerCategorize,
-    setFilters,
-    resetFilters,
-    setSelectedTransaction,
-    goToPage,
-
-    // Budgets
+    createTransaction: async (data: TransactionCreate | object) => {
+      setError(null);
+      try {
+        return await createTransactionMutation.mutateAsync(data);
+      } catch {
+        return null;
+      }
+    },
+    updateTransaction: async (txId: string, data: TransactionUpdate) => {
+      setError(null);
+      try {
+        return await updateTransactionMutation.mutateAsync({ txId, data });
+      } catch {
+        return null;
+      }
+    },
+    deleteTransaction: async (txId: string) => {
+      setError(null);
+      try {
+        await deleteTransactionMutation.mutateAsync(txId);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    markReviewed: async (txId: string) => {
+      setError(null);
+      try {
+        return await markReviewedMutation.mutateAsync(txId);
+      } catch {
+        return null;
+      }
+    },
+    importCSV: async (data: CSVImportRequest): Promise<CSVImportResponse | null> => {
+      setError(null);
+      try {
+        const result = await apiClient.post<CSVImportResponse>(
+          "/finances/transactions/import-csv",
+          data
+        );
+        await invalidateAllFinances();
+        return result;
+      } catch (mutationError) {
+        setError(mutationError instanceof Error ? mutationError.message : "Failed to import CSV");
+        return null;
+      }
+    },
+    triggerCategorize: async (limit = 100, accountId?: string) => {
+      setError(null);
+      try {
+        const result = await apiClient.post<{ categorized: number; failed: number }>(
+          "/finances/transactions/categorize",
+          {
+            limit,
+            account_id: accountId ?? null,
+          }
+        );
+        await invalidateAllFinances();
+        return result;
+      } catch {
+        return null;
+      }
+    },
     fetchBudgetStatus,
-    createBudget,
-    updateBudget,
-    deleteBudget,
-
-    // Recurring
+    createBudget: async (data: object) => {
+      setError(null);
+      try {
+        await createBudgetMutation.mutateAsync(data);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    updateBudget: async (budgetId: string, data: object) => {
+      setError(null);
+      try {
+        await updateBudgetMutation.mutateAsync({ budgetId, data });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    deleteBudget: async (budgetId: string) => {
+      setError(null);
+      try {
+        await deleteBudgetMutation.mutateAsync(budgetId);
+        return true;
+      } catch {
+        return false;
+      }
+    },
     fetchRecurring,
-    createRecurring,
-    updateRecurring: updateRecurringData,
-    deleteRecurring,
-
-    // Categories
+    createRecurring: async (data: object) => {
+      setError(null);
+      try {
+        return await createRecurringMutation.mutateAsync(data);
+      } catch {
+        return null;
+      }
+    },
+    updateRecurring: async (recurringId: string, data: object) => {
+      setError(null);
+      try {
+        return await updateRecurringMutation.mutateAsync({ recurringId, data });
+      } catch {
+        return null;
+      }
+    },
+    deleteRecurring: async (recurringId: string) => {
+      setError(null);
+      try {
+        await deleteRecurringMutation.mutateAsync(recurringId);
+        return true;
+      } catch {
+        return false;
+      }
+    },
     fetchCategories,
-    createCategory,
-    updateCategory: updateCategoryData,
-    deleteCategory,
+    createCategory: async (data: object) => {
+      setError(null);
+      try {
+        return await createCategoryMutation.mutateAsync(data);
+      } catch {
+        return null;
+      }
+    },
+    updateCategory: async (categoryId: string, data: object) => {
+      setError(null);
+      try {
+        return await updateCategoryMutation.mutateAsync({ categoryId, data });
+      } catch {
+        return null;
+      }
+    },
+    deleteCategory: async (categoryId: string) => {
+      setError(null);
+      try {
+        await deleteCategoryMutation.mutateAsync(categoryId);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    setFilters: (newFilters: Partial<TransactionFilters>) =>
+      setFiltersState((currentFilters) => ({ ...currentFilters, ...newFilters })),
+    resetFilters: () => setFiltersState(initialFilters),
+    setSelectedTransaction,
+    goToPage: (page: number) => setFiltersState((currentFilters) => ({ ...currentFilters, page })),
   };
 }

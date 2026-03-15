@@ -1,35 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useFinances } from "@/hooks";
-import { RecurringExpenseRow, RecurringForm } from "@/components/finances";
-import { Button, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
+import { useConfirmDialog } from "@/components/shared/feedback";
+import { RecurringExpenseRow, RecurringForm } from "@/components/shared/finances";
+import { PageHeader } from "@/components/shared/layout";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Skeleton,
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui";
+import { formatCurrency } from "@/lib/formatters";
 import { Plus, RefreshCw } from "lucide-react";
 import type { RecurringExpense } from "@/types";
 
 export default function RecurringPage() {
+  const confirmDialog = useConfirmDialog();
   const {
     recurringExpenses,
     recurringLoading,
-    fetchRecurring,
     createRecurring,
     updateRecurring,
     deleteRecurring,
     categories,
-    fetchCategories,
     accounts,
-    fetchAccounts,
-  } = useFinances();
+  } = useFinances({
+    recurringActiveOnly: false,
+  });
 
   const [showForm, setShowForm] = useState(false);
   const [editExpense, setEditExpense] = useState<RecurringExpense | null>(null);
   const [showInactive, setShowInactive] = useState(false);
-
-  useEffect(() => {
-    fetchRecurring(false); // fetch all including inactive
-    fetchCategories();
-    fetchAccounts();
-  }, [fetchRecurring, fetchCategories, fetchAccounts]);
 
   const displayed = showInactive ? recurringExpenses : recurringExpenses.filter((e) => e.is_active);
 
@@ -46,7 +55,13 @@ export default function RecurringPage() {
 
   const handleDelete = async (id: string) => {
     const name = recurringExpenses.find((e) => e.id === id)?.name;
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    const confirmed = await confirmDialog({
+      title: `Delete "${name}"?`,
+      description: "This cannot be undone.",
+      confirmLabel: "Delete recurring item",
+      destructive: true,
+    });
+    if (!confirmed) return;
     await deleteRecurring(id);
   };
 
@@ -70,24 +85,18 @@ export default function RecurringPage() {
       }
     }, 0);
 
-  const fmt = (n: number) =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Recurring Expenses</h1>
-          <p className="text-muted-foreground">
-            {recurringExpenses.filter((e) => e.is_active).length} active · ~{fmt(totalMonthly)}/mo
-            estimated
-          </p>
-        </div>
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Recurring
-        </Button>
-      </div>
+      <PageHeader
+        title="Recurring Expenses"
+        description={`${recurringExpenses.filter((e) => e.is_active).length} active · ~${formatCurrency(totalMonthly)}/mo estimated`}
+        actions={
+          <Button onClick={() => setShowForm(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Recurring
+          </Button>
+        }
+      />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -105,7 +114,7 @@ export default function RecurringPage() {
           {recurringLoading ? (
             <div className="space-y-2 p-6">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="bg-muted h-12 animate-pulse rounded-lg" />
+                <Skeleton key={i} className="h-12 rounded-lg" />
               ))}
             </div>
           ) : displayed.length === 0 ? (
@@ -121,50 +130,34 @@ export default function RecurringPage() {
               </Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-muted-foreground w-[20%] pt-0 pr-4 pb-3 pl-6 text-left font-medium">
-                      Name
-                    </th>
-                    <th className="text-muted-foreground pr-4 pb-3 text-left font-medium">
-                      Account
-                    </th>
-                    <th className="text-muted-foreground pr-4 pb-3 text-left font-medium">
-                      Category
-                    </th>
-                    <th className="text-muted-foreground pr-4 pb-3 text-right font-medium">
-                      Amount
-                    </th>
-                    <th className="text-muted-foreground pr-4 pb-3 text-left font-medium">Cycle</th>
-                    <th className="text-muted-foreground pr-4 pb-3 text-left font-medium">
-                      Next Due
-                    </th>
-                    <th className="text-muted-foreground pr-4 pb-3 text-left font-medium">
-                      Last Seen
-                    </th>
-                    <th className="text-muted-foreground pr-6 pb-3 text-right font-medium">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayed.map((expense) => (
-                    <RecurringExpenseRow
-                      key={expense.id}
-                      expense={expense}
-                      accounts={accounts}
-                      onEdit={(e) => {
-                        setEditExpense(e);
-                        setShowForm(true);
-                      }}
-                      onDelete={handleDelete}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[20%] pr-4 pl-6">Name</TableHead>
+                  <TableHead className="pr-4">Account</TableHead>
+                  <TableHead className="pr-4">Category</TableHead>
+                  <TableHead className="pr-4 text-right">Amount</TableHead>
+                  <TableHead className="pr-4">Cycle</TableHead>
+                  <TableHead className="pr-4">Next Due</TableHead>
+                  <TableHead className="pr-4">Last Seen</TableHead>
+                  <TableHead className="pr-6 text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {displayed.map((expense) => (
+                  <RecurringExpenseRow
+                    key={expense.id}
+                    expense={expense}
+                    accounts={accounts}
+                    onEdit={(e) => {
+                      setEditExpense(e);
+                      setShowForm(true);
+                    }}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

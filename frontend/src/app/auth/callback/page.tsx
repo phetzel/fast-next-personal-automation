@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuthStore } from "@/stores/auth-store";
 import { Card, CardContent } from "@/components/ui";
 import { ROUTES } from "@/lib/constants";
 
@@ -10,7 +9,6 @@ function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
-  const { checkAuth } = useAuthStore();
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -38,8 +36,6 @@ function AuthCallbackContent() {
           });
 
           if (response.ok) {
-            // Refresh auth state
-            await checkAuth();
             router.push(ROUTES.DASHBOARD);
           } else {
             setError("Failed to complete authentication");
@@ -61,8 +57,8 @@ function AuthCallbackContent() {
       }
     };
 
-    handleCallback();
-  }, [searchParams, router, checkAuth]);
+    void handleCallback();
+  }, [searchParams, router]);
 
   return (
     <Card className="w-full max-w-md">

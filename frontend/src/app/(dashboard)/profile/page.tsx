@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useAuth } from "@/hooks";
+import { formatDate } from "@/lib/formatters";
 import { Button, Card, Input, Label, Badge } from "@/components/ui";
-import { ThemeToggle } from "@/components/theme";
+import { ThemeToggle } from "@/components/shared/theme";
 import { User, Mail, Calendar, Shield, Settings } from "lucide-react";
 
 export default function ProfilePage() {
@@ -85,7 +86,7 @@ export default function ProfilePage() {
             {user.created_at && (
               <div className="text-muted-foreground flex items-center gap-2 text-xs sm:text-sm">
                 <Calendar className="h-4 w-4 shrink-0" />
-                <span>Member since {new Date(user.created_at).toLocaleDateString()}</span>
+                <span>Member since {formatDate(user.created_at)}</span>
               </div>
             )}
           </div>

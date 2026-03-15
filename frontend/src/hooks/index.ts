@@ -1,13 +1,3 @@
-// CRUD hook factory
-export { useCrud, usePrimaryCrud } from "./use-crud";
-export type {
-  CrudState,
-  CrudHookOptions,
-  CrudHookResult,
-  PrimaryCrudHookOptions,
-  PrimaryCrudHookResult,
-} from "./use-crud";
-
 // Feature hooks
 export { useAuth } from "./use-auth";
 export { useWebSocket } from "./use-websocket";
@@ -22,6 +12,5 @@ export { useJobProfiles } from "./use-job-profiles";
 export { useResumes } from "./use-resumes";
 export { useStories } from "./use-stories";
 export { useProjects } from "./use-projects";
-export { useEmailSyncs } from "./use-email-syncs";
 export { useSchedules } from "./use-schedules";
 export { useFinances } from "./use-finances";

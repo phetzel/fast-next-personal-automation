@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback } from "react";
-import { useJobStore } from "@/stores/job-store";
+import { useCallback, useRef, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
+import { queryKeys } from "@/lib/query-keys";
+import { useJobQuery, useJobsListQuery, useJobStatsQuery } from "./queries/jobs";
 import type {
   Job,
   JobFilters,
@@ -12,206 +14,207 @@ import type {
   JobUpdate,
   ManualJobCreateRequest,
 } from "@/types";
+import { toSearchParams } from "./queries/utils";
 
-/**
- * Hook for managing jobs data and API interactions.
- */
-export function useJobs() {
-  const {
-    jobs,
-    total,
-    isLoading,
-    error,
-    filters,
-    stats,
-    statsLoading,
-    selectedJob,
-    setJobs,
-    setLoading,
-    setError,
-    setFilters,
-    resetFilters,
-    setStats,
-    setStatsLoading,
-    setSelectedJob,
-    addJob,
-    updateJob,
-    removeJob,
-  } = useJobStore();
+const defaultFilters: JobFilters = {
+  page: 1,
+  page_size: 20,
+  sort_by: "created_at",
+  sort_order: "desc",
+};
 
-  /**
-   * Fetch jobs with current filters.
-   */
+interface UseJobsOptions {
+  initialFilters?: Partial<JobFilters>;
+}
+
+export function useJobs(options?: UseJobsOptions) {
+  const queryClient = useQueryClient();
+  const initialFilters = { ...defaultFilters, ...options?.initialFilters };
+  const [filters, setFiltersState] = useState<JobFilters>(initialFilters);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const filtersRef = useRef<JobFilters>(initialFilters);
+
+  filtersRef.current = filters;
+
+  const jobsQuery = useJobsListQuery(filters);
+  const statsQuery = useJobStatsQuery();
+  const selectedJobQuery = useJobQuery(selectedJobId);
+
+  const createMutation = useMutation({
+    mutationFn: (payload: ManualJobCreateRequest) => apiClient.post<Job>("/jobs", payload),
+    onSuccess: async (created) => {
+      setSelectedJobId(created.id);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.jobs.stats() }),
+      ]);
+    },
+    onError: (mutationError) => {
+      setError(mutationError instanceof Error ? mutationError.message : "Failed to create job");
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ jobId, update }: { jobId: string; update: JobUpdate }) =>
+      apiClient.patch<Job>(`/jobs/${jobId}`, update),
+    onSuccess: async (updated) => {
+      queryClient.setQueryData(queryKeys.jobs.detail(updated.id), updated);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.jobs.stats() }),
+      ]);
+    },
+    onError: (mutationError) => {
+      setError(mutationError instanceof Error ? mutationError.message : "Failed to update job");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (jobId: string) => apiClient.delete(`/jobs/${jobId}`),
+    onSuccess: async (_, jobId) => {
+      if (selectedJobId === jobId) {
+        setSelectedJobId(null);
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.jobs.stats() }),
+      ]);
+    },
+    onError: () => {
+      setError("Failed to delete job");
+    },
+  });
+
+  const deleteByStatusMutation = useMutation({
+    mutationFn: (status: JobStatus) =>
+      apiClient.post<{ deleted_count: number; status: string }>("/jobs/batch/delete", { status }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.jobs.stats() }),
+      ]);
+    },
+    onError: () => {
+      setError("Failed to delete jobs");
+    },
+  });
+
   const fetchJobs = useCallback(
     async (customFilters?: Partial<JobFilters>) => {
-      setLoading(true);
+      const nextFilters = { ...filtersRef.current, ...customFilters };
+      const queryString = toSearchParams(nextFilters);
+      setFiltersState(nextFilters);
       setError(null);
 
       try {
-        const appliedFilters = { ...filters, ...customFilters };
-        const params = new URLSearchParams();
-
-        if (appliedFilters.status) params.set("status", appliedFilters.status);
-        if (appliedFilters.source) params.set("source", appliedFilters.source);
-        if (appliedFilters.ingestion_source)
-          params.set("ingestion_source", appliedFilters.ingestion_source);
-        if (appliedFilters.min_score !== undefined)
-          params.set("min_score", String(appliedFilters.min_score));
-        if (appliedFilters.max_score !== undefined)
-          params.set("max_score", String(appliedFilters.max_score));
-        if (appliedFilters.search) params.set("search", appliedFilters.search);
-        if (appliedFilters.posted_within_hours !== undefined)
-          params.set("posted_within_hours", String(appliedFilters.posted_within_hours));
-        if (appliedFilters.page) params.set("page", String(appliedFilters.page));
-        if (appliedFilters.page_size) params.set("page_size", String(appliedFilters.page_size));
-        if (appliedFilters.sort_by) params.set("sort_by", appliedFilters.sort_by);
-        if (appliedFilters.sort_order) params.set("sort_order", appliedFilters.sort_order);
-
-        const response = await apiClient.get<JobListResponse>(`/jobs?${params.toString()}`);
-
-        setJobs(response.jobs, response.total);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch jobs");
-      } finally {
-        setLoading(false);
+        const response = await queryClient.fetchQuery({
+          queryKey: queryKeys.jobs.list(nextFilters),
+          queryFn: () =>
+            apiClient.get<JobListResponse>(queryString ? `/jobs?${queryString}` : "/jobs"),
+        });
+        return response.jobs;
+      } catch (queryError) {
+        const message = queryError instanceof Error ? queryError.message : "Failed to fetch jobs";
+        setError(message);
+        return [];
       }
     },
-    [filters, setJobs, setLoading, setError]
+    [queryClient]
   );
 
-  /**
-   * Fetch job statistics.
-   */
   const fetchStats = useCallback(async () => {
-    setStatsLoading(true);
+    setError(null);
 
     try {
-      const response = await apiClient.get<JobStats>("/jobs/stats");
-      setStats(response);
+      return await queryClient.fetchQuery({
+        queryKey: queryKeys.jobs.stats(),
+        queryFn: () => apiClient.get<JobStats>("/jobs/stats"),
+      });
     } catch {
-      // Stats are optional, don't show error
-      setStats(null);
-    } finally {
-      setStatsLoading(false);
+      return null;
     }
-  }, [setStats, setStatsLoading]);
+  }, [queryClient]);
 
-  /**
-   * Fetch a single job by ID.
-   */
   const fetchJob = useCallback(
     async (jobId: string): Promise<Job | null> => {
+      setSelectedJobId(jobId);
+      setError(null);
+
       try {
-        const job = await apiClient.get<Job>(`/jobs/${jobId}`);
-        setSelectedJob(job);
-        return job;
+        return await queryClient.fetchQuery({
+          queryKey: queryKeys.jobs.detail(jobId),
+          queryFn: () => apiClient.get<Job>(`/jobs/${jobId}`),
+        });
       } catch {
         return null;
       }
     },
-    [setSelectedJob]
+    [queryClient]
   );
 
-  /**
-   * Update a job's status or notes.
-   */
-  const updateJobStatus = useCallback(
-    async (jobId: string, update: JobUpdate): Promise<Job | null> => {
-      try {
-        const job = await apiClient.patch<Job>(`/jobs/${jobId}`, update);
-        updateJob(job);
-        return job;
-      } catch {
-        setError("Failed to update job");
-        return null;
-      }
-    },
-    [updateJob, setError]
-  );
-
-  /**
-   * Create a manual job.
-   */
-  const createJob = useCallback(
-    async (payload: ManualJobCreateRequest): Promise<Job | null> => {
-      try {
-        const job = await apiClient.post<Job>("/jobs", payload);
-        addJob(job);
-        return job;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to create job");
-        return null;
-      }
-    },
-    [addJob, setError]
-  );
-
-  /**
-   * Delete a job.
-   */
-  const deleteJob = useCallback(
-    async (jobId: string): Promise<boolean> => {
-      try {
-        await apiClient.delete(`/jobs/${jobId}`);
-        removeJob(jobId);
-        return true;
-      } catch {
-        setError("Failed to delete job");
-        return false;
-      }
-    },
-    [removeJob, setError]
-  );
-
-  /**
-   * Delete all jobs with a specific status (soft delete).
-   */
-  const deleteByStatus = useCallback(async (status: JobStatus): Promise<number> => {
-    const response = await apiClient.post<{ deleted_count: number; status: string }>(
-      "/jobs/batch/delete",
-      { status }
-    );
-    return response.deleted_count;
-  }, []);
-
-  /**
-   * Change page.
-   */
-  const goToPage = useCallback(
-    (page: number) => {
-      setFilters({ page });
-    },
-    [setFilters]
-  );
-
-  /**
-   * Check if there are more pages.
-   */
-  const hasMore = (filters.page || 1) * (filters.page_size || 20) < total;
+  const jobs = jobsQuery.data?.jobs ?? [];
+  const total = jobsQuery.data?.total ?? 0;
+  const selectedJob = selectedJobQuery.data ?? null;
 
   return {
-    // State
     jobs,
     total,
-    isLoading,
-    error,
+    isLoading:
+      jobsQuery.isLoading ||
+      jobsQuery.isFetching ||
+      createMutation.isPending ||
+      updateMutation.isPending ||
+      deleteMutation.isPending,
+    error:
+      error ??
+      (jobsQuery.error instanceof Error
+        ? jobsQuery.error.message
+        : selectedJobQuery.error instanceof Error
+          ? selectedJobQuery.error.message
+          : null),
     filters,
-    stats,
-    statsLoading,
+    stats: statsQuery.data ?? null,
+    statsLoading: statsQuery.isLoading || statsQuery.isFetching,
     selectedJob,
-    hasMore,
-
-    // Actions
+    hasMore: jobsQuery.data?.has_more ?? (filters.page || 1) * (filters.page_size || 20) < total,
     fetchJobs,
     fetchStats,
     fetchJob,
-    createJob,
-    updateJobStatus,
-    deleteJob,
-    deleteByStatus,
-    setFilters,
-    resetFilters,
-    setSelectedJob,
-    goToPage,
+    createJob: async (payload: ManualJobCreateRequest) => {
+      setError(null);
+      try {
+        return await createMutation.mutateAsync(payload);
+      } catch {
+        return null;
+      }
+    },
+    updateJobStatus: async (jobId: string, update: JobUpdate) => {
+      setError(null);
+      try {
+        return await updateMutation.mutateAsync({ jobId, update });
+      } catch {
+        return null;
+      }
+    },
+    deleteJob: async (jobId: string) => {
+      setError(null);
+      try {
+        await deleteMutation.mutateAsync(jobId);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    deleteByStatus: async (status: JobStatus) => {
+      setError(null);
+      const response = await deleteByStatusMutation.mutateAsync(status);
+      return response.deleted_count;
+    },
+    setFilters: (newFilters: Partial<JobFilters>) =>
+      setFiltersState((currentFilters) => ({ ...currentFilters, ...newFilters })),
+    resetFilters: () => setFiltersState(initialFilters),
+    setSelectedJob: (job: Job | null) => setSelectedJobId(job?.id ?? null),
+    goToPage: (page: number) => setFiltersState((currentFilters) => ({ ...currentFilters, page })),
   };
 }

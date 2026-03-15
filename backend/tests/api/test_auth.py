@@ -8,7 +8,7 @@ from uuid import uuid4
 import pytest
 from httpx import AsyncClient
 
-from app.api.deps import get_user_service
+from app.api.deps import get_session_service, get_user_service
 from app.core.config import settings
 from app.main import app
 
@@ -52,8 +52,22 @@ def mock_user_service(mock_user: MockUser) -> MagicMock:
 
 
 @pytest.fixture
+def mock_session_service(mock_user: MockUser) -> MagicMock:
+    """Create a mock session service."""
+    session = MagicMock()
+    session.user_id = mock_user.id
+
+    service = MagicMock()
+    service.create_session = AsyncMock(return_value=session)
+    service.validate_refresh_token = AsyncMock(return_value=session)
+    service.logout_by_refresh_token = AsyncMock(return_value=session)
+    return service
+
+
+@pytest.fixture
 async def client_with_mock_service(
     mock_user_service: MagicMock,
+    mock_session_service: MagicMock,
     mock_redis: MagicMock,
     mock_db_session,
 ) -> AsyncClient:
@@ -63,6 +77,7 @@ async def client_with_mock_service(
     from httpx import ASGITransport
 
     app.dependency_overrides[get_user_service] = lambda: mock_user_service
+    app.dependency_overrides[get_session_service] = lambda: mock_session_service
     app.dependency_overrides[get_redis] = lambda: mock_redis
     app.dependency_overrides[get_db_session] = lambda: mock_db_session
 
@@ -120,18 +135,6 @@ async def test_login_invalid_credentials(
 #     ...
 
 
-# NOTE: Refresh token tests require full service mocking (SessionService + UserService)
-# These are better covered by integration tests with a real database
-# @pytest.mark.anyio
-# async def test_refresh_token_success(...): ...
-# @pytest.mark.anyio
-# async def test_refresh_token_invalid(...): ...
-# @pytest.mark.anyio
-# async def test_refresh_token_wrong_type(...): ...
-# @pytest.mark.anyio
-# async def test_refresh_token_inactive_user(...): ...
-
-
 @pytest.mark.anyio
 async def test_get_current_user(
     client_with_mock_service: AsyncClient,
@@ -150,3 +153,49 @@ async def test_get_current_user(
     assert response.status_code == 200
     data = response.json()
     assert data["email"] == mock_user.email
+
+
+@pytest.mark.anyio
+async def test_refresh_token_success(
+    client_with_mock_service: AsyncClient,
+    mock_session_service: MagicMock,
+    mock_user: MockUser,
+):
+    """Test refreshing a valid session."""
+    refresh_token = "existing-refresh-token"
+
+    response = await client_with_mock_service.post(
+        f"{settings.API_V1_STR}/auth/refresh",
+        json={"refresh_token": refresh_token},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert "refresh_token" in data
+    assert data["token_type"] == "bearer"
+
+    mock_session_service.validate_refresh_token.assert_awaited_once_with(refresh_token)
+    mock_session_service.logout_by_refresh_token.assert_awaited_once_with(refresh_token)
+    mock_session_service.create_session.assert_awaited_once()
+
+    create_session_kwargs = mock_session_service.create_session.await_args.kwargs
+    assert create_session_kwargs["user_id"] == mock_user.id
+    assert create_session_kwargs["refresh_token"] == data["refresh_token"]
+
+
+@pytest.mark.anyio
+async def test_logout_invalidates_refresh_token_session(
+    client_with_mock_service: AsyncClient,
+    mock_session_service: MagicMock,
+):
+    """Test logging out invalidates the session tied to the refresh token."""
+    refresh_token = "refresh-token-to-revoke"
+
+    response = await client_with_mock_service.post(
+        f"{settings.API_V1_STR}/auth/logout",
+        json={"refresh_token": refresh_token},
+    )
+
+    assert response.status_code == 204
+    mock_session_service.logout_by_refresh_token.assert_awaited_once_with(refresh_token)

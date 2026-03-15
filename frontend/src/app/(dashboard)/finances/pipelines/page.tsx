@@ -1,19 +1,17 @@
 "use client";
 
-import { PipelineList } from "@/components/pipelines";
+import { PageHeader } from "@/components/shared/layout";
+import { PipelineList } from "@/components/shared/pipelines";
 import { Card, CardContent } from "@/components/ui";
 import { Workflow, Mail, Sparkles, Tag } from "lucide-react";
 
 export default function FinancePipelinesPage() {
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Finance Pipelines</h1>
-        <p className="text-muted-foreground">
-          Run automated pipelines to import and organize your financial data
-        </p>
-      </div>
+      <PageHeader
+        title="Finance Pipelines"
+        description="Run automated pipelines to import and organize your financial data"
+      />
 
       {/* Info Card */}
       <Card className="border-violet-500/20 bg-violet-500/5">

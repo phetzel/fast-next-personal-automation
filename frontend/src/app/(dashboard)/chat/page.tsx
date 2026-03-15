@@ -5,7 +5,7 @@ import {
   ConversationSidebar,
   LocalConversationSidebar,
   ChatSidebarToggle,
-} from "@/components/chat";
+} from "@/components/shared/chat";
 import { useAuthStore } from "@/stores";
 
 export default function ChatPage() {

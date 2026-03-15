@@ -2,6 +2,8 @@ import { test as setup, expect } from "@playwright/test";
 import path from "path";
 
 const authFile = path.join(__dirname, "../.playwright/.auth/user.json");
+const testEmail = process.env.TEST_USER_EMAIL;
+const testPassword = process.env.TEST_USER_PASSWORD;
 
 /**
  * Authentication setup - runs before all tests.
@@ -9,25 +11,18 @@ const authFile = path.join(__dirname, "../.playwright/.auth/user.json");
  * This creates an authenticated session that other tests can reuse.
  */
 setup("authenticate", async ({ page }) => {
-  // Test credentials - adjust for your environment
-  const testEmail = process.env.TEST_USER_EMAIL || "test@example.com";
-  const testPassword = process.env.TEST_USER_PASSWORD || "TestPassword123!";
+  setup.skip(
+    !testEmail || !testPassword,
+    "Set TEST_USER_EMAIL and TEST_USER_PASSWORD to enable authenticated smoke tests."
+  );
 
-  // Navigate to login page
   await page.goto("/login");
-
-  // Fill in login form
-  await page.getByLabel(/email/i).fill(testEmail);
-  await page.getByLabel(/password/i).fill(testPassword);
-
-  // Submit and wait for redirect
+  await page.getByLabel(/email/i).fill(testEmail!);
+  await page.getByLabel(/password/i).fill(testPassword!);
   await page.getByRole("button", { name: /sign in|log in|login/i }).click();
 
-  // Wait for authentication to complete - adjust selector based on your app
-  await expect(
-    page.getByRole("link", { name: /dashboard|home/i }).or(page.getByText(/welcome/i))
-  ).toBeVisible({ timeout: 10000 });
+  await expect(page).toHaveURL(/\/dashboard$/, { timeout: 10000 });
+  await expect(page.getByRole("heading", { name: /dashboard/i })).toBeVisible();
 
-  // Save authentication state
   await page.context().storageState({ path: authFile });
 });

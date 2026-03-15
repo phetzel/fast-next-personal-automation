@@ -16,7 +16,7 @@ describe("Auth Store", () => {
     useAuthStore.setState({
       user: null,
       isAuthenticated: false,
-      isLoading: false,
+      isLoading: true,
     });
   });
 
@@ -24,7 +24,7 @@ describe("Auth Store", () => {
     const state = useAuthStore.getState();
     expect(state.user).toBeNull();
     expect(state.isAuthenticated).toBe(false);
-    expect(state.isLoading).toBe(false);
+    expect(state.isLoading).toBe(true);
   });
 
   it("should set user on setUser", () => {
@@ -47,6 +47,7 @@ describe("Auth Store", () => {
     const state = useAuthStore.getState();
     expect(state.user).toBeNull();
     expect(state.isAuthenticated).toBe(false);
+    expect(state.isLoading).toBe(false);
   });
 
   it("should set loading state", () => {

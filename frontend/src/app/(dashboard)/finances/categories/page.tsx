@@ -1,88 +1,45 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useFinances } from "@/hooks";
-import { CategoryForm } from "@/components/finances";
-import { Button, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
-import { Plus, Tag, Pencil, Trash2 } from "lucide-react";
+import { useConfirmDialog } from "@/components/shared/feedback";
+import { PageHeader } from "@/components/shared/layout";
+import { CategoryForm } from "@/components/shared/finances";
+import { CategorySectionCard } from "@/components/screens/dashboard/finances/categories";
+import { Button, Skeleton } from "@/components/ui";
+import { Plus, Tag } from "lucide-react";
 import type { FinanceCategory } from "@/types";
 
-function ColorSwatch({ color }: { color: string | null }) {
-  return (
-    <span
-      className="inline-block h-3.5 w-3.5 flex-shrink-0 rounded-full border border-black/10"
-      style={{ backgroundColor: color ?? "#94a3b8" }}
-    />
-  );
-}
-
-interface CategoryRowProps {
-  category: FinanceCategory;
-  onEdit: (cat: FinanceCategory) => void;
-  onDelete: (id: string) => void;
-}
-
-function CategoryRow({ category, onEdit, onDelete }: CategoryRowProps) {
-  return (
-    <div className="hover:bg-muted/40 flex items-center justify-between px-4 py-2.5 transition-colors">
-      <div className="flex items-center gap-3">
-        <ColorSwatch color={category.color} />
-        <span className="text-sm font-medium">{category.name}</span>
-        <span className="text-muted-foreground font-mono text-xs">{category.slug}</span>
-      </div>
-      <div className="flex items-center gap-1">
-        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => onEdit(category)}>
-          <Pencil className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-destructive hover:text-destructive h-7 w-7 p-0"
-          onClick={() => onDelete(category.id)}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 export default function CategoriesPage() {
-  const {
-    categories,
-    categoriesLoading,
-    fetchCategories,
-    createCategory,
-    updateCategory,
-    deleteCategory,
-  } = useFinances();
+  const confirmDialog = useConfirmDialog();
+  const { categories, categoriesLoading, createCategory, updateCategory, deleteCategory } =
+    useFinances();
 
   const [showForm, setShowForm] = useState(false);
   const [editCategory, setEditCategory] = useState<FinanceCategory | null>(null);
-
-  useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
 
   const incomeCategories = categories.filter((c) => c.category_type === "income" && c.is_active);
   const expenseCategories = categories.filter((c) => c.category_type === "expense" && c.is_active);
 
   const handleCreate = async (data: object) => {
     await createCategory(data);
-    fetchCategories();
   };
 
   const handleEdit = async (data: object) => {
     if (!editCategory) return;
     await updateCategory(editCategory.id, data);
-    fetchCategories();
   };
 
   const handleDelete = async (id: string) => {
     const name = categories.find((c) => c.id === id)?.name;
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    const confirmed = await confirmDialog({
+      title: `Delete "${name}"?`,
+      description: "This cannot be undone.",
+      confirmLabel: "Delete category",
+      destructive: true,
+    });
+    if (!confirmed) return;
     await deleteCategory(id);
-    fetchCategories();
   };
 
   const openEdit = (cat: FinanceCategory) => {
@@ -97,90 +54,47 @@ export default function CategoriesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Categories</h1>
-          <p className="text-muted-foreground">
-            {categories.filter((c) => c.is_active).length} active categories
-          </p>
-        </div>
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Category
-        </Button>
-      </div>
+      <PageHeader
+        title="Categories"
+        description={`${categories.filter((c) => c.is_active).length} active categories`}
+        actions={
+          <Button onClick={() => setShowForm(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Category
+          </Button>
+        }
+      />
 
       {categoriesLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-muted h-10 animate-pulse rounded-lg" />
+            <Skeleton key={i} className="h-10 rounded-lg" />
           ))}
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2">
-          {/* Income */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Tag className="h-4 w-4 text-emerald-500" />
-                Income
-                <span className="text-muted-foreground ml-auto text-sm font-normal">
-                  {incomeCategories.length}
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {incomeCategories.length === 0 ? (
-                <p className="text-muted-foreground px-4 pb-4 text-sm">No income categories yet.</p>
-              ) : (
-                <div className="divide-y">
-                  {incomeCategories
-                    .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
-                    .map((cat) => (
-                      <CategoryRow
-                        key={cat.id}
-                        category={cat}
-                        onEdit={openEdit}
-                        onDelete={handleDelete}
-                      />
-                    ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Expense */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Tag className="h-4 w-4 text-rose-500" />
-                Expenses
-                <span className="text-muted-foreground ml-auto text-sm font-normal">
-                  {expenseCategories.length}
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {expenseCategories.length === 0 ? (
-                <p className="text-muted-foreground px-4 pb-4 text-sm">
-                  No expense categories yet.
-                </p>
-              ) : (
-                <div className="divide-y">
-                  {expenseCategories
-                    .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
-                    .map((cat) => (
-                      <CategoryRow
-                        key={cat.id}
-                        category={cat}
-                        onEdit={openEdit}
-                        onDelete={handleDelete}
-                      />
-                    ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <CategorySectionCard
+            title="Income"
+            icon={Tag}
+            iconClassName="h-4 w-4 text-emerald-500"
+            emptyText="No income categories yet."
+            categories={incomeCategories.sort(
+              (a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name)
+            )}
+            onEdit={openEdit}
+            onDelete={handleDelete}
+          />
+          <CategorySectionCard
+            title="Expenses"
+            icon={Tag}
+            iconClassName="h-4 w-4 text-rose-500"
+            emptyText="No expense categories yet."
+            categories={expenseCategories.sort(
+              (a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name)
+            )}
+            onEdit={openEdit}
+            onDelete={handleDelete}
+          />
         </div>
       )}
 
