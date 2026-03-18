@@ -33,7 +33,14 @@ export function useJobDetail({
   const { getExecutionState } = usePipelines();
   const prepExecState = getExecutionState("job_prep");
   const resolvedJobId = useMemo(() => jobId ?? initialJob?.id ?? null, [initialJob?.id, jobId]);
-  const initialJobSnapshot = useMemo(() => initialJob ?? null, [initialJob]);
+  const initialJobSyncKey = useMemo(() => {
+    if (!initialJob) {
+      return null;
+    }
+
+    return `${initialJob.id}:${initialJob.updated_at ?? initialJob.created_at}`;
+  }, [initialJob?.created_at, initialJob?.id, initialJob?.updated_at]);
+  const initialJobSnapshot = useMemo(() => initialJob ?? null, [initialJobSyncKey]);
 
   const [job, setJob] = useState<Job | null>(initialJob);
   const [isLoading, setIsLoading] = useState(!initialJob && !!resolvedJobId);

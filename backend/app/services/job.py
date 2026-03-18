@@ -303,6 +303,9 @@ class JobService:
         if key in _APPLICATION_ANALYSIS_BOOLEAN_FIELDS:
             return True if existing_value is True else incoming_value
 
+        if key == "profile_id":
+            return existing_value or incoming_value
+
         if key == "application_type":
             if existing_value not in (None, "unknown") and incoming_value == "unknown":
                 return existing_value

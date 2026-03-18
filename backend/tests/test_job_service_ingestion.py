@@ -295,6 +295,68 @@ async def test_ingest_jobs_monotonically_merges_existing_application_analysis(
 
 
 @pytest.mark.anyio
+async def test_ingest_jobs_preserves_existing_profile_id_on_duplicate_update(
+    job_service: JobService,
+) -> None:
+    """Duplicate ingest should not clobber a profile already chosen on the job."""
+    user_id = uuid4()
+    existing_profile_id = uuid4()
+    incoming_profile_id = uuid4()
+    raw_job = RawJob(
+        title="Staff Engineer",
+        company="Acme",
+        job_url="https://jobs.example.com/5",
+        description="Lead platform work",
+    )
+    existing_job = SimpleNamespace(
+        id=uuid4(),
+        job_status=JobStatus.NEW,
+        status="new",
+        title="Staff Engineer",
+        company="Acme",
+        location=None,
+        description="Older description",
+        salary_range=None,
+        date_posted=None,
+        source=None,
+        ingestion_source="openclaw",
+        is_remote=None,
+        job_type=None,
+        company_url=None,
+        profile_id=existing_profile_id,
+        search_terms=None,
+        relevance_score=None,
+        reasoning=None,
+        application_type=None,
+        application_url=None,
+        requires_cover_letter=None,
+        cover_letter_requested=None,
+        requires_resume=None,
+        detected_fields=None,
+        screening_questions=None,
+        analyzed_at=None,
+        has_application_analysis=False,
+        is_prep_eligible=False,
+        job_url=raw_job.job_url,
+    )
+
+    with patch("app.services.job.job_repo") as mock_repo:
+        mock_repo.get_by_url_and_user = AsyncMock(return_value=existing_job)
+        mock_repo.update = AsyncMock(return_value=existing_job)
+
+        await job_service.ingest_jobs(
+            user_id=user_id,
+            jobs=[raw_job],
+            ingestion_source="openclaw",
+            profile_id=incoming_profile_id,
+        )
+
+    update_data = mock_repo.update.await_args.kwargs["update_data"]
+    assert "profile_id" not in update_data
+    assert update_data["description"] == raw_job.description
+
+
+@pytest.mark.anyio
 async def test_create_manual_job_allows_missing_profile(job_service: JobService) -> None:
     """Manual jobs should save without requiring profile-based scoring."""
     user_id = uuid4()

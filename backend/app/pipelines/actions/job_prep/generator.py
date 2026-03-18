@@ -101,7 +101,7 @@ def _paragraph_count(text: str) -> int:
 
 def _needs_cover_letter_rewrite(text: str | None, company: str) -> bool:
     """Apply lightweight quality checks before spending on a rewrite pass."""
-    if not text.strip():
+    if not text or not text.strip():
         return False
 
     lowered = text.lower()
