@@ -27,6 +27,7 @@ import {
   PRE_APPLIED_JOB_STATUSES,
 } from "@/types";
 import { Search, X, Filter, ChevronDown } from "lucide-react";
+import { getNextSelectedStatuses } from "./job-filter-utils";
 
 interface JobFiltersProps {
   filters: JobFilters;
@@ -125,10 +126,7 @@ export function JobFilters({ filters, onFiltersChange, onReset, className }: Job
   };
 
   const toggleStatus = (status: JobStatus) => {
-    const nextStatuses = JOB_STATUSES.filter((item) =>
-      item === status ? !selectedStatuses.includes(status) : selectedStatuses.includes(item)
-    );
-    handleStatusesChange(nextStatuses);
+    handleStatusesChange(getNextSelectedStatuses(selectedStatuses, status));
   };
 
   const handleSortChange = (value: string) => {
