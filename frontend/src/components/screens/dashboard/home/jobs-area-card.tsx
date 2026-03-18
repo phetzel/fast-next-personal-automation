@@ -17,7 +17,7 @@ export function JobsAreaCard({ stats, loading }: JobsAreaCardProps) {
 
   return (
     <AreaOverviewCardShell
-      href={ROUTES.JOBS}
+      href={ROUTES.JOBS_LIST}
       title="Jobs"
       description="Job search & applications"
       icon={Briefcase}

@@ -48,8 +48,8 @@ frontend/src/
 | `/profile` | `profile/page.tsx` | Profile settings |
 | `/auth/callback` | `auth/callback/page.tsx` | OAuth callback |
 | `/pipelines` | `pipelines/page.tsx` | Pipeline execution |
-| `/jobs` | `jobs/page.tsx` | Jobs area overview |
-| `/jobs/list` | `jobs/list/page.tsx` | Job listings |
+| `/jobs` | `jobs/page.tsx` | Redirects to the jobs listings page |
+| `/jobs/list` | `jobs/list/page.tsx` | Primary job listings view with lifecycle stats, filters, and actions |
 | `/jobs/[id]` | `jobs/[id]/page.tsx` | Job detail page with prep materials |
 | `/jobs/profiles` | `jobs/profiles/page.tsx` | Job profiles |
 | `/jobs/resumes` | `jobs/resumes/page.tsx` | Resume management |
