@@ -70,22 +70,24 @@ export function JobStatusBar({
         {job.status === "new" && (
           <p className="text-muted-foreground mt-2 text-xs">
             <span className="text-blue-600 dark:text-blue-400">Next step:</span> Capture the
-            application requirements, then run prep.
+            application requirements, then run prep. If you already submitted it elsewhere, click
+            &quot;Applied&quot; directly.
           </p>
         )}
         {job.status === "analyzed" && (
           <p className="text-muted-foreground mt-2 text-xs">
             <span className="text-cyan-600 dark:text-cyan-400">Next step:</span> Click
-            &quot;Prepped&quot; to generate a tailored cover letter and screening answers.
+            &quot;Prepped&quot; to generate a tailored cover letter and screening answers, or jump
+            straight to &quot;Applied&quot; if you already submitted.
           </p>
         )}
         {job.status === "prepped" && (
           <p className="text-muted-foreground mt-2 text-xs">
             <span className="text-purple-600 dark:text-purple-400">Next step:</span> Review your
-            materials, then click &quot;Reviewed&quot;{" "}
+            materials, then click &quot;Reviewed&quot; or &quot;Applied&quot;{" "}
             {shouldGenerateReviewPdf(job)
-              ? "to generate a downloadable PDF."
-              : "to move this job into the reviewed stage."}
+              ? "when you're ready. Reviewed will generate a downloadable PDF."
+              : "when you're ready."}
           </p>
         )}
       </CardContent>

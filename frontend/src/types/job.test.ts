@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { getScreeningQuestionText, hasCoverLetterText, shouldGenerateReviewPdf } from "./job";
+import {
+  canTransitionTo,
+  getScreeningQuestionText,
+  hasCoverLetterText,
+  shouldGenerateReviewPdf,
+} from "./job";
 
 describe("job workflow helpers", () => {
   it("treats placeholder cover-letter text as missing", () => {
@@ -54,5 +59,12 @@ describe("job workflow helpers", () => {
     expect(getScreeningQuestionText({ prompt: "Work authorization status" })).toBe(
       "Work authorization status"
     );
+  });
+
+  it("allows direct move to applied from any pre-applied status", () => {
+    expect(canTransitionTo("new", "applied")).toBe(true);
+    expect(canTransitionTo("analyzed", "applied")).toBe(true);
+    expect(canTransitionTo("prepped", "applied")).toBe(true);
+    expect(canTransitionTo("reviewed", "applied")).toBe(true);
   });
 });

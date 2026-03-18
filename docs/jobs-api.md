@@ -179,8 +179,11 @@ Notes:
 - The backend enforces lifecycle transitions.
 - Allowed forward transitions are:
   - `new -> analyzed`
+  - `new -> applied`
   - `analyzed -> prepped`
+  - `analyzed -> applied`
   - `prepped -> reviewed`
+  - `prepped -> applied`
   - `reviewed -> applied`
   - `applied -> interviewing|rejected`
   - `interviewing -> rejected`
@@ -696,8 +699,8 @@ Payload fields:
 
 Behavior:
 
-- Only valid for reviewed jobs unless the job is already applied
-- Writes the application tracking fields and advances `reviewed -> applied`
+- Valid for any pre-applied job (`new|analyzed|prepped|reviewed`) unless the job is already applied
+- Writes the application tracking fields and advances the job to `applied`
 
 ## Jobs Area Agent Surface
 

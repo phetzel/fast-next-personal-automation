@@ -31,6 +31,7 @@ async def list_jobs(
     current_user: CurrentUser,
     job_service: JobSvc,
     status: JobStatus | None = Query(None, description="Filter by status"),
+    statuses: list[JobStatus] | None = Query(None, description="Filter by one or more statuses"),
     source: str | None = Query(None, description="Filter by source (linkedin, indeed, etc.)"),
     ingestion_source: IngestionSource | None = Query(
         None,
@@ -55,6 +56,7 @@ async def list_jobs(
     """List user's jobs with filtering and pagination."""
     filters = JobFilters(
         status=status,
+        statuses=statuses,
         source=source,
         ingestion_source=ingestion_source,
         min_score=min_score,

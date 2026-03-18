@@ -2,7 +2,16 @@
 
 import type { ChangeEvent } from "react";
 import { format } from "date-fns";
-import { Button, Card, CardContent, CardHeader, CardTitle, Textarea } from "@/components/ui";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+  Button,
+  Card,
+  CardContent,
+  Textarea,
+} from "@/components/ui";
 import type { Job } from "@/types";
 import {
   AlertCircle,
@@ -93,168 +102,189 @@ export function PrepTab({
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="space-y-4 lg:col-span-2">
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <FileText className="h-5 w-5" />
-                Cover Letter
-              </CardTitle>
-              <div className="flex items-center gap-2">
-                {coverLetterDirty && (
-                  <Button size="sm" variant="outline" onClick={onSave} disabled={isUpdating}>
-                    {isUpdating ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Save className="mr-2 h-4 w-4" />
-                    )}
-                    Save Changes
-                  </Button>
-                )}
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              value={coverLetter}
-              onChange={(event: ChangeEvent<HTMLTextAreaElement>) => {
-                setCoverLetter(event.target.value);
-                setCoverLetterDirty(event.target.value !== job.cover_letter);
-              }}
-              placeholder="Your cover letter..."
-              rows={16}
-              className="resize-none font-mono text-sm"
-            />
+          <CardContent className="pt-2">
+            <Accordion
+              type="multiple"
+              defaultValue={job.prep_notes ? ["cover-letter", "talking-points"] : ["cover-letter"]}
+            >
+              <AccordionItem value="cover-letter">
+                <AccordionTrigger>
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    <span>Cover Letter</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-muted-foreground text-sm">
+                        Review the generated letter before finalizing the application.
+                      </p>
+                      {coverLetterDirty && (
+                        <Button size="sm" variant="outline" onClick={onSave} disabled={isUpdating}>
+                          {isUpdating ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Save className="mr-2 h-4 w-4" />
+                          )}
+                          Save Changes
+                        </Button>
+                      )}
+                    </div>
+                    <Textarea
+                      value={coverLetter}
+                      onChange={(event: ChangeEvent<HTMLTextAreaElement>) => {
+                        setCoverLetter(event.target.value);
+                        setCoverLetterDirty(event.target.value !== job.cover_letter);
+                      }}
+                      placeholder="Your cover letter..."
+                      rows={16}
+                      className="resize-none font-mono text-sm"
+                    />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {job.prep_notes && (
+                <AccordionItem value="talking-points">
+                  <AccordionTrigger>
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4" />
+                      <span>Interview Talking Points</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <pre className="font-sans text-sm leading-relaxed whitespace-pre-wrap">
+                      {job.prep_notes}
+                    </pre>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+            </Accordion>
           </CardContent>
         </Card>
-
-        {job.prep_notes && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <MessageSquare className="h-5 w-5" />
-                Interview Talking Points
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <pre className="font-sans text-sm leading-relaxed whitespace-pre-wrap">
-                {job.prep_notes}
-              </pre>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       <div className="space-y-4">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Cover Letter PDF</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {pdfError && (
-              <div className="rounded-md border border-red-500/20 bg-red-500/5 p-3">
-                <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>{pdfError}</span>
-                </div>
-              </div>
-            )}
+          <CardContent className="pt-2">
+            <Accordion type="multiple" defaultValue={["pdf", "regenerate"]}>
+              <AccordionItem value="pdf">
+                <AccordionTrigger>Cover Letter PDF</AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4">
+                    {pdfError && (
+                      <div className="rounded-md border border-red-500/20 bg-red-500/5 p-3">
+                        <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>{pdfError}</span>
+                        </div>
+                      </div>
+                    )}
 
-            {downloadError && (
-              <div className="rounded-md border border-red-500/20 bg-red-500/5 p-3">
-                <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>{downloadError}</span>
-                </div>
-              </div>
-            )}
+                    {downloadError && (
+                      <div className="rounded-md border border-red-500/20 bg-red-500/5 p-3">
+                        <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>{downloadError}</span>
+                        </div>
+                      </div>
+                    )}
 
-            {hasPdf ? (
-              <>
-                <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-                  <CheckCircle className="h-4 w-4" />
-                  <span>
-                    PDF generated{" "}
-                    {job.cover_letter_generated_at
-                      ? format(new Date(job.cover_letter_generated_at), "MMM d, h:mm a")
-                      : ""}
-                  </span>
-                </div>
+                    {hasPdf ? (
+                      <>
+                        <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                          <CheckCircle className="h-4 w-4" />
+                          <span>
+                            PDF generated{" "}
+                            {job.cover_letter_generated_at
+                              ? format(new Date(job.cover_letter_generated_at), "MMM d, h:mm a")
+                              : ""}
+                          </span>
+                        </div>
 
-                <div className="flex flex-col gap-2">
-                  <Button variant="outline" onClick={onPreview} className="justify-start">
-                    <Eye className="mr-2 h-4 w-4" />
-                    Preview PDF
-                  </Button>
+                        <div className="flex flex-col gap-2">
+                          <Button variant="outline" onClick={onPreview} className="justify-start">
+                            <Eye className="mr-2 h-4 w-4" />
+                            Preview PDF
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={onDownload}
+                            disabled={isDownloading}
+                            className="justify-start"
+                          >
+                            {isDownloading ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Download className="mr-2 h-4 w-4" />
+                            )}
+                            Download PDF
+                          </Button>
+                        </div>
+
+                        {coverLetterDirty && (
+                          <>
+                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                              You have unsaved changes. Save first, then regenerate the PDF.
+                            </p>
+                            <Button
+                              variant="outline"
+                              onClick={onRegenerate}
+                              disabled={isGeneratingPdf}
+                              className="w-full border-amber-500/30 hover:bg-amber-500/10"
+                            >
+                              {isGeneratingPdf ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                              )}
+                              Regenerate PDF
+                            </Button>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <div className="py-4 text-center">
+                        <p className="text-muted-foreground mb-3 text-sm">
+                          No PDF generated yet. Mark as &quot;Reviewed&quot; to generate.
+                        </p>
+                        <Button variant="outline" onClick={onRegenerate} disabled={isGeneratingPdf}>
+                          {isGeneratingPdf ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <FileText className="mr-2 h-4 w-4" />
+                          )}
+                          Generate PDF
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="regenerate">
+                <AccordionTrigger>Need Changes?</AccordionTrigger>
+                <AccordionContent>
+                  <p className="text-muted-foreground mb-3 text-sm">
+                    Want to start fresh? Re-run the AI prep to generate new materials.
+                  </p>
                   <Button
                     variant="outline"
-                    onClick={onDownload}
-                    disabled={isDownloading}
-                    className="justify-start"
+                    onClick={onPrep}
+                    disabled={isPrepping}
+                    className="w-full"
                   >
-                    {isDownloading ? (
+                    {isPrepping ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
-                      <Download className="mr-2 h-4 w-4" />
+                      <RefreshCw className="mr-2 h-4 w-4" />
                     )}
-                    Download PDF
+                    Regenerate All
                   </Button>
-                </div>
-
-                {coverLetterDirty && (
-                  <>
-                    <p className="text-xs text-amber-600 dark:text-amber-400">
-                      You have unsaved changes. Save first, then regenerate the PDF.
-                    </p>
-                    <Button
-                      variant="outline"
-                      onClick={onRegenerate}
-                      disabled={isGeneratingPdf}
-                      className="w-full border-amber-500/30 hover:bg-amber-500/10"
-                    >
-                      {isGeneratingPdf ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                      )}
-                      Regenerate PDF
-                    </Button>
-                  </>
-                )}
-              </>
-            ) : (
-              <div className="py-4 text-center">
-                <p className="text-muted-foreground mb-3 text-sm">
-                  No PDF generated yet. Mark as &quot;Reviewed&quot; to generate.
-                </p>
-                <Button variant="outline" onClick={onRegenerate} disabled={isGeneratingPdf}>
-                  {isGeneratingPdf ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <FileText className="mr-2 h-4 w-4" />
-                  )}
-                  Generate PDF
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Need Changes?</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground mb-3 text-sm">
-              Want to start fresh? Re-run the AI prep to generate new materials.
-            </p>
-            <Button variant="outline" onClick={onPrep} disabled={isPrepping} className="w-full">
-              {isPrepping ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="mr-2 h-4 w-4" />
-              )}
-              Regenerate All
-            </Button>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </CardContent>
         </Card>
       </div>

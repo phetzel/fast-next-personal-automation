@@ -25,6 +25,7 @@ function toErrorMessage(error: unknown, fallback: string): string {
 export function useJobMutations(options: UseJobMutationsOptions = {}) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const clearError = useCallback(() => setError(null), []);
 
   const invalidateJobs = useCallback(
     async (jobId?: string) => {
@@ -102,7 +103,7 @@ export function useJobMutations(options: UseJobMutationsOptions = {}) {
 
   return {
     error,
-    clearError: () => setError(null),
+    clearError,
     isMutating:
       createMutation.isPending ||
       updateMutation.isPending ||

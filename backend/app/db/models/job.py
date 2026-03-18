@@ -20,6 +20,7 @@ class JobStatus(StrEnum):
     """Status of a job in the user's pipeline.
 
     Flow: NEW → ANALYZED → PREPPED → REVIEWED → APPLIED → INTERVIEWING
+    - Direct shortcut to APPLIED is allowed from any pre-applied state
     - Can go to REJECTED from APPLIED or INTERVIEWING (employer rejects)
     - To remove a job from listings, use soft delete (sets deleted_at)
     """

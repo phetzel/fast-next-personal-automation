@@ -159,4 +159,16 @@ describe("useJobMutations", () => {
     expect(deletedCount).toBe(3);
     expect(mockPost).toHaveBeenCalledWith("/jobs/batch/delete", { status: "new" });
   });
+
+  it("keeps clearError stable across rerenders", () => {
+    const queryClient = createQueryClient();
+    const { result, rerender } = renderHook(() => useJobMutations(), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    const initialClearError = result.current.clearError;
+    rerender();
+
+    expect(result.current.clearError).toBe(initialClearError);
+  });
 });

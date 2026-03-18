@@ -21,6 +21,12 @@ export const JOB_STATUSES = [
  */
 export type JobStatus = (typeof JOB_STATUSES)[number];
 
+export const PRE_APPLIED_JOB_STATUSES: JobStatus[] = ["new", "analyzed", "prepped", "reviewed"];
+
+export const POST_APPLIED_JOB_STATUSES: JobStatus[] = ["applied", "interviewing", "rejected"];
+
+export const DEFAULT_JOB_STATUS_FILTERS: JobStatus[] = [...PRE_APPLIED_JOB_STATUSES];
+
 /**
  * Metadata for each job status including display info and allowed transitions.
  */
@@ -56,7 +62,7 @@ export const JOB_STATUS_CONFIG: Record<
   applied: {
     label: "Applied",
     description: "Application submitted",
-    allowedFrom: ["reviewed"],
+    allowedFrom: ["new", "analyzed", "prepped", "reviewed"],
   },
   interviewing: {
     label: "Interviewing",
@@ -219,6 +225,7 @@ export interface JobStats {
  */
 export interface JobFilters {
   status?: JobStatus;
+  statuses?: JobStatus[];
   source?: string;
   ingestion_source?: IngestionSource;
   min_score?: number;

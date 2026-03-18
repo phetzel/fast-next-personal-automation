@@ -173,6 +173,7 @@ class JobFilters(BaseSchema):
     """Filters for querying jobs."""
 
     status: JobStatus | None = None
+    statuses: list[JobStatus] | None = None
     source: str | None = None
     ingestion_source: IngestionSource | None = Field(
         default=None,

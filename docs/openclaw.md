@@ -12,9 +12,9 @@ OpenClaw now owns browser-only job work for this app: discovery, application-pag
 4. OpenClaw can update existing jobs to `analyzed` after visiting the application page.
 5. Users can also run Manual Analyze inside the app to mark a job ready for prep without OpenClaw.
 6. OpenClaw can trigger the internal `job_prep_batch` pipeline for analyzed jobs.
-7. After manual review, OpenClaw can record a successful application and move the job to `applied`.
+7. After submission, OpenClaw can record a successful application and move any pre-applied job to `applied`.
 
-Current lifecycle: `new -> analyzed -> prepped -> reviewed -> applied -> interviewing/rejected`
+Current lifecycle: `new -> analyzed -> prepped -> reviewed -> applied -> interviewing/rejected`, with direct `new|analyzed|prepped -> applied` shortcuts when the application already happened outside the app.
 
 ## Auth Header
 
@@ -112,7 +112,7 @@ Accepted fields:
 
 ## Record Apply Success
 
-Use `POST /api/v1/integrations/openclaw/jobs/{job_id}/apply-success` with `jobs:apply` after OpenClaw successfully submits an application for a reviewed job.
+Use `POST /api/v1/integrations/openclaw/jobs/{job_id}/apply-success` with `jobs:apply` after OpenClaw successfully submits an application for any pre-applied job.
 
 Accepted fields:
 

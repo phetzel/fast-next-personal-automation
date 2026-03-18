@@ -41,11 +41,23 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _parse_tag_filters(tags: list[str] | None) -> list[str] | None:
+    if not tags:
+        return None
+
+    parsed_tags = []
+    for tag_value in tags:
+        parsed_tags.extend(tag.strip() for tag in tag_value.split(",") if tag.strip())
+
+    return parsed_tags or None
+
+
 @router.get("", response_model=PipelineListResponse)
 async def list_available_pipelines(
     area: str | None = Query(None, description="Filter by primary area (e.g., 'jobs')"),
-    tags: str | None = Query(
-        None, description="Filter by tags (comma-separated, e.g., 'ai,scraping')"
+    tags: list[str] | None = Query(
+        None,
+        description="Filter by tags (repeat `tags` or use comma-separated values)",
     ),
 ) -> PipelineListResponse:
     """List all available pipelines with optional filtering.
@@ -57,8 +69,7 @@ async def list_available_pipelines(
     - area: Only return pipelines with this exact area (pipelines without area are excluded)
     - tags: Only return pipelines that have ALL specified tags
     """
-    # Parse comma-separated tags
-    tag_list = [t.strip() for t in tags.split(",")] if tags else None
+    tag_list = _parse_tag_filters(tags)
 
     # Get filtered or all pipelines
     if area is not None or tag_list:
