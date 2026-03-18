@@ -56,7 +56,9 @@ def _apply_filters(query: Select, user_id: UUID, filters: JobFilters) -> Select:
     """Apply filters to a job query (excludes soft-deleted jobs)."""
     query = query.where(Job.user_id == user_id, Job.deleted_at.is_(None))
 
-    if filters.status:
+    if filters.statuses:
+        query = query.where(Job.status.in_([status.value for status in filters.statuses]))
+    elif filters.status:
         query = query.where(Job.status == filters.status.value)
 
     if filters.source:

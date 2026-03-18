@@ -5,6 +5,7 @@ import type { JobStats } from "@/types";
 import { cn } from "@/lib/utils";
 import {
   Briefcase,
+  Layers,
   Sparkles,
   Search,
   FileText,
@@ -43,13 +44,29 @@ function StatItem({ label, value, Icon, color }: StatItemProps) {
   );
 }
 
+function getPreAppliedCount(stats: JobStats | null): number {
+  if (!stats) {
+    return 0;
+  }
+
+  return stats.new + stats.analyzed + stats.prepped + stats.reviewed;
+}
+
+function getPostAppliedCount(stats: JobStats | null): number {
+  if (!stats) {
+    return 0;
+  }
+
+  return stats.applied + stats.interviewing + stats.rejected;
+}
+
 export function JobStatsCard({ stats, isLoading, className }: JobStatsCardProps) {
   if (isLoading) {
     return (
       <Card className={className}>
         <CardContent className="py-6">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-10">
-            {Array.from({ length: 10 }).map((_, i) => (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+            {Array.from({ length: 12 }).map((_, i) => (
               <Skeleton key={i} className="h-16 rounded-lg" />
             ))}
           </div>
@@ -61,12 +78,24 @@ export function JobStatsCard({ stats, isLoading, className }: JobStatsCardProps)
   return (
     <Card className={className}>
       <CardContent className="py-6">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-10">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
           <StatItem
             label="Total"
             value={stats?.total ?? 0}
             Icon={Briefcase}
             color="bg-primary/10 text-primary"
+          />
+          <StatItem
+            label="Pre-Applied"
+            value={getPreAppliedCount(stats)}
+            Icon={Layers}
+            color="bg-sky-500/10 text-sky-600"
+          />
+          <StatItem
+            label="Post-Applied"
+            value={getPostAppliedCount(stats)}
+            Icon={Send}
+            color="bg-emerald-500/10 text-emerald-600"
           />
           <StatItem
             label="New"

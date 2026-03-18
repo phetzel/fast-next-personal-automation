@@ -1,15 +1,17 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import { useJobQuery, useJobsListQuery, useJobStatsQuery } from "./queries/jobs";
 import type { Job, JobFilters, JobListResponse, JobStats } from "@/types";
+import { DEFAULT_JOB_STATUS_FILTERS } from "@/types";
 import { toSearchParams } from "./queries/utils";
 import { useJobMutations } from "./use-job-mutations";
 
 const defaultFilters: JobFilters = {
+  statuses: DEFAULT_JOB_STATUS_FILTERS,
   page: 1,
   page_size: 20,
   sort_by: "created_at",
@@ -22,7 +24,10 @@ interface UseJobsOptions {
 
 export function useJobs(options?: UseJobsOptions) {
   const queryClient = useQueryClient();
-  const initialFilters = { ...defaultFilters, ...options?.initialFilters };
+  const initialFilters = useMemo(
+    () => ({ ...defaultFilters, ...options?.initialFilters }),
+    [options?.initialFilters]
+  );
   const [filters, setFiltersState] = useState<JobFilters>(initialFilters);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [queryError, setQueryError] = useState<string | null>(null);
@@ -99,6 +104,18 @@ export function useJobs(options?: UseJobsOptions) {
   const jobs = jobsQuery.data?.jobs ?? [];
   const total = jobsQuery.data?.total ?? 0;
   const selectedJob = selectedJobQuery.data ?? null;
+  const setFilters = useCallback((newFilters: Partial<JobFilters>) => {
+    setFiltersState((currentFilters) => ({ ...currentFilters, ...newFilters }));
+  }, []);
+  const resetFilters = useCallback(() => {
+    setFiltersState(initialFilters);
+  }, [initialFilters]);
+  const setSelectedJob = useCallback((job: Job | null) => {
+    setSelectedJobId(job?.id ?? null);
+  }, []);
+  const goToPage = useCallback((page: number) => {
+    setFiltersState((currentFilters) => ({ ...currentFilters, page }));
+  }, []);
 
   return {
     jobs,
@@ -122,10 +139,9 @@ export function useJobs(options?: UseJobsOptions) {
     fetchJob,
     updateJobStatus: mutations.updateJobStatus,
     deleteJob: mutations.deleteJob,
-    setFilters: (newFilters: Partial<JobFilters>) =>
-      setFiltersState((currentFilters) => ({ ...currentFilters, ...newFilters })),
-    resetFilters: () => setFiltersState(initialFilters),
-    setSelectedJob: (job: Job | null) => setSelectedJobId(job?.id ?? null),
-    goToPage: (page: number) => setFiltersState((currentFilters) => ({ ...currentFilters, page })),
+    setFilters,
+    resetFilters,
+    setSelectedJob,
+    goToPage,
   };
 }

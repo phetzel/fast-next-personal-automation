@@ -11,7 +11,7 @@ export type JobDetailTabId = "overview" | "prep";
 
 export function useJobDetailScreen(jobId: string) {
   const router = useRouter();
-  const { deleteJob, setSelectedJob, updateJobStatus } = useJobs();
+  const { deleteJob, updateJobStatus } = useJobs();
   const [activeTab, setActiveTab] = useState<JobDetailTabId>("overview");
   const [isPrepModalOpen, setIsPrepModalOpen] = useState(false);
 
@@ -20,7 +20,6 @@ export function useJobDetailScreen(jobId: string) {
     onDelete: deleteJob,
     onUpdate: updateJobStatus,
     onDeleteSuccess: () => router.push("/jobs/list"),
-    onJobChange: setSelectedJob,
   });
   const {
     job: analyzeJob,

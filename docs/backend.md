@@ -240,7 +240,7 @@ All integration endpoints are prefixed with `/integrations/openclaw`.
 | POST   | `/integrations/openclaw/jobs/ingest`                 | Ingest jobs from OpenClaw using `X-Integration-Token` |
 | POST   | `/integrations/openclaw/jobs/{job_id}/analyze`       | Persist application-page analysis for an existing job |
 | POST   | `/integrations/openclaw/jobs/prep-batch`             | Trigger the analyzed-job prep batch pipeline          |
-| POST   | `/integrations/openclaw/jobs/{job_id}/apply-success` | Mark a reviewed job as applied                        |
+| POST   | `/integrations/openclaw/jobs/{job_id}/apply-success` | Mark a pre-applied job as applied                     |
 
 Authentication model:
 

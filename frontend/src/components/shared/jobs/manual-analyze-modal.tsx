@@ -42,6 +42,7 @@ export function ManualAnalyzeModal({ job, isOpen, onClose, onComplete }: ManualA
   const { manualAnalyzeJob, error, clearError } = useJobMutations();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState<ManualAnalyzeFormState>(toInitialState(job));
+  const jobId = job?.id ?? null;
   const questionCount = useMemo(
     () =>
       form.screeningQuestionsText
@@ -57,7 +58,7 @@ export function ManualAnalyzeModal({ job, isOpen, onClose, onComplete }: ManualA
       setIsSubmitting(false);
       clearError();
     }
-  }, [clearError, isOpen, job]);
+  }, [clearError, isOpen, jobId]);
 
   if (!job) {
     return null;

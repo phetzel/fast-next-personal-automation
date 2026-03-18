@@ -12,7 +12,9 @@ export function toSearchParams(values: Record<string, unknown>) {
     }
 
     if (Array.isArray(value)) {
-      params.set(key, value.join(","));
+      value.forEach((entry) => {
+        params.append(key, String(entry));
+      });
       return;
     }
 

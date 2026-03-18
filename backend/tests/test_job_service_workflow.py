@@ -9,6 +9,7 @@ import pytest
 
 from app.core.exceptions import ValidationError
 from app.db.models.job import JobStatus
+from app.schemas.job import JobUpdate
 from app.services.job import JobService
 
 
@@ -159,3 +160,20 @@ async def test_mark_job_applied_sets_tracking_fields(job_service: JobService) ->
     assert update_data["application_method"] == "openclaw"
     assert update_data["confirmation_code"] == "ABC123"
     assert update_data["notes"] == "Submitted successfully"
+
+
+@pytest.mark.anyio
+async def test_update_allows_direct_move_to_applied_from_new(job_service: JobService) -> None:
+    """Manual status updates should allow pre-applied jobs to jump straight to applied."""
+    user_id = uuid4()
+    job = _mock_job(status=JobStatus.NEW, user_id=user_id)
+
+    with patch("app.services.job.job_repo") as mock_repo:
+        mock_repo.get_by_id_and_user = AsyncMock(return_value=job)
+        mock_repo.update = AsyncMock(return_value=job)
+
+        await job_service.update(job.id, user_id, JobUpdate(status=JobStatus.APPLIED))
+
+    update_data = mock_repo.update.await_args.kwargs["update_data"]
+    assert update_data["status"] == JobStatus.APPLIED.value
+    assert update_data["applied_at"] is not None

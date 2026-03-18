@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   Input,
   Select,
   SelectContent,
@@ -12,8 +19,14 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import type { JobFilters, JobStatus, IngestionSource } from "@/types";
-import { JOB_STATUSES, JOB_STATUS_CONFIG } from "@/types";
-import { Search, X, Filter } from "lucide-react";
+import {
+  DEFAULT_JOB_STATUS_FILTERS,
+  JOB_STATUSES,
+  JOB_STATUS_CONFIG,
+  POST_APPLIED_JOB_STATUSES,
+  PRE_APPLIED_JOB_STATUSES,
+} from "@/types";
+import { Search, X, Filter, ChevronDown } from "lucide-react";
 
 interface JobFiltersProps {
   filters: JobFilters;
@@ -22,14 +35,15 @@ interface JobFiltersProps {
   className?: string;
 }
 
-// Generate status options from the shared constant
-const STATUS_OPTIONS: { value: JobStatus | "all"; label: string }[] = [
-  { value: "all", label: "All Status" },
-  ...JOB_STATUSES.map((status) => ({
-    value: status,
-    label: JOB_STATUS_CONFIG[status].label,
-  })),
-];
+const PRE_APPLIED_STATUS_OPTIONS = PRE_APPLIED_JOB_STATUSES.map((status) => ({
+  value: status,
+  label: JOB_STATUS_CONFIG[status].label,
+}));
+
+const POST_APPLIED_STATUS_OPTIONS = POST_APPLIED_JOB_STATUSES.map((status) => ({
+  value: status,
+  label: JOB_STATUS_CONFIG[status].label,
+}));
 
 const SORT_OPTIONS: { value: string; label: string }[] = [
   { value: "created_at:desc", label: "Newest First" },
@@ -58,6 +72,40 @@ const INGESTION_SOURCE_OPTIONS: { value: IngestionSource | "all"; label: string 
 
 export function JobFilters({ filters, onFiltersChange, onReset, className }: JobFiltersProps) {
   const [searchValue, setSearchValue] = useState(filters.search || "");
+  const selectedStatuses = useMemo(() => {
+    if (filters.statuses !== undefined) {
+      return JOB_STATUSES.filter((status) => filters.statuses?.includes(status));
+    }
+
+    if (filters.status) {
+      return [filters.status];
+    }
+
+    return DEFAULT_JOB_STATUS_FILTERS;
+  }, [filters.status, filters.statuses]);
+  const allStatusesSelected = selectedStatuses.length === JOB_STATUSES.length;
+  const isDefaultStatusSelection =
+    selectedStatuses.length === DEFAULT_JOB_STATUS_FILTERS.length &&
+    selectedStatuses.every((status, index) => status === DEFAULT_JOB_STATUS_FILTERS[index]);
+  const statusLabel = useMemo(() => {
+    if (isDefaultStatusSelection) {
+      return "Pre-applied";
+    }
+
+    if (allStatusesSelected) {
+      return "All statuses";
+    }
+
+    if (selectedStatuses.length === 0) {
+      return "No statuses";
+    }
+
+    if (selectedStatuses.length === 1) {
+      return JOB_STATUS_CONFIG[selectedStatuses[0]].label;
+    }
+
+    return `${selectedStatuses.length} statuses`;
+  }, [allStatusesSelected, isDefaultStatusSelection, selectedStatuses]);
 
   useEffect(() => {
     setSearchValue(filters.search || "");
@@ -68,11 +116,19 @@ export function JobFilters({ filters, onFiltersChange, onReset, className }: Job
     onFiltersChange({ search: searchValue || undefined, page: 1 });
   };
 
-  const handleStatusChange = (value: JobStatus | "all") => {
+  const handleStatusesChange = (statuses: JobStatus[]) => {
     onFiltersChange({
-      status: value === "all" ? undefined : value,
+      status: undefined,
+      statuses,
       page: 1,
     });
+  };
+
+  const toggleStatus = (status: JobStatus) => {
+    const nextStatuses = JOB_STATUSES.filter((item) =>
+      item === status ? !selectedStatuses.includes(status) : selectedStatuses.includes(item)
+    );
+    handleStatusesChange(nextStatuses);
   };
 
   const handleSortChange = (value: string) => {
@@ -98,7 +154,7 @@ export function JobFilters({ filters, onFiltersChange, onReset, className }: Job
   };
 
   const hasActiveFilters =
-    filters.status ||
+    !isDefaultStatusSelection ||
     filters.search ||
     filters.min_score !== undefined ||
     filters.max_score !== undefined ||
@@ -132,22 +188,47 @@ export function JobFilters({ filters, onFiltersChange, onReset, className }: Job
           )}
         </form>
 
-        {/* Status filter */}
-        <Select
-          value={filters.status || "all"}
-          onValueChange={(value) => handleStatusChange(value as JobStatus | "all")}
-        >
-          <SelectTrigger className="w-[170px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {STATUS_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="min-w-[180px] justify-between">
+              <span className="truncate">Status: {statusLabel}</span>
+              <ChevronDown className="ml-2 h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-64">
+            <DropdownMenuLabel>Quick Filters</DropdownMenuLabel>
+            <DropdownMenuItem onSelect={() => handleStatusesChange(DEFAULT_JOB_STATUS_FILTERS)}>
+              Pre-applied only
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => handleStatusesChange([...JOB_STATUSES])}>
+              All jobs
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Pre-applied</DropdownMenuLabel>
+            {PRE_APPLIED_STATUS_OPTIONS.map((option) => (
+              <DropdownMenuCheckboxItem
+                key={option.value}
+                checked={selectedStatuses.includes(option.value)}
+                onCheckedChange={() => toggleStatus(option.value)}
+                onSelect={(event) => event.preventDefault()}
+              >
                 {option.label}
-              </SelectItem>
+              </DropdownMenuCheckboxItem>
             ))}
-          </SelectContent>
-        </Select>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Post-applied</DropdownMenuLabel>
+            {POST_APPLIED_STATUS_OPTIONS.map((option) => (
+              <DropdownMenuCheckboxItem
+                key={option.value}
+                checked={selectedStatuses.includes(option.value)}
+                onCheckedChange={() => toggleStatus(option.value)}
+                onSelect={(event) => event.preventDefault()}
+              >
+                {option.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* Recency filter */}
         <Select

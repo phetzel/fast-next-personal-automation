@@ -28,9 +28,9 @@ from app.schemas.job_data import RawJob  # Unified job data model
 logger = logging.getLogger(__name__)
 
 _STATUS_TRANSITIONS: dict[JobStatus, set[JobStatus]] = {
-    JobStatus.NEW: {JobStatus.ANALYZED},
-    JobStatus.ANALYZED: {JobStatus.PREPPED},
-    JobStatus.PREPPED: {JobStatus.REVIEWED},
+    JobStatus.NEW: {JobStatus.ANALYZED, JobStatus.APPLIED},
+    JobStatus.ANALYZED: {JobStatus.PREPPED, JobStatus.APPLIED},
+    JobStatus.PREPPED: {JobStatus.REVIEWED, JobStatus.APPLIED},
     JobStatus.REVIEWED: {JobStatus.APPLIED},
     JobStatus.APPLIED: {JobStatus.INTERVIEWING, JobStatus.REJECTED},
     JobStatus.INTERVIEWING: {JobStatus.REJECTED},
@@ -122,6 +122,18 @@ class JobService:
             return new_notes
         return f"{existing}\n\n{new_notes}".strip()
 
+    @staticmethod
+    def _apply_status_side_effects(
+        current_status: JobStatus,
+        next_status: JobStatus,
+        *,
+        existing_applied_at: datetime | None,
+        update_data: dict[str, Any],
+    ) -> None:
+        """Populate lifecycle timestamps when status changes imply them."""
+        if next_status == JobStatus.APPLIED and current_status != JobStatus.APPLIED:
+            update_data["applied_at"] = existing_applied_at or datetime.now(UTC)
+
     async def update(
         self,
         job_id: UUID,
@@ -137,7 +149,14 @@ class JobService:
         update_data = job_in.model_dump(exclude_unset=True)
         if update_data.get("status") is not None:
             next_status = update_data["status"]
-            self._validate_status_transition(JobStatus(job.status), next_status)
+            current_status = JobStatus(job.status)
+            self._validate_status_transition(current_status, next_status)
+            self._apply_status_side_effects(
+                current_status,
+                next_status,
+                existing_applied_at=job.applied_at,
+                update_data=update_data,
+            )
             update_data["status"] = next_status.value
         return await job_repo.update(self.db, db_job=job, update_data=update_data)
 
@@ -153,11 +172,19 @@ class JobService:
             NotFoundError: If job does not exist or doesn't belong to user.
         """
         job = await self.get_by_id(job_id, user_id)
-        self._validate_status_transition(JobStatus(job.status), status)
+        current_status = JobStatus(job.status)
+        self._validate_status_transition(current_status, status)
+        update_data: dict[str, Any] = {"status": status.value}
+        self._apply_status_side_effects(
+            current_status,
+            status,
+            existing_applied_at=job.applied_at,
+            update_data=update_data,
+        )
         return await job_repo.update(
             self.db,
             db_job=job,
-            update_data={"status": status.value},
+            update_data=update_data,
         )
 
     async def delete(self, job_id: UUID, user_id: UUID) -> Job:
