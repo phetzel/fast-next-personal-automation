@@ -7,11 +7,31 @@ should be handled by JobService in app/services/job.py.
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import Select, func, or_, select
+from sqlalchemy import Select, and_, func, not_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.job import Job, JobStatus
 from app.schemas.job import JobFilters
+
+
+def _application_analysis_expression():
+    return or_(
+        Job.application_type.isnot(None),
+        Job.application_url.isnot(None),
+        Job.requires_cover_letter.isnot(None),
+        Job.cover_letter_requested.isnot(None),
+        Job.requires_resume.isnot(None),
+        Job.detected_fields.isnot(None),
+        Job.screening_questions.isnot(None),
+    )
+
+
+def _prep_eligible_expression():
+    return and_(
+        Job.status == JobStatus.ANALYZED.value,
+        Job.analyzed_at.isnot(None),
+        _application_analysis_expression(),
+    )
 
 
 async def get_by_id(db: AsyncSession, job_id: UUID) -> Job | None:
@@ -82,6 +102,13 @@ def _apply_filters(query: Select, user_id: UUID, filters: JobFilters) -> Select:
                 Job.description.ilike(search_term),
             )
         )
+
+    if filters.prep_eligible is not None:
+        prep_eligible_condition = _prep_eligible_expression()
+        if filters.prep_eligible:
+            query = query.where(prep_eligible_condition)
+        else:
+            query = query.where(not_(prep_eligible_condition))
 
     if filters.posted_within_hours is not None:
         cutoff_time = datetime.now(UTC) - timedelta(hours=filters.posted_within_hours)

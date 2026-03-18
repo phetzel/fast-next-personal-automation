@@ -130,11 +130,16 @@ export interface Job {
   application_type: "easy_apply" | "ats" | "direct" | "email" | "unknown" | null;
   application_url: string | null;
   requires_cover_letter: boolean | null;
+  cover_letter_requested?: boolean | null;
   requires_resume: boolean | null;
   detected_fields: Record<string, unknown> | null;
   screening_questions: Array<Record<string, unknown>> | null;
   screening_answers: Record<string, string> | null;
+  ats_family?: string | null;
+  analysis_source?: string | null;
   analyzed_at: string | null;
+  has_application_analysis?: boolean;
+  is_prep_eligible?: boolean;
   applied_at: string | null;
   application_method: string | null;
   confirmation_code: string | null;
@@ -155,14 +160,16 @@ export function hasCoverLetterText(coverLetter: string | null | undefined): bool
  * application analysis explicitly says one is required.
  */
 export function shouldGenerateReviewPdf(
-  job: Pick<Job, "cover_letter" | "requires_cover_letter">,
+  job: Pick<Job, "cover_letter" | "requires_cover_letter"> & {
+    cover_letter_requested?: boolean | null;
+  },
   draftCoverLetter?: string | null
 ): boolean {
   if (hasCoverLetterText(draftCoverLetter ?? job.cover_letter)) {
     return true;
   }
 
-  return job.requires_cover_letter === true;
+  return job.requires_cover_letter === true || job.cover_letter_requested === true;
 }
 
 export function getScreeningQuestionText(question: Record<string, unknown>): string {
@@ -256,6 +263,7 @@ export interface JobFilters {
   min_score?: number;
   max_score?: number;
   search?: string;
+  prep_eligible?: boolean;
   posted_within_hours?: number;
   page?: number;
   page_size?: number;

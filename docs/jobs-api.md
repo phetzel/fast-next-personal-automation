@@ -99,11 +99,13 @@ Lists the current user's non-deleted jobs.
 Query params:
 
 - `status`: one of `new|analyzed|prepped|reviewed|applied|interviewing|rejected`
+- `statuses`: repeated status params for multi-select filtering
 - `source`: free-form source string such as `linkedin`, `indeed`, `greenhouse`
 - `ingestion_source`: `scrape|email|manual|openclaw`
 - `min_score`: float `0-10`
 - `max_score`: float `0-10`
 - `search`: text matched against title, company, and description
+- `prep_eligible`: boolean filter for jobs with explicit application analysis and `status=analyzed`
 - `posted_within_hours`: integer `>= 1`
 - `page`: integer `>= 1`, default `1`
 - `page_size`: integer `1-100`, default `20`
@@ -601,9 +603,12 @@ Per-job fields:
   - `application_type`
   - `application_url`
   - `requires_cover_letter`
+  - `cover_letter_requested`
   - `requires_resume`
   - `detected_fields`
   - `screening_questions`
+  - `ats_family`
+  - `analysis_source`
   - `analyzed_at`
 
 Validation rules:
@@ -614,11 +619,16 @@ Validation rules:
 Response:
 
 - `jobs_received`
-- `jobs_analyzed`
+- `jobs_analyzed` (legacy score/ranking count)
 - `jobs_saved`
+- `jobs_updated`
 - `duplicates_skipped`
 - `high_scoring`
 - `external_analysis_used`
+- `saved_job_ids`
+- `updated_job_ids`
+- `analyzed_job_ids`
+- `prep_eligible_job_ids`
 - `profile_id`
 - `profile_name`
 - `token_id`
@@ -629,11 +639,15 @@ Persistence behavior:
 - Jobs are stored with `ingestion_source="openclaw"`
 - External `relevance_score` and `reasoning` are stored directly when provided
 - Jobs can be saved without any score when external systems do not provide one
-- Jobs are saved directly as `analyzed` when application-analysis fields are present
+- Duplicate ingest updates the existing job when richer analysis metadata arrives
+- Duplicate ingest is monotonic for application-analysis fields: null, generic, or weaker follow-up data will not clear stronger existing analysis
+- Jobs are saved or updated directly as `analyzed` when application-analysis fields are present
+- `analyzed_job_ids` and `prep_eligible_job_ids` are the deterministic contract for follow-up prep
 
 Important note:
 
 - OpenClaw should call the FastAPI backend origin directly. There is no frontend proxy route for machine ingest in `frontend/src/app/api/`.
+- `jobs_analyzed` is a legacy score/ranking count only. It must not be used to decide which jobs are safe to prep.
 
 ### Machine Analyze Route
 
@@ -650,16 +664,21 @@ Payload fields:
 - `application_type`
 - `application_url`
 - `requires_cover_letter`
+- `cover_letter_requested`
 - `requires_resume`
 - `detected_fields`
 - `screening_questions`
+- `ats_family`
+- `analysis_source`
 - `analyzed_at`
 
 Behavior:
 
-- Requires at least one application-analysis field
+- Requires at least one application-analysis field or analysis metadata field
 - Moves `new -> analyzed`
 - Leaves later-stage jobs in place while refreshing analysis data
+- Use this route for authoritative corrections. Unlike duplicate ingest, it can intentionally replace existing analysis values.
+- Returns the full `JobResponse`, including `has_application_analysis` and `is_prep_eligible`
 
 ### Machine Prep Route
 
@@ -672,14 +691,14 @@ Auth:
 
 Payload fields:
 
-- `job_ids` optional
+- `job_ids` required explicit analyzed job IDs
 - `max_jobs`
 - `tone`
 
 Behavior:
 
 - Executes the internal `job_prep_batch` pipeline synchronously
-- Targets analyzed jobs
+- Only the provided prep-eligible analyzed job IDs are considered
 
 ### Machine Apply Route
 

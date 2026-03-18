@@ -39,6 +39,17 @@ def _mock_job(*, status: JobStatus, user_id=None):
         cover_letter_file_path="cover_letters/existing.pdf",
         notes=None,
         applied_at=None,
+        application_type=None,
+        application_url=None,
+        requires_cover_letter=None,
+        cover_letter_requested=None,
+        requires_resume=None,
+        detected_fields=None,
+        screening_questions=None,
+        ats_family=None,
+        analysis_source=None,
+        analyzed_at=None,
+        has_application_analysis=False,
     )
 
 
@@ -106,6 +117,8 @@ async def test_manual_analyze_defaults_to_unknown_application_and_cover_letter_o
     assert update_data["application_type"] == "unknown"
     assert update_data["application_url"] == job.job_url
     assert update_data["requires_cover_letter"] is False
+    assert update_data["cover_letter_requested"] is False
+    assert update_data["analysis_source"] == "manual"
     assert update_data["screening_questions"] == []
     assert update_data["analyzed_at"] is not None
 
@@ -135,6 +148,33 @@ async def test_manual_analyze_persists_custom_questions(job_service: JobService)
         {"question": "Why this company?"},
         {"question": "Describe your salary expectations"},
     ]
+
+
+@pytest.mark.anyio
+async def test_update_application_analysis_allows_metadata_only_for_existing_analysis(
+    job_service: JobService,
+) -> None:
+    """Metadata-only updates should work once the job already has explicit analysis."""
+    user_id = uuid4()
+    job = _mock_job(status=JobStatus.ANALYZED, user_id=user_id)
+    job.has_application_analysis = True
+    job.analyzed_at = datetime.now(UTC)
+
+    with patch("app.services.job.job_repo") as mock_repo:
+        mock_repo.get_by_id_and_user = AsyncMock(return_value=job)
+        mock_repo.update = AsyncMock(return_value=job)
+
+        await job_service.update_application_analysis(
+            job.id,
+            user_id,
+            ats_family="greenhouse",
+            analysis_source="openclaw_browser",
+        )
+
+    update_data = mock_repo.update.await_args.kwargs["update_data"]
+    assert update_data["ats_family"] == "greenhouse"
+    assert update_data["analysis_source"] == "openclaw_browser"
+    assert "status" not in update_data
 
 
 @pytest.mark.anyio

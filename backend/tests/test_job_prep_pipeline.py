@@ -1,6 +1,7 @@
 """Tests for the job prep pipeline behavior."""
 
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
@@ -26,6 +27,10 @@ def _mock_job(user_id):
         screening_questions=[{"question": "Why this company?"}],
         reasoning="Strong fit based on backend systems work.",
         application_type="ats",
+        application_url="https://boards.example.com/apply/123",
+        cover_letter_requested=False,
+        analyzed_at=datetime.now(UTC),
+        has_application_analysis=True,
         source="linkedin",
         cover_letter=None,
         cover_letter_file_path=None,

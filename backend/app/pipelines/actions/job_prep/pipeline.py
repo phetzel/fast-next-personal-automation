@@ -28,6 +28,25 @@ from app.schemas.job_profile import JobProfileSummary, ProfileRequiredError, pro
 logger = logging.getLogger(__name__)
 
 
+def _job_has_explicit_application_analysis(job) -> bool:
+    has_analysis_property = getattr(job, "has_application_analysis", None)
+    if has_analysis_property is not None:
+        return bool(has_analysis_property)
+
+    return getattr(job, "analyzed_at", None) is not None and any(
+        getattr(job, field, None) is not None
+        for field in (
+            "application_type",
+            "application_url",
+            "requires_cover_letter",
+            "cover_letter_requested",
+            "requires_resume",
+            "detected_fields",
+            "screening_questions",
+        )
+    )
+
+
 async def _available_profile_summaries(user_id: UUID) -> list[JobProfileSummary]:
     """Load profile summaries for profile-selection errors."""
     async with get_db_context() as db:
@@ -144,6 +163,14 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                     "preparing application materials."
                 ),
             )
+        if job.job_status == JobStatus.ANALYZED and not _job_has_explicit_application_analysis(job):
+            return ActionResult(
+                success=False,
+                error=(
+                    "Job prep requires explicit application analysis fields. Re-run OpenClaw "
+                    "analysis or manual analyze before preparing application materials."
+                ),
+            )
 
         # Step 2: Get the profile
         async with get_db_context() as db:
@@ -218,7 +245,11 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                     logger.info(f"Including {len(projects_content)} projects from profile")
 
         # Step 4: Generate a cover letter only when analysis requires it or the caller forces it.
-        should_generate_cover_letter = input.force_cover_letter or job.requires_cover_letter is True
+        should_generate_cover_letter = (
+            input.force_cover_letter
+            or job.requires_cover_letter is True
+            or job.cover_letter_requested is True
+        )
         skipped_cover_letter = not should_generate_cover_letter
         logger.info(
             "Generating cover letter=%s (requires_cover_letter=%s, force=%s)",

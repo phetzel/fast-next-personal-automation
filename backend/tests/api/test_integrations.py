@@ -175,6 +175,7 @@ async def test_ingest_openclaw_jobs_success(client, mock_db_session) -> None:
                 jobs_received=2,
                 jobs_analyzed=0,
                 jobs_saved=2,
+                saved_job_ids=[uuid4(), uuid4()],
                 duplicates_skipped=0,
                 high_scoring=0,
             )
@@ -207,6 +208,10 @@ async def test_ingest_openclaw_jobs_success(client, mock_db_session) -> None:
     assert response.status_code == 200
     data = response.json()
     assert data["jobs_saved"] == 2
+    assert len(data["saved_job_ids"]) == 2
+    assert data["updated_job_ids"] == []
+    assert data["analyzed_job_ids"] == []
+    assert data["prep_eligible_job_ids"] == []
     assert data["external_analysis_used"] is False
     assert data["token_id"] == str(token.id)
     job_service.ingest_jobs.assert_awaited_once()
@@ -280,6 +285,7 @@ async def test_ingest_openclaw_jobs_uses_external_analysis_payload(client, mock_
                 jobs_received=1,
                 jobs_analyzed=1,
                 jobs_saved=1,
+                saved_job_ids=[uuid4()],
                 duplicates_skipped=0,
                 high_scoring=1,
             )
@@ -309,6 +315,7 @@ async def test_ingest_openclaw_jobs_uses_external_analysis_payload(client, mock_
     data = response.json()
     assert data["jobs_analyzed"] == 1
     assert data["external_analysis_used"] is True
+    assert len(data["saved_job_ids"]) == 1
 
     kwargs = job_service.ingest_jobs.await_args.kwargs
     assert kwargs["external_analysis_by_url"] == {
@@ -361,6 +368,9 @@ async def test_ingest_openclaw_jobs_can_save_directly_as_analyzed(client) -> Non
                 jobs_received=1,
                 jobs_analyzed=1,
                 jobs_saved=1,
+                saved_job_ids=[uuid4()],
+                analyzed_job_ids=[uuid4()],
+                prep_eligible_job_ids=[uuid4()],
                 duplicates_skipped=0,
                 high_scoring=1,
             )
@@ -395,6 +405,10 @@ async def test_ingest_openclaw_jobs_can_save_directly_as_analyzed(client) -> Non
         kwargs["job_attributes_by_url"]["https://jobs.example.com/1"]["requires_cover_letter"]
         is True
     )
+    assert (
+        kwargs["job_attributes_by_url"]["https://jobs.example.com/1"]["analysis_source"]
+        == "openclaw"
+    )
 
 
 @pytest.mark.anyio
@@ -414,6 +428,8 @@ async def test_analyze_openclaw_job_route(client) -> None:
             "application_type": "ats",
             "application_url": "https://boards.example.com/apply/123",
             "requires_cover_letter": True,
+            "cover_letter_requested": True,
+            "ats_family": "greenhouse",
         },
     )
 
@@ -422,6 +438,9 @@ async def test_analyze_openclaw_job_route(client) -> None:
     kwargs = job_service.update_application_analysis.await_args.kwargs
     assert kwargs["application_type"] == "ats"
     assert kwargs["application_url"] == "https://boards.example.com/apply/123"
+    assert kwargs["cover_letter_requested"] is True
+    assert kwargs["ats_family"] == "greenhouse"
+    assert kwargs["analysis_source"] == "openclaw"
 
 
 @pytest.mark.anyio
@@ -455,7 +474,7 @@ async def test_openclaw_prep_batch_route_executes_pipeline(client) -> None:
     try:
         response = await client.post(
             "/api/v1/integrations/openclaw/jobs/prep-batch",
-            json={"max_jobs": 5, "tone": "professional"},
+            json={"job_ids": [str(uuid4())], "max_jobs": 5, "tone": "professional"},
         )
     finally:
         integrations_route.execute_pipeline = original_execute_pipeline

@@ -253,9 +253,12 @@ Authentication model:
 `/jobs/ingest` reuses the internal job ingestion service for:
 
 - URL deduplication by `job_url` per user
+- Updating existing jobs in place when richer analysis arrives for the same `job_url`
+- Keeping duplicate ingest monotonic for application analysis so weaker follow-up payloads do not clear stronger existing analysis
 - External score/reasoning passthrough (`relevance_score`, `reasoning`) when provided
 - Persisting jobs with `ingestion_source="openclaw"` for source tracking
-- Directly saving jobs as `analyzed` when application-analysis fields are provided
+- Directly saving or updating jobs as `analyzed` when application-analysis fields are provided
+- Returning explicit `saved_job_ids`, `updated_job_ids`, `analyzed_job_ids`, and `prep_eligible_job_ids`
 
 Current payload limits/behavior:
 

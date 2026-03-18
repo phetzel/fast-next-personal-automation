@@ -51,3 +51,19 @@ async def test_list_jobs_accepts_multi_status_filters(client) -> None:
     assert args[0] == user.id
     assert args[1].statuses == [JobStatus.NEW, JobStatus.ANALYZED]
     assert args[1].page == 2
+
+
+@pytest.mark.anyio
+async def test_list_jobs_accepts_prep_eligible_filter(client) -> None:
+    """The jobs list route should surface the explicit prep-eligible filter."""
+    user = _mock_user()
+    job_service = SimpleNamespace(get_by_user=AsyncMock(return_value=([], 0)))
+
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_job_service] = lambda: job_service
+
+    response = await client.get("/api/v1/jobs?prep_eligible=true")
+
+    assert response.status_code == 200
+    args = job_service.get_by_user.await_args.args
+    assert args[1].prep_eligible is True

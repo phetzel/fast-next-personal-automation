@@ -11,7 +11,7 @@ OpenClaw now owns browser-only job work for this app: discovery, application-pag
    - `analyzed` when it also sends application-page requirements
 4. OpenClaw can update existing jobs to `analyzed` after visiting the application page.
 5. Users can also run Manual Analyze inside the app to mark a job ready for prep without OpenClaw.
-6. OpenClaw can trigger the internal `job_prep_batch` pipeline for analyzed jobs.
+6. OpenClaw can trigger the internal `job_prep_batch` pipeline only for explicit analyzed job IDs.
 7. After submission, OpenClaw can record a successful application and move any pre-applied job to `applied`.
 
 Current lifecycle: `new -> analyzed -> prepped -> reviewed -> applied -> interviewing/rejected`, with direct `new|analyzed|prepped -> applied` shortcuts when the application already happened outside the app.
@@ -74,7 +74,7 @@ Optional per-job enrichment fields:
 
 - listing enrichment: `description`, `salary_range`, `date_posted`, `is_remote`, `job_type`, `company_url`
 - fit scoring: `relevance_score`, `reasoning`
-- application analysis: `application_type`, `application_url`, `requires_cover_letter`, `requires_resume`, `detected_fields`, `screening_questions`, `analyzed_at`
+- application analysis: `application_type`, `application_url`, `requires_cover_letter`, `cover_letter_requested`, `requires_resume`, `detected_fields`, `screening_questions`, `ats_family`, `analysis_source`, `analyzed_at`
 
 Top-level options:
 
@@ -82,6 +82,8 @@ Top-level options:
 - `profile_id`
 
 If application-analysis fields are present, the job is persisted as `analyzed`. Otherwise it stays `new`.
+The ingest response now also returns `saved_job_ids`, `updated_job_ids`, `analyzed_job_ids`, and `prep_eligible_job_ids` so OpenClaw can prep only deterministic analyzed IDs.
+Duplicate ingest is enrich-only for application analysis: weaker or generic follow-up values do not clear stronger existing analysis.
 
 ## Analyze Existing Job
 
@@ -93,20 +95,24 @@ The payload can update:
 - `application_type`
 - `application_url`
 - `requires_cover_letter`
+- `cover_letter_requested`
 - `requires_resume`
 - `detected_fields`
 - `screening_questions`
+- `ats_family`
+- `analysis_source`
 - `analyzed_at`
 
 This advances `new -> analyzed` and is idempotent for already analyzed jobs.
+Use this route when OpenClaw needs to intentionally correct or replace prior analysis values.
 
 ## Trigger Prep
 
-Use `POST /api/v1/integrations/openclaw/jobs/prep-batch` with `jobs:prep` to run the internal prep batch synchronously for analyzed jobs.
+Use `POST /api/v1/integrations/openclaw/jobs/prep-batch` with `jobs:prep` to run the internal prep batch synchronously for explicit analyzed job IDs.
 
 Accepted fields:
 
-- `job_ids` optional explicit subset
+- `job_ids` required explicit analyzed IDs from `analyzed_job_ids` or `prep_eligible_job_ids`
 - `max_jobs`
 - `tone`
 
@@ -124,6 +130,6 @@ Accepted fields:
 ## Verify
 
 ```bash
-curl "${APP_API_BASE_URL}/api/v1/jobs?page=1&page_size=5" \
+curl "${APP_API_BASE_URL}/api/v1/jobs?prep_eligible=true&page=1&page_size=5" \
   -H "Authorization: Bearer ${ACCESS_TOKEN}"
 ```

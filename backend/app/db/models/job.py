@@ -115,6 +115,7 @@ class Job(Base, TimestampMixin):
         String(2048), nullable=True
     )  # Direct application URL (may differ from job_url)
     requires_cover_letter: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    cover_letter_requested: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     requires_resume: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     detected_fields: Mapped[dict | None] = mapped_column(
         JSON, nullable=True
@@ -125,6 +126,8 @@ class Job(Base, TimestampMixin):
     screening_answers: Mapped[dict | None] = mapped_column(
         JSON, nullable=True
     )  # Generated answers for screening questions
+    ats_family: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    analysis_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
     analyzed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Application submission tracking
@@ -160,11 +163,17 @@ class Job(Base, TimestampMixin):
                 self.application_type,
                 self.application_url,
                 self.requires_cover_letter,
+                self.cover_letter_requested,
                 self.requires_resume,
                 self.detected_fields,
                 self.screening_questions,
             )
         )
+
+    @property
+    def is_prep_eligible(self) -> bool:
+        """Return whether the job is explicitly analyzed and waiting for prep."""
+        return self.job_status == JobStatus.ANALYZED and self.has_application_analysis
 
     def __repr__(self) -> str:
         return f"<Job(id={self.id}, title={self.title}, company={self.company}, score={self.relevance_score})>"
