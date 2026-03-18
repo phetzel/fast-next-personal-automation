@@ -50,7 +50,7 @@ function StatItem({ label, value, Icon, color }: StatItemProps) {
 
 function StatSection({ title, items }: StatSectionProps) {
   return (
-    <div className="space-y-4 rounded-xl border border-border/60 bg-muted/20 p-4">
+    <div className="border-border/60 bg-muted/20 space-y-4 rounded-xl border p-4">
       <div>
         <h3 className="text-sm font-semibold">{title}</h3>
         <p className="text-muted-foreground text-xs">Grouped by lifecycle stage</p>
