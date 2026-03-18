@@ -15,6 +15,8 @@ import {
   DialogTitle,
   Textarea,
 } from "@/components/ui";
+import { CoverLetterProfileNotice } from "@/components/shared/jobs/cover-letter-profile-notice";
+import { ScreeningAnswersSection } from "@/components/shared/jobs/screening-answers-section";
 import { getScreeningQuestionText, type Job, type JobStatus, type JobUpdate } from "@/types";
 import { JOB_STATUSES, JOB_STATUS_CONFIG, canTransitionTo, shouldGenerateReviewPdf } from "@/types";
 import { cn } from "@/lib/utils";
@@ -507,6 +509,8 @@ export function JobDetailModal({
                       )}
                     </div>
 
+                    <CoverLetterProfileNotice profileId={currentJob.profile_id} />
+
                     {currentJob.cover_letter && (
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
@@ -540,6 +544,12 @@ export function JobDetailModal({
                         />
                       </div>
                     )}
+
+                    <ScreeningAnswersSection
+                      screeningQuestions={currentJob.screening_questions}
+                      screeningAnswers={currentJob.screening_answers}
+                      listClassName="bg-background/80 rounded-md p-3"
+                    />
 
                     {currentJob.prep_notes && (
                       <div className="space-y-2">

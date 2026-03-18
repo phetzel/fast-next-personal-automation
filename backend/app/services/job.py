@@ -483,6 +483,8 @@ class JobService:
             ValidationError: If job has no cover letter text to convert
         """
         job = await self.get_by_id(job_id, user.id)
+        if profile is None:
+            profile = await self._resolve_cover_letter_profile(job, user.id)
 
         # Validate that we have a cover letter to convert
         if not job.cover_letter:
@@ -503,11 +505,7 @@ class JobService:
         )
 
         # Generate professional filename
-        filename = generate_cover_letter_filename(
-            company=job.company,
-            job_title=job.title,
-            applicant_name=contact_info.full_name,
-        )
+        filename = generate_cover_letter_filename(company=job.company)
 
         # Store in S3
         storage = await get_storage_instance()
@@ -542,17 +540,24 @@ class JobService:
 
         Priority: profile contact fields -> user fields -> sensible defaults
         """
-        # Name: profile -> user -> email prefix
-        full_name = None
-        if profile and profile.contact_full_name:
-            full_name = profile.contact_full_name
-        elif user.full_name:
-            full_name = user.full_name
-        else:
-            # Last resort: use email prefix but capitalize
-            email_prefix = user.email.split("@")[0]
-            # Try to convert underscores/dots to spaces and title case
-            full_name = email_prefix.replace("_", " ").replace(".", " ").title()
+        # Name: profile -> user
+        profile_full_name = (
+            profile.contact_full_name.strip() if profile and profile.contact_full_name else None
+        )
+        user_full_name = user.full_name.strip() if user.full_name else None
+        full_name = profile_full_name or user_full_name
+
+        if not full_name:
+            raise ValidationError(
+                message=(
+                    "Add a full name to your job profile or account before generating "
+                    "a cover letter PDF"
+                ),
+                details={
+                    "profile_id": str(profile.id) if profile else None,
+                    "user_id": str(user.id),
+                },
+            )
 
         # Email: profile -> user
         email = profile.contact_email if profile and profile.contact_email else user.email
@@ -573,6 +578,19 @@ class JobService:
             location=location,
             website=website,
         )
+
+    async def _resolve_cover_letter_profile(
+        self,
+        job: Job,
+        user_id: UUID,
+    ) -> JobProfile | None:
+        """Resolve the best profile to use for cover-letter rendering."""
+        if job.profile_id:
+            profile = await job_profile_repo.get_by_id(self.db, job.profile_id)
+            if profile and profile.user_id == user_id:
+                return profile
+
+        return await job_profile_repo.get_default_for_user(self.db, user_id)
 
     async def get_cover_letter_pdf(
         self,
@@ -610,25 +628,8 @@ class JobService:
                 details={"file_path": job.cover_letter_file_path},
             ) from e
 
-        # Generate a clean filename without the storage UUID prefix
-        # This requires us to get the user's profile for name
-        profile = await job_profile_repo.get_default_for_user(self.db, user_id)
-
-        # Get user for name fallback
-        from app.repositories import user_repo
-
-        user = await user_repo.get_by_id(self.db, user_id)
-
-        if user:
-            contact_info = self._build_contact_info(user, profile)
-            filename = generate_cover_letter_filename(
-                company=job.company,
-                job_title=job.title,
-                applicant_name=contact_info.full_name,
-            )
-        else:
-            # Fallback to extracting from path (with UUID prefix)
-            filename = job.cover_letter_file_path.split("/")[-1]
+        # Use the clean filename rather than the storage path with UUID prefix.
+        filename = generate_cover_letter_filename(company=job.company)
 
         return pdf_bytes, filename
 
@@ -653,8 +654,8 @@ class JobService:
             NotFoundError: If job doesn't exist or doesn't belong to user
             ValidationError: If job has no cover letter text
         """
-        # Get default profile for contact info
-        profile = await job_profile_repo.get_default_for_user(self.db, user.id)
+        job = await self.get_by_id(job_id, user.id)
+        profile = await self._resolve_cover_letter_profile(job, user.id)
 
         return await self.generate_cover_letter_pdf(job_id, user, profile)
 

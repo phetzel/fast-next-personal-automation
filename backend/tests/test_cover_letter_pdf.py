@@ -1,10 +1,21 @@
 """Tests for cover letter PDF generation."""
 
+from io import BytesIO
+
+from pypdf import PdfReader
+
 from app.core.cover_letter_pdf import (
     ContactInfo,
     generate_cover_letter_filename,
     generate_cover_letter_pdf,
+    generate_cover_letter_title,
 )
+
+
+def _read_pdf(pdf_bytes: bytes) -> tuple[PdfReader, str]:
+    reader = PdfReader(BytesIO(pdf_bytes))
+    text = "\n".join(page.extract_text() or "" for page in reader.pages)
+    return reader, text
 
 
 class TestContactInfo:
@@ -65,12 +76,47 @@ class TestCoverLetterPDFGeneration:
             company_name="Tech Inc",
             job_title="Developer",
         )
-        # PDF files start with %PDF-
         assert pdf[:5] == b"%PDF-"
+
+    def test_generate_pdf_sets_metadata_and_resume_style_header(self):
+        """Test PDF metadata and extracted text reflect the new layout."""
+        contact = ContactInfo(
+            full_name="Phillip Hetzel",
+            phone="510-684-9802",
+            email="phetzel89@gmail.com",
+            location="Portland, Oregon",
+            website="philliphetzel.com",
+        )
+        pdf = generate_cover_letter_pdf(
+            cover_letter_text=(
+                "I build practical workflow automation for job-search tooling.\n\n"
+                "At my last project, I turned scattered application steps into a tracked system.\n\n"
+                "That mix of product thinking and implementation is why this role fits."
+            ),
+            contact_info=contact,
+            company_name="Ziff Davis Shopping",
+            job_title="Senior Product Manager",
+        )
+
+        reader, text = _read_pdf(pdf)
+        metadata = reader.metadata
+
+        assert metadata is not None
+        assert metadata.title == "cover-ziff-davis-shopping"
+        assert metadata.author == "Phillip Hetzel"
+        assert metadata.subject == "Cover letter for Senior Product Manager at Ziff Davis Shopping"
+
+        assert "Phillip Hetzel" in text
+        assert "510-684-9802" in text
+        assert "phetzel89@gmail.com" in text
+        assert "Portland, Oregon" in text
+        assert "philliphetzel.com" in text
+        assert "Dear Ziff Davis Shopping team," in text
+        assert "Dear Hiring Manager," not in text
 
     def test_generate_pdf_with_multiline_content(self):
         """Test PDF generation with multi-paragraph cover letter."""
-        cover_letter = """I am writing to express my interest in the position.
+        cover_letter = """I am applying for the position.
 
 With over 5 years of experience, I have developed strong skills.
 
@@ -89,24 +135,6 @@ I would welcome the opportunity to discuss how I can contribute."""
             job_title="Senior Engineer",
         )
         assert isinstance(pdf, bytes)
-        assert len(pdf) > 500  # Multi-paragraph should produce substantial PDF
-
-    def test_generate_pdf_with_full_contact_info(self):
-        """Test PDF generation with all contact info fields."""
-        contact = ContactInfo(
-            full_name="Phillip Hetzel",
-            phone="510-684-9802",
-            email="phetzel89@gmail.com",
-            location="Portland, Oregon",
-            website="philliphetzel.com",
-        )
-        pdf = generate_cover_letter_pdf(
-            cover_letter_text="I am excited about this opportunity at your company.",
-            contact_info=contact,
-            company_name="Candid",
-            job_title="Founding Product Engineer",
-        )
-        assert isinstance(pdf, bytes)
         assert len(pdf) > 500
 
     def test_generate_pdf_with_special_characters(self):
@@ -123,6 +151,8 @@ I would welcome the opportunity to discuss how I can contribute."""
         )
         assert isinstance(pdf, bytes)
         assert len(pdf) > 0
+        reader, _ = _read_pdf(pdf)
+        assert reader.metadata.title == "cover-muller-associates"
 
     def test_generate_pdf_filters_greetings_and_closings(self):
         """Test that common greetings/closings are filtered from body."""
@@ -143,8 +173,11 @@ John Doe"""
             company_name="Acme",
             job_title="Engineer",
         )
-        # Should still generate valid PDF
-        assert pdf[:5] == b"%PDF-"
+
+        _, text = _read_pdf(pdf)
+        assert "Dear Hiring Manager," not in text
+        assert "Dear Acme team," in text
+        assert "I am excited to apply for this position." in text
 
     def test_generate_pdf_filters_warm_regards(self):
         """Test that 'Warm regards' closing is filtered."""
@@ -158,7 +191,10 @@ Phillip Hetzel"""
             cover_letter_text=cover_letter,
             contact_info=contact,
         )
-        assert pdf[:5] == b"%PDF-"
+
+        _, text = _read_pdf(pdf)
+        assert "Warm regards" not in text
+        assert "Dear Hiring Team," in text
 
     def test_generate_pdf_with_minimal_name(self):
         """Test PDF generation with single-word name."""
@@ -185,15 +221,17 @@ Phillip Hetzel"""
         )
         assert isinstance(pdf, bytes)
 
-    def test_generate_pdf_without_company_name(self):
+    def test_generate_pdf_without_company_name_uses_generic_salutation(self):
         """Test PDF generation works without company name."""
         contact = ContactInfo(full_name="John Doe", email="john@example.com")
         pdf = generate_cover_letter_pdf(
             cover_letter_text="Test content for generic application.",
             contact_info=contact,
         )
-        assert isinstance(pdf, bytes)
-        assert pdf[:5] == b"%PDF-"
+
+        reader, text = _read_pdf(pdf)
+        assert reader.metadata.title == "cover-company"
+        assert "Dear Hiring Team," in text
 
     def test_generate_pdf_with_empty_body_uses_placeholder(self):
         """Test PDF generation with empty body creates placeholder."""
@@ -202,91 +240,40 @@ Phillip Hetzel"""
             cover_letter_text="",
             contact_info=contact,
         )
-        assert isinstance(pdf, bytes)
-        assert len(pdf) > 0
+
+        _, text = _read_pdf(pdf)
+        assert "[Cover letter content goes here]" in text
 
 
 class TestCoverLetterFilename:
-    """Tests for filename generation."""
+    """Tests for filename and title generation."""
 
     def test_basic_filename_format(self):
         """Test basic filename format."""
-        filename = generate_cover_letter_filename(
-            company="Acme Corp",
-            job_title="Software Engineer",
-            applicant_name="John Doe",
-        )
-        assert filename == "John_Doe_CoverLetter_Acme_Corp.pdf"
+        filename = generate_cover_letter_filename(company="Acme Corp")
+        assert filename == "cover-acme-corp.pdf"
+
+    def test_title_matches_filename_base(self):
+        """Test embedded title and filename use the same slug logic."""
+        title = generate_cover_letter_title("Acme Corp")
+        filename = generate_cover_letter_filename(company="Acme Corp")
+        assert filename == f"{title}.pdf"
 
     def test_filename_with_special_characters(self):
         """Test filename handles special characters in company name."""
-        filename = generate_cover_letter_filename(
-            company="O'Reilly & Associates",
-            job_title="Developer",
-            applicant_name="Jane Smith",
-        )
-        # Special characters should be removed
-        assert "'" not in filename
-        assert "&" not in filename
-        assert filename.endswith(".pdf")
+        filename = generate_cover_letter_filename(company="O'Reilly & Associates")
+        assert filename == "cover-o-reilly-associates.pdf"
 
     def test_filename_with_long_company_name(self):
-        """Test filename truncates long company names."""
+        """Test filename truncates long company names to a stable length."""
         filename = generate_cover_letter_filename(
-            company="A Very Long Company Name That Should Be Truncated For Reasonable Length",
-            job_title="Developer",
-            applicant_name="John Doe",
+            company="A Very Long Company Name That Should Be Truncated For Reasonable Length"
         )
-        # Should be reasonably sized
-        assert len(filename) < 100
+        assert filename.startswith("cover-a-very-long-company-name-that-should-b")
         assert filename.endswith(".pdf")
-
-    def test_filename_with_no_applicant_name(self):
-        """Test filename handles empty applicant name."""
-        filename = generate_cover_letter_filename(
-            company="Acme",
-            job_title="Engineer",
-            applicant_name="",
-        )
-        assert "Applicant" in filename
-        assert filename.endswith(".pdf")
-
-    def test_filename_with_none_applicant_name(self):
-        """Test filename handles None applicant name."""
-        filename = generate_cover_letter_filename(
-            company="Acme",
-            job_title="Engineer",
-            applicant_name=None,
-        )
-        assert "Applicant" in filename
-        assert filename.endswith(".pdf")
+        assert len(filename) <= len("cover-") + 40 + len(".pdf")
 
     def test_filename_with_none_company(self):
-        """Test filename handles None company name."""
-        filename = generate_cover_letter_filename(
-            company=None,
-            job_title="Engineer",
-            applicant_name="John Doe",
-        )
-        assert "Company" in filename
-        assert filename.endswith(".pdf")
-
-    def test_filename_with_single_name(self):
-        """Test filename with single-word name."""
-        filename = generate_cover_letter_filename(
-            company="Google",
-            job_title="SWE",
-            applicant_name="Madonna",
-        )
-        assert filename.startswith("Madonna_CoverLetter")
-        assert filename.endswith(".pdf")
-
-    def test_filename_with_three_part_name(self):
-        """Test filename uses only first two name parts."""
-        filename = generate_cover_letter_filename(
-            company="Acme",
-            job_title="Engineer",
-            applicant_name="John Jacob Jingleheimer Schmidt",
-        )
-        # Should use first two parts
-        assert filename.startswith("John_Jacob_CoverLetter")
+        """Test filename handles missing company name."""
+        filename = generate_cover_letter_filename(company=None)
+        assert filename == "cover-company.pdf"

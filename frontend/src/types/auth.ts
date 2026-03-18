@@ -6,6 +6,7 @@ export interface User {
   id: string;
   email: string;
   name?: string;
+  full_name?: string | null;
   is_active: boolean;
   is_superuser?: boolean;
   created_at: string;
@@ -31,12 +32,14 @@ export interface RegisterRequest {
   email: string;
   password: string;
   name?: string;
+  full_name?: string;
 }
 
 export interface RegisterResponse {
   id: string;
   email: string;
   name?: string;
+  full_name?: string | null;
 }
 
 export interface RefreshTokenRequest {

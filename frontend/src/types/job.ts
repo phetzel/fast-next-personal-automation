@@ -102,6 +102,7 @@ export type IngestionSource = "scrape" | "email" | "manual" | "openclaw";
 export interface Job {
   id: string;
   user_id: string;
+  profile_id: string | null;
   title: string;
   company: string;
   location: string | null;
@@ -146,7 +147,7 @@ export interface Job {
  */
 export function hasCoverLetterText(coverLetter: string | null | undefined): boolean {
   const text = coverLetter?.trim();
-  return Boolean(text && text !== "Not requested");
+  return Boolean(text);
 }
 
 /**
@@ -178,6 +179,30 @@ export function getScreeningQuestionText(question: Record<string, unknown>): str
   );
 
   return match?.trim() ?? "";
+}
+
+export function getOrderedScreeningAnswers(
+  job: Pick<Job, "screening_questions" | "screening_answers">
+): Array<{ question: string; answer: string }> {
+  const orderedQuestions =
+    job.screening_questions?.map(getScreeningQuestionText).filter(Boolean) ?? [];
+  const answers = job.screening_answers ?? {};
+  const seen = new Set<string>();
+  const ordered = orderedQuestions.flatMap((question) => {
+    const answer = answers[question];
+    if (!answer) {
+      return [];
+    }
+    seen.add(question);
+    return [{ question, answer }];
+  });
+
+  const remaining = Object.entries(answers)
+    .filter(([question, answer]) => Boolean(question.trim()) && Boolean(answer.trim()))
+    .filter(([question]) => !seen.has(question))
+    .map(([question, answer]) => ({ question, answer }));
+
+  return [...ordered, ...remaining];
 }
 
 /**
@@ -368,6 +393,7 @@ export interface JobProfileSummary {
   name: string;
   is_default: boolean;
   has_resume: boolean;
+  has_cover_letter_full_name: boolean;
   resume_name: string | null;
   has_story: boolean;
   story_name: string | null;

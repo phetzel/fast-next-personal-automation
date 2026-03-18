@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   canTransitionTo,
+  getOrderedScreeningAnswers,
   getScreeningQuestionText,
   hasCoverLetterText,
   shouldGenerateReviewPdf,
 } from "./job";
 
 describe("job workflow helpers", () => {
-  it("treats placeholder cover-letter text as missing", () => {
-    expect(hasCoverLetterText("Not requested")).toBe(false);
+  it("treats empty cover-letter text as missing", () => {
+    expect(hasCoverLetterText(null)).toBe(false);
     expect(hasCoverLetterText("  ")).toBe(false);
   });
 
@@ -59,6 +60,35 @@ describe("job workflow helpers", () => {
     expect(getScreeningQuestionText({ prompt: "Work authorization status" })).toBe(
       "Work authorization status"
     );
+  });
+
+  it("orders screening answers using screening question order first", () => {
+    expect(
+      getOrderedScreeningAnswers({
+        screening_questions: [
+          { question: "Why this company?" },
+          { label: "How many years of React experience?" },
+        ],
+        screening_answers: {
+          "How many years of React experience?": "6 years",
+          "Why this company?": "The product and audience fit my background.",
+          "Anything else?": "I care about shipping practical software.",
+        },
+      })
+    ).toEqual([
+      {
+        question: "Why this company?",
+        answer: "The product and audience fit my background.",
+      },
+      {
+        question: "How many years of React experience?",
+        answer: "6 years",
+      },
+      {
+        question: "Anything else?",
+        answer: "I care about shipping practical software.",
+      },
+    ]);
   });
 
   it("allows direct move to applied from any pre-applied status", () => {

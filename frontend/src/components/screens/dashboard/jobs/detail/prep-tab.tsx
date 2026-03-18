@@ -12,7 +12,9 @@ import {
   CardContent,
   Textarea,
 } from "@/components/ui";
-import type { Job } from "@/types";
+import { CoverLetterProfileNotice } from "@/components/shared/jobs/cover-letter-profile-notice";
+import { ScreeningAnswersSection } from "@/components/shared/jobs/screening-answers-section";
+import { hasCoverLetterText, type Job } from "@/types";
 import {
   AlertCircle,
   CheckCircle,
@@ -98,52 +100,66 @@ export function PrepTab({
     );
   }
 
+  const defaultSections = [
+    job.cover_letter ? "cover-letter" : null,
+    job.prep_notes ? "talking-points" : null,
+    job.screening_answers && Object.keys(job.screening_answers).length > 0
+      ? "screening-answers"
+      : null,
+  ].filter((value): value is string => Boolean(value));
+  const canGeneratePdf = hasCoverLetterText(job.cover_letter);
+
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="space-y-4 lg:col-span-2">
         <Card>
           <CardContent className="pt-2">
-            <Accordion
-              type="multiple"
-              defaultValue={job.prep_notes ? ["cover-letter", "talking-points"] : ["cover-letter"]}
-            >
-              <AccordionItem value="cover-letter">
-                <AccordionTrigger>
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    <span>Cover Letter</span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-muted-foreground text-sm">
-                        Review the generated letter before finalizing the application.
-                      </p>
-                      {coverLetterDirty && (
-                        <Button size="sm" variant="outline" onClick={onSave} disabled={isUpdating}>
-                          {isUpdating ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Save className="mr-2 h-4 w-4" />
-                          )}
-                          Save Changes
-                        </Button>
-                      )}
+            <Accordion type="multiple" defaultValue={defaultSections}>
+              {job.cover_letter && (
+                <AccordionItem value="cover-letter">
+                  <AccordionTrigger>
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      <span>Cover Letter</span>
                     </div>
-                    <Textarea
-                      value={coverLetter}
-                      onChange={(event: ChangeEvent<HTMLTextAreaElement>) => {
-                        setCoverLetter(event.target.value);
-                        setCoverLetterDirty(event.target.value !== job.cover_letter);
-                      }}
-                      placeholder="Your cover letter..."
-                      rows={16}
-                      className="resize-none font-mono text-sm"
-                    />
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-muted-foreground text-sm">
+                          Review the generated letter before finalizing the application.
+                        </p>
+                        {coverLetterDirty && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={onSave}
+                            disabled={isUpdating}
+                          >
+                            {isUpdating ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Save className="mr-2 h-4 w-4" />
+                            )}
+                            Save Changes
+                          </Button>
+                        )}
+                      </div>
+                      <CoverLetterProfileNotice profileId={job.profile_id} />
+                      <Textarea
+                        value={coverLetter}
+                        onChange={(event: ChangeEvent<HTMLTextAreaElement>) => {
+                          setCoverLetter(event.target.value);
+                          setCoverLetterDirty(event.target.value !== job.cover_letter);
+                        }}
+                        placeholder="Your cover letter..."
+                        rows={16}
+                        className="resize-none font-mono text-sm"
+                      />
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
 
               {job.prep_notes && (
                 <AccordionItem value="talking-points">
@@ -157,6 +173,26 @@ export function PrepTab({
                     <pre className="font-sans text-sm leading-relaxed whitespace-pre-wrap">
                       {job.prep_notes}
                     </pre>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+
+              {job.screening_answers && Object.keys(job.screening_answers).length > 0 && (
+                <AccordionItem value="screening-answers">
+                  <AccordionTrigger>
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4" />
+                      <span>Screening Answers</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <ScreeningAnswersSection
+                      screeningQuestions={job.screening_questions}
+                      screeningAnswers={job.screening_answers}
+                      title=""
+                      className="space-y-0"
+                      titleClassName="hidden"
+                    />
                   </AccordionContent>
                 </AccordionItem>
               )}
@@ -244,7 +280,7 @@ export function PrepTab({
                           </>
                         )}
                       </>
-                    ) : (
+                    ) : canGeneratePdf ? (
                       <div className="py-4 text-center">
                         <p className="text-muted-foreground mb-3 text-sm">
                           No PDF generated yet. Mark as &quot;Reviewed&quot; to generate.
@@ -257,6 +293,13 @@ export function PrepTab({
                           )}
                           Generate PDF
                         </Button>
+                      </div>
+                    ) : (
+                      <div className="py-4 text-center">
+                        <p className="text-muted-foreground text-sm">
+                          No cover letter is currently stored for this job, so there is no PDF to
+                          generate.
+                        </p>
                       </div>
                     )}
                   </div>

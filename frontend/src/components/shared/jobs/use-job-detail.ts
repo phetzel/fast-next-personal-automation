@@ -33,14 +33,7 @@ export function useJobDetail({
   const { getExecutionState } = usePipelines();
   const prepExecState = getExecutionState("job_prep");
   const resolvedJobId = useMemo(() => jobId ?? initialJob?.id ?? null, [initialJob?.id, jobId]);
-  const initialJobSyncKey = useMemo(() => {
-    if (!initialJob) {
-      return null;
-    }
-
-    return `${initialJob.id}:${initialJob.updated_at ?? initialJob.created_at}`;
-  }, [initialJob?.created_at, initialJob?.id, initialJob?.updated_at]);
-  const initialJobSnapshot = useMemo(() => initialJob ?? null, [initialJobSyncKey]);
+  const initialJobSnapshot = useMemo(() => initialJob ?? null, [initialJob]);
 
   const [job, setJob] = useState<Job | null>(initialJob);
   const [isLoading, setIsLoading] = useState(!initialJob && !!resolvedJobId);
@@ -304,7 +297,10 @@ export function useJobDetail({
     }
   }, [applyJob, confirmDialog, job, onDelete, onDeleteSuccess]);
 
-  const hasPreppedMaterials = !!job?.cover_letter || !!job?.prep_notes;
+  const hasPreppedMaterials =
+    !!job?.cover_letter ||
+    !!job?.prep_notes ||
+    Object.keys(job?.screening_answers ?? {}).length > 0;
   const hasPdf = !!job?.cover_letter_file_path;
   const isPrepping = prepExecState.status === "running";
   const hasApplicationAnalysis =

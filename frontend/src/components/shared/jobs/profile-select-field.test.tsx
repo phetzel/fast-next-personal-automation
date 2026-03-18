@@ -63,6 +63,7 @@ describe("ProfileSelectField", () => {
           name: "Primary Profile",
           is_default: true,
           has_resume: true,
+          has_cover_letter_full_name: false,
           resume_name: "resume.pdf",
           has_story: false,
           story_name: null,
@@ -92,5 +93,6 @@ describe("ProfileSelectField", () => {
 
     expect(screen.getByRole("combobox")).toHaveTextContent("Primary Profile");
     expect(screen.getByText(/Resume: resume\.pdf/i)).toBeInTheDocument();
+    expect(screen.getByText(/Add a full name for cover-letter PDFs/i)).toBeInTheDocument();
   });
 });

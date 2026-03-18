@@ -68,3 +68,12 @@ class TestJobPipelineRegistration:
         props = info["input_schema"]["properties"]
         assert "generate_screening_answers" in props
         assert "auto_analyze" not in props
+
+    def test_job_prep_output_includes_screening_answers(self):
+        """Test job_prep output schema exposes screening answers from the main pass."""
+        from app.pipelines.registry import get_pipeline_info
+
+        info = get_pipeline_info("job_prep")
+        assert info is not None
+        props = info["output_schema"]["properties"]
+        assert "screening_answers" in props
