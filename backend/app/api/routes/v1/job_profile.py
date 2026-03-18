@@ -19,6 +19,7 @@ from app.schemas.job_profile import (
     ProjectInfo,
     ResumeInfo,
     StoryInfo,
+    profile_to_summary,
 )
 
 logger = logging.getLogger(__name__)
@@ -97,21 +98,7 @@ async def list_profiles(
     Returns profiles ordered by default status (default first) then creation date.
     """
     profiles = await profile_service.list_for_user(current_user.id)
-    return [
-        JobProfileSummary(
-            id=p.id,
-            name=p.name,
-            is_default=p.is_default,
-            has_resume=bool(p.resume and p.resume.text_content),
-            resume_name=p.resume.name if p.resume else None,
-            has_story=bool(p.story),
-            story_name=p.story.name if p.story else None,
-            project_count=len(p.project_ids or []),
-            target_roles_count=len(p.target_roles or []),
-            min_score_threshold=p.min_score_threshold,
-        )
-        for p in profiles
-    ]
+    return [profile_to_summary(profile) for profile in profiles]
 
 
 @router.get("/default", response_model=JobProfileResponse | None)

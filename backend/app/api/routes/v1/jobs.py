@@ -40,6 +40,10 @@ async def list_jobs(
     min_score: float | None = Query(None, ge=0.0, le=10.0, description="Minimum relevance score"),
     max_score: float | None = Query(None, ge=0.0, le=10.0, description="Maximum relevance score"),
     search: str | None = Query(None, description="Search in title, company, description"),
+    prep_eligible: bool | None = Query(
+        None,
+        description="Filter to jobs explicitly analyzed and ready for prep",
+    ),
     posted_within_hours: int | None = Query(
         None,
         ge=1,
@@ -62,6 +66,7 @@ async def list_jobs(
         min_score=min_score,
         max_score=max_score,
         search=search,
+        prep_eligible=prep_eligible,
         posted_within_hours=posted_within_hours,
         page=page,
         page_size=page_size,

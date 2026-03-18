@@ -84,7 +84,6 @@ const areaNavigation: NavArea[] = [
     name: "Jobs",
     icon: Briefcase,
     children: [
-      { name: "Overview", href: ROUTES.JOBS, icon: LayoutDashboard },
       { name: "Listings", href: ROUTES.JOBS_LIST, icon: LayoutList },
       { name: "Profiles", href: ROUTES.JOBS_PROFILES, icon: UserCircle },
       { name: "Pipelines", href: ROUTES.JOBS_PIPELINES, icon: Workflow },

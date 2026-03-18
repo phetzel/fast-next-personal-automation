@@ -58,16 +58,22 @@ def _job_attributes_from_openclaw_payload(job) -> dict:
     attributes: dict = {}
     if job.description is not None:
         attributes["description"] = job.description
+    if job.ats_family is not None:
+        attributes["ats_family"] = job.ats_family
+    if job.analysis_source is not None:
+        attributes["analysis_source"] = job.analysis_source
     if job.has_application_analysis:
         attributes.update(
             {
                 "application_type": job.application_type,
                 "application_url": job.application_url,
                 "requires_cover_letter": job.requires_cover_letter,
+                "cover_letter_requested": job.cover_letter_requested,
                 "requires_resume": job.requires_resume,
                 "detected_fields": job.detected_fields,
                 "screening_questions": job.screening_questions,
                 "analyzed_at": job.analyzed_at or datetime.now(UTC),
+                "analysis_source": job.analysis_source or "openclaw",
                 "status": JobStatus.ANALYZED.value,
             }
         )
@@ -141,7 +147,9 @@ async def ingest_openclaw_jobs(
         for job in payload.jobs
         if job.relevance_score is not None
     }
-    external_analysis_used = bool(external_analysis_by_url)
+    external_analysis_used = bool(
+        external_analysis_by_url or any(job.has_application_analysis for job in payload.jobs)
+    )
     job_attributes_by_url = {}
     for job in payload.jobs:
         attributes = _job_attributes_from_openclaw_payload(job)
@@ -185,9 +193,14 @@ async def ingest_openclaw_jobs(
         jobs_received=ingestion.jobs_received,
         jobs_analyzed=ingestion.jobs_analyzed,
         jobs_saved=ingestion.jobs_saved,
+        jobs_updated=ingestion.jobs_updated,
         duplicates_skipped=ingestion.duplicates_skipped,
         high_scoring=ingestion.high_scoring,
         external_analysis_used=external_analysis_used,
+        saved_job_ids=ingestion.saved_job_ids,
+        updated_job_ids=ingestion.updated_job_ids,
+        analyzed_job_ids=ingestion.analyzed_job_ids,
+        prep_eligible_job_ids=ingestion.prep_eligible_job_ids,
         profile_id=profile.id if profile else None,
         profile_name=profile.name if profile else None,
         token_id=openclaw_token.id,
@@ -210,9 +223,12 @@ async def analyze_openclaw_job(
         application_type=payload.application_type,
         application_url=payload.application_url,
         requires_cover_letter=payload.requires_cover_letter,
+        cover_letter_requested=payload.cover_letter_requested,
         requires_resume=payload.requires_resume,
         detected_fields=payload.detected_fields,
         screening_questions=payload.screening_questions,
+        ats_family=payload.ats_family,
+        analysis_source=payload.analysis_source or "openclaw",
         analyzed_at=payload.analyzed_at,
     )
     return JobResponse.model_validate(job)

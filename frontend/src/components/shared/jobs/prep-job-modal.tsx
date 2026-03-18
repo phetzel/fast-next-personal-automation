@@ -16,6 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui";
+import { CoverLetterProfileNotice } from "@/components/shared/jobs/cover-letter-profile-notice";
+import { ScreeningAnswersSection } from "@/components/shared/jobs/screening-answers-section";
 import { ProfileSelectField } from "@/components/shared/jobs/profile-select-field";
 import { usePipelines } from "@/hooks/use-pipelines";
 import type { Job } from "@/types";
@@ -95,12 +97,13 @@ export function PrepJobModal({ job, isOpen, onClose, onComplete }: PrepJobModalP
     job_id?: string;
     job_title?: string;
     company?: string;
-    cover_letter?: string;
+    cover_letter?: string | null;
     prep_notes?: string;
     profile_used?: string;
     included_story?: boolean;
     included_projects?: number;
     skipped_cover_letter?: boolean;
+    screening_answers?: Record<string, string>;
   } | null;
 
   if (!job) return null;
@@ -130,6 +133,7 @@ export function PrepJobModal({ job, isOpen, onClose, onComplete }: PrepJobModalP
             onChange={(value) => setFormData((prev) => ({ ...prev, profile_id: value }))}
             description="Uses resume, story, and projects from your profile"
           />
+          <CoverLetterProfileNotice profileId={formData.profile_id ?? null} />
 
           <div className="space-y-3 rounded-lg border p-4">
             <div className="flex items-start gap-3">
@@ -239,6 +243,12 @@ export function PrepJobModal({ job, isOpen, onClose, onComplete }: PrepJobModalP
                   letter was left off.
                 </div>
               )}
+
+              <ScreeningAnswersSection
+                screeningQuestions={job.screening_questions}
+                screeningAnswers={output.screening_answers ?? job.screening_answers}
+                listClassName="bg-background/80 max-h-40 overflow-y-auto rounded-md p-3"
+              />
 
               {/* Prep notes preview */}
               {output.prep_notes && (

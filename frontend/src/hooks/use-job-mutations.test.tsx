@@ -20,6 +20,7 @@ const mockPost = vi.mocked(apiClient.post);
 const baseJob: Job = {
   id: "job-1",
   user_id: "user-1",
+  profile_id: null,
   title: "Backend Engineer",
   company: "Acme",
   location: "Remote",

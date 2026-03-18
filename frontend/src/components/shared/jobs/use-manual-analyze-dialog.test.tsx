@@ -6,6 +6,7 @@ import type { Job } from "@/types";
 const baseJob: Job = {
   id: "job-1",
   user_id: "user-1",
+  profile_id: null,
   title: "Backend Engineer",
   company: "Acme",
   location: "Remote",

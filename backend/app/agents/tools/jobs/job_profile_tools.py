@@ -13,23 +13,12 @@ from pydantic_ai.toolsets import FunctionToolset
 
 from app.agents.tools.jobs.helpers import get_db_and_user
 from app.repositories import job_profile as profile_repo
-from app.schemas.job_profile import JobProfileResponse, JobProfileSummary
+from app.schemas.job_profile import JobProfileResponse, profile_to_summary
 
 
 def _profile_to_summary(profile) -> dict:
     """Convert a JobProfile model to a summary dict."""
-    return JobProfileSummary(
-        id=profile.id,
-        name=profile.name,
-        is_default=profile.is_default,
-        has_resume=profile.resume_id is not None,
-        resume_name=profile.resume.name if profile.resume else None,
-        has_story=profile.story_id is not None,
-        story_name=profile.story.name if profile.story else None,
-        project_count=len(profile.project_ids) if profile.project_ids else 0,
-        target_roles_count=len(profile.target_roles) if profile.target_roles else 0,
-        min_score_threshold=profile.min_score_threshold,
-    ).model_dump(mode="json")
+    return profile_to_summary(profile).model_dump(mode="json")
 
 
 # Create the toolset

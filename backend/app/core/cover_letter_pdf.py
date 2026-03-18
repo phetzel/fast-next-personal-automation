@@ -21,15 +21,18 @@ Template format:
 """
 
 import logging
+import re
+import unicodedata
 from dataclasses import dataclass
 from datetime import datetime
+from html import escape
 from io import BytesIO
 
-from reportlab.lib.enums import TA_JUSTIFY, TA_LEFT
+from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
-from reportlab.platypus import Paragraph, SimpleDocTemplate
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 logger = logging.getLogger(__name__)
 
@@ -49,25 +52,25 @@ def _create_styles() -> dict:
     """Create custom paragraph styles for the cover letter."""
     styles = getSampleStyleSheet()
 
-    # Header style for applicant name (bold, larger)
+    # Header style for applicant name
     name_style = ParagraphStyle(
         "Name",
         parent=styles["Normal"],
         fontSize=14,
         fontName="Helvetica-Bold",
-        spaceAfter=2,
+        spaceAfter=4,
         leading=18,
     )
 
-    # Contact info line style (stacked, left-aligned)
-    contact_line_style = ParagraphStyle(
-        "ContactLine",
+    # Inline contact line under the name
+    contact_style = ParagraphStyle(
+        "Contact",
         parent=styles["Normal"],
         fontSize=10,
         fontName="Helvetica",
         textColor="#333333",
-        spaceAfter=2,
-        leading=14,
+        spaceAfter=18,
+        leading=13,
     )
 
     # Date style
@@ -76,59 +79,94 @@ def _create_styles() -> dict:
         parent=styles["Normal"],
         fontSize=11,
         fontName="Helvetica",
-        spaceBefore=16,
-        spaceAfter=16,
+        spaceAfter=14,
     )
 
-    # Greeting style (Dear Hiring Manager,)
-    greeting_style = ParagraphStyle(
-        "Greeting",
+    # Greeting style
+    salutation_style = ParagraphStyle(
+        "Salutation",
         parent=styles["Normal"],
         fontSize=11,
         fontName="Helvetica",
-        spaceAfter=12,
+        spaceAfter=14,
     )
 
-    # Body paragraph style (justified)
+    # Body paragraph style
     body_style = ParagraphStyle(
         "Body",
         parent=styles["Normal"],
         fontSize=11,
         fontName="Helvetica",
         leading=16,
-        alignment=TA_JUSTIFY,
-        spaceAfter=12,
+        alignment=TA_LEFT,
+        spaceAfter=14,
     )
 
-    # Closing style (Sincerely,)
+    # Closing style
     closing_style = ParagraphStyle(
         "Closing",
         parent=styles["Normal"],
         fontSize=11,
         fontName="Helvetica",
         alignment=TA_LEFT,
-        spaceBefore=16,
+        spaceBefore=10,
         spaceAfter=4,
     )
 
-    # Signature style (name at bottom)
+    # Signature style
     signature_style = ParagraphStyle(
         "Signature",
         parent=styles["Normal"],
         fontSize=11,
-        fontName="Helvetica-Bold",
-        spaceBefore=24,
+        fontName="Helvetica",
     )
 
     return {
         "name": name_style,
-        "contact_line": contact_line_style,
+        "contact": contact_style,
         "date": date_style,
-        "greeting": greeting_style,
+        "salutation": salutation_style,
         "body": body_style,
         "closing": closing_style,
         "signature": signature_style,
     }
+
+
+def _slugify_company(company: str | None) -> str:
+    """Create a stable, lowercase company slug."""
+    if not company:
+        return "company"
+
+    normalized = unicodedata.normalize("NFKD", company)
+    ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", ascii_text).strip("-").lower()
+    return slug[:40] or "company"
+
+
+def generate_cover_letter_title(company: str | None) -> str:
+    """Generate the embedded PDF title metadata."""
+    return f"cover-{_slugify_company(company)}"
+
+
+def _generate_salutation(company_name: str | None) -> str:
+    """Generate a humanized salutation fallback."""
+    if company_name and company_name.strip():
+        return f"Dear {company_name.strip()} team,"
+    return "Dear Hiring Team,"
+
+
+def _format_contact_line(contact_info: ContactInfo) -> str | None:
+    """Join available contact details into a single resume-style line."""
+    parts = [
+        contact_info.phone,
+        contact_info.email,
+        contact_info.location,
+        contact_info.website,
+    ]
+    rendered = [escape(part.strip()) for part in parts if part and part.strip()]
+    if not rendered:
+        return None
+    return " | ".join(rendered)
 
 
 def _format_cover_letter_paragraphs(text: str) -> list[str]:
@@ -222,7 +260,14 @@ def generate_cover_letter_pdf(
     """
     buffer = BytesIO()
 
-    # Create document with margins
+    title = generate_cover_letter_title(company_name)
+    subject = (
+        f"Cover letter for {job_title} at {company_name}"
+        if company_name and job_title
+        else "Cover letter"
+    )
+
+    # Create document with margins and metadata
     doc = SimpleDocTemplate(
         buffer,
         pagesize=letter,
@@ -230,6 +275,9 @@ def generate_cover_letter_pdf(
         rightMargin=1 * inch,
         topMargin=1 * inch,
         bottomMargin=1 * inch,
+        title=title,
+        author=contact_info.full_name,
+        subject=subject,
     )
 
     # Get custom styles
@@ -239,30 +287,22 @@ def generate_cover_letter_pdf(
     story = []
 
     # === HEADER BLOCK ===
-    # Name (bold, larger)
     name = contact_info.full_name or "Applicant"
-    story.append(Paragraph(name, styles["name"]))
+    story.append(Paragraph(escape(name), styles["name"]))
 
-    # Contact info lines (stacked)
-    if contact_info.phone:
-        story.append(Paragraph(contact_info.phone, styles["contact_line"]))
-
-    if contact_info.email:
-        story.append(Paragraph(contact_info.email, styles["contact_line"]))
-
-    if contact_info.location:
-        story.append(Paragraph(contact_info.location, styles["contact_line"]))
-
-    if contact_info.website:
-        story.append(Paragraph(contact_info.website, styles["contact_line"]))
+    contact_line = _format_contact_line(contact_info)
+    if contact_line:
+        story.append(Paragraph(contact_line, styles["contact"]))
+    else:
+        story.append(Spacer(1, 12))
 
     # === DATE ===
     today = datetime.now()
     formatted_date = today.strftime("%B %d, %Y")
     story.append(Paragraph(formatted_date, styles["date"]))
 
-    # === GREETING ===
-    story.append(Paragraph("Dear Hiring Manager,", styles["greeting"]))
+    # === SALUTATION ===
+    story.append(Paragraph(escape(_generate_salutation(company_name)), styles["salutation"]))
 
     # === BODY PARAGRAPHS ===
     paragraphs = _format_cover_letter_paragraphs(cover_letter_text)
@@ -272,13 +312,13 @@ def generate_cover_letter_pdf(
         paragraphs = ["[Cover letter content goes here]"]
 
     for para in paragraphs:
-        story.append(Paragraph(para, styles["body"]))
+        story.append(Paragraph(escape(para), styles["body"]))
 
     # === CLOSING ===
     story.append(Paragraph("Sincerely,", styles["closing"]))
 
     # === SIGNATURE ===
-    story.append(Paragraph(name, styles["signature"]))
+    story.append(Paragraph(escape(name), styles["signature"]))
 
     # Build PDF
     doc.build(story)
@@ -300,30 +340,6 @@ def generate_cover_letter_pdf(
 
 def generate_cover_letter_filename(
     company: str | None,
-    job_title: str | None,
-    applicant_name: str | None,
 ) -> str:
-    """Generate a professional filename for the cover letter.
-
-    Format: FirstName_LastName_CoverLetter_Company.pdf
-    """
-
-    def clean_for_filename(s: str) -> str:
-        if not s:
-            return ""
-        # Remove special characters, keep alphanumeric and spaces
-        cleaned = "".join(c if c.isalnum() or c == " " else "" for c in s)
-        # Replace spaces with underscores and trim
-        return "_".join(cleaned.split())[:30]
-
-    # Build name slug
-    if applicant_name:
-        name_parts = applicant_name.split()
-        name_slug = "_".join(name_parts[:2])  # First and last name
-    else:
-        name_slug = "Applicant"
-
-    # Build company slug
-    company_slug = clean_for_filename(company) if company else "Company"
-
-    return f"{name_slug}_CoverLetter_{company_slug}.pdf"
+    """Generate the clean download filename for the cover letter."""
+    return f"{generate_cover_letter_title(company)}.pdf"

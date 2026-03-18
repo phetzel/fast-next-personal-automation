@@ -58,7 +58,7 @@ export function ManualAnalyzeModal({ job, isOpen, onClose, onComplete }: ManualA
       setIsSubmitting(false);
       clearError();
     }
-  }, [clearError, isOpen, jobId]);
+  }, [clearError, isOpen, job, jobId]);
 
   if (!job) {
     return null;

@@ -152,12 +152,32 @@ class JobProfileSummary(BaseSchema):
     name: str
     is_default: bool = False
     has_resume: bool = False
+    has_cover_letter_full_name: bool = False
     resume_name: str | None = None
     has_story: bool = False
     story_name: str | None = None
     project_count: int = 0
     target_roles_count: int = 0
     min_score_threshold: float = 7.0
+
+
+def profile_to_summary(profile: Any) -> JobProfileSummary:
+    """Convert a JobProfile-like object into a summary schema."""
+    return JobProfileSummary(
+        id=profile.id,
+        name=profile.name,
+        is_default=profile.is_default,
+        has_resume=bool(profile.resume and profile.resume.text_content),
+        has_cover_letter_full_name=bool(
+            profile.contact_full_name and profile.contact_full_name.strip()
+        ),
+        resume_name=profile.resume.name if profile.resume else None,
+        has_story=bool(profile.story),
+        story_name=profile.story.name if profile.story else None,
+        project_count=len(profile.project_ids or []),
+        target_roles_count=len(profile.target_roles or []),
+        min_score_threshold=profile.min_score_threshold,
+    )
 
 
 class ProfileRequiredError(BaseSchema):

@@ -119,11 +119,16 @@ class JobResponse(JobBase, TimestampSchema):
     application_type: ApplicationType | None = None
     application_url: str | None = None
     requires_cover_letter: bool | None = None
+    cover_letter_requested: bool | None = None
     requires_resume: bool | None = None
     detected_fields: dict[str, Any] | None = None
     screening_questions: list[dict[str, Any]] | None = None
     screening_answers: dict[str, str] | None = None
+    ats_family: str | None = None
+    analysis_source: str | None = None
     analyzed_at: datetime | None = None
+    has_application_analysis: bool = False
+    is_prep_eligible: bool = False
     # Application submission
     applied_at: datetime | None = None
     application_method: str | None = None
@@ -182,6 +187,10 @@ class JobFilters(BaseSchema):
     min_score: float | None = Field(default=None, ge=0.0, le=10.0)
     max_score: float | None = Field(default=None, ge=0.0, le=10.0)
     search: str | None = Field(default=None, description="Search in title, company, description")
+    prep_eligible: bool | None = Field(
+        default=None,
+        description="Filter to jobs explicitly analyzed and eligible for prep",
+    )
     posted_within_hours: int | None = Field(
         default=None,
         ge=1,

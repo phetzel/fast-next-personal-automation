@@ -304,7 +304,10 @@ export function useJobDetail({
     }
   }, [applyJob, confirmDialog, job, onDelete, onDeleteSuccess]);
 
-  const hasPreppedMaterials = !!job?.cover_letter || !!job?.prep_notes;
+  const hasPreppedMaterials =
+    !!job?.cover_letter ||
+    !!job?.prep_notes ||
+    Object.keys(job?.screening_answers ?? {}).length > 0;
   const hasPdf = !!job?.cover_letter_file_path;
   const isPrepping = prepExecState.status === "running";
   const hasApplicationAnalysis =

@@ -3,8 +3,9 @@
 Contains business logic for job operations. Uses job repository for database access.
 """
 
+import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Literal
 from uuid import UUID
@@ -41,10 +42,20 @@ _APPLICATION_ANALYSIS_FIELDS = (
     "application_type",
     "application_url",
     "requires_cover_letter",
+    "cover_letter_requested",
     "requires_resume",
     "detected_fields",
     "screening_questions",
 )
+_APPLICATION_ANALYSIS_METADATA_FIELDS = (
+    "ats_family",
+    "analysis_source",
+)
+_APPLICATION_ANALYSIS_BOOLEAN_FIELDS = {
+    "requires_cover_letter",
+    "cover_letter_requested",
+    "requires_resume",
+}
 
 
 @dataclass
@@ -52,11 +63,17 @@ class IngestionResult:
     """Result from job ingestion."""
 
     jobs_received: int = 0
-    jobs_analyzed: int = 0
+    jobs_analyzed: int = 0  # Legacy score/ranking count retained for compatibility
     jobs_saved: int = 0
+    jobs_updated: int = 0
     duplicates_skipped: int = 0
     high_scoring: int = 0  # Jobs with score >= 7.0
     saved_jobs: list[Job] | None = None  # Optionally include saved job objects
+    updated_jobs: list[Job] = field(default_factory=list)
+    saved_job_ids: list[UUID] = field(default_factory=list)
+    updated_job_ids: list[UUID] = field(default_factory=list)
+    analyzed_job_ids: list[UUID] = field(default_factory=list)
+    prep_eligible_job_ids: list[UUID] = field(default_factory=list)
 
 
 class JobService:
@@ -133,6 +150,217 @@ class JobService:
         """Populate lifecycle timestamps when status changes imply them."""
         if next_status == JobStatus.APPLIED and current_status != JobStatus.APPLIED:
             update_data["applied_at"] = existing_applied_at or datetime.now(UTC)
+
+    @staticmethod
+    def _has_application_analysis_data(values: dict[str, Any]) -> bool:
+        analyzed_at = values.get("analyzed_at")
+        if analyzed_at is None:
+            return False
+
+        return any(values.get(field) is not None for field in _APPLICATION_ANALYSIS_FIELDS)
+
+    @classmethod
+    def _record_explicit_analysis_outcome(cls, result: IngestionResult, job: Job) -> None:
+        if job.id not in result.saved_job_ids and job.id not in result.updated_job_ids:
+            return
+
+        if (
+            getattr(job, "has_application_analysis", False)
+            and job.id not in result.analyzed_job_ids
+        ):
+            result.analyzed_job_ids.append(job.id)
+
+        if getattr(job, "is_prep_eligible", False) and job.id not in result.prep_eligible_job_ids:
+            result.prep_eligible_job_ids.append(job.id)
+
+    @staticmethod
+    def _build_ingested_job_data(
+        raw_job: RawJob,
+        *,
+        ingestion_source: Literal["scrape", "email", "manual", "openclaw"],
+        profile_id: UUID | None,
+        search_terms: str | None,
+        external_analysis: dict[str, Any] | None,
+        extra_attributes: dict[str, Any] | None,
+    ) -> tuple[dict[str, Any], float | None]:
+        job_data: dict[str, Any] = {
+            "title": raw_job.title,
+            "company": raw_job.company,
+            "location": raw_job.location,
+            "description": raw_job.description,
+            "job_url": raw_job.job_url,
+            "salary_range": raw_job.salary_range,
+            "date_posted": raw_job.date_posted,
+            "source": raw_job.source,
+            "ingestion_source": ingestion_source,
+            "is_remote": raw_job.is_remote,
+            "job_type": raw_job.job_type,
+            "company_url": raw_job.company_url,
+            "profile_id": profile_id,
+            "search_terms": search_terms,
+        }
+
+        external_score: float | None = None
+        if isinstance(external_analysis, dict):
+            external_score_raw = external_analysis.get("relevance_score")
+            if isinstance(external_score_raw, (int, float)) and not isinstance(
+                external_score_raw, bool
+            ):
+                external_score = float(external_score_raw)
+                job_data["relevance_score"] = external_score
+
+            external_reasoning = external_analysis.get("reasoning")
+            if external_reasoning is None or isinstance(external_reasoning, str):
+                job_data["reasoning"] = external_reasoning
+
+        if extra_attributes:
+            job_data.update(extra_attributes)
+
+        return job_data, external_score
+
+    @classmethod
+    def _merge_duplicate_ingest_dict(
+        cls,
+        existing_value: Any,
+        incoming_value: Any,
+    ) -> Any:
+        if not isinstance(existing_value, dict) or not existing_value:
+            return incoming_value
+        if not isinstance(incoming_value, dict) or not incoming_value:
+            return existing_value
+
+        merged = dict(existing_value)
+        for key, value in incoming_value.items():
+            if value is None and key in merged:
+                continue
+
+            existing_nested = merged.get(key)
+            if isinstance(existing_nested, dict) and isinstance(value, dict):
+                merged[key] = cls._merge_duplicate_ingest_dict(existing_nested, value)
+                continue
+
+            if isinstance(existing_nested, list) and isinstance(value, list):
+                merged[key] = cls._merge_duplicate_ingest_list(existing_nested, value)
+                continue
+
+            merged[key] = value
+
+        return merged
+
+    @staticmethod
+    def _question_identity(question: Any) -> str:
+        if not isinstance(question, dict):
+            return str(question).strip().lower()
+
+        for key in ("question", "label", "prompt", "name"):
+            value = question.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip().lower()
+
+        return json.dumps(question, sort_keys=True, default=str)
+
+    @classmethod
+    def _merge_duplicate_ingest_list(
+        cls,
+        existing_value: Any,
+        incoming_value: Any,
+    ) -> Any:
+        if not isinstance(existing_value, list) or not existing_value:
+            return incoming_value
+        if not isinstance(incoming_value, list) or not incoming_value:
+            return existing_value
+
+        merged = list(existing_value)
+        merged_by_identity = {
+            cls._question_identity(item): index for index, item in enumerate(merged)
+        }
+
+        for item in incoming_value:
+            identity = cls._question_identity(item)
+            existing_index = merged_by_identity.get(identity)
+            if existing_index is None:
+                merged_by_identity[identity] = len(merged)
+                merged.append(item)
+                continue
+
+            existing_item = merged[existing_index]
+            if isinstance(existing_item, dict) and isinstance(item, dict):
+                merged[existing_index] = cls._merge_duplicate_ingest_dict(existing_item, item)
+
+        return merged
+
+    @classmethod
+    def _merge_duplicate_ingest_value(
+        cls,
+        job: Job,
+        key: str,
+        incoming_value: Any,
+    ) -> Any:
+        existing_value = getattr(job, key, None)
+        if incoming_value is None:
+            return existing_value
+
+        if key in _APPLICATION_ANALYSIS_BOOLEAN_FIELDS:
+            return True if existing_value is True else incoming_value
+
+        if key == "profile_id":
+            return existing_value or incoming_value
+
+        if key == "application_type":
+            if existing_value not in (None, "unknown") and incoming_value == "unknown":
+                return existing_value
+            return incoming_value
+
+        if key == "application_url":
+            if (
+                existing_value is not None
+                and existing_value != job.job_url
+                and incoming_value == job.job_url
+            ):
+                return existing_value
+            return incoming_value
+
+        if key == "analysis_source":
+            if existing_value not in (None, "openclaw") and incoming_value == "openclaw":
+                return existing_value
+            return incoming_value
+
+        if key == "detected_fields":
+            return cls._merge_duplicate_ingest_dict(existing_value, incoming_value)
+
+        if key == "screening_questions":
+            return cls._merge_duplicate_ingest_list(existing_value, incoming_value)
+
+        if key == "analyzed_at":
+            if existing_value is None:
+                return incoming_value
+            if incoming_value is None:
+                return existing_value
+            return min(existing_value, incoming_value)
+
+        return incoming_value
+
+    @classmethod
+    def _build_existing_job_update_data(cls, job: Job, job_data: dict[str, Any]) -> dict[str, Any]:
+        update_data: dict[str, Any] = {}
+
+        for key, value in job_data.items():
+            if key == "job_url":
+                continue
+
+            if key == "status":
+                if value == JobStatus.ANALYZED.value and job.job_status == JobStatus.NEW:
+                    update_data["status"] = value
+                continue
+
+            merged_value = cls._merge_duplicate_ingest_value(job, key, value)
+            if getattr(job, key, None) != merged_value:
+                update_data[key] = merged_value
+
+        if cls._has_application_analysis_data(job_data) and job.job_status == JobStatus.NEW:
+            update_data["status"] = JobStatus.ANALYZED.value
+
+        return update_data
 
     async def update(
         self,
@@ -236,68 +464,53 @@ class JobService:
         if not jobs:
             return result
 
-        # Step 1: Filter out duplicates
-        new_jobs: list[RawJob] = []
-        for job in jobs:
-            existing = await job_repo.get_by_url_and_user(self.db, job.job_url, user_id)
-            if existing:
-                result.duplicates_skipped += 1
-            else:
-                new_jobs.append(job)
+        jobs_to_save: list[dict[str, Any]] = []
 
-        if not new_jobs:
-            return result
-
-        # Step 2: Persist any external analysis that arrived with the jobs.
-        jobs_to_save: list[dict] = []
-        for raw_job in new_jobs:
-            job_data = {
-                "title": raw_job.title,
-                "company": raw_job.company,
-                "location": raw_job.location,
-                "description": raw_job.description,
-                "job_url": raw_job.job_url,
-                "salary_range": raw_job.salary_range,
-                "date_posted": raw_job.date_posted,
-                "source": raw_job.source,
-                "ingestion_source": ingestion_source,
-                "is_remote": raw_job.is_remote,
-                "job_type": raw_job.job_type,
-                "company_url": raw_job.company_url,
-                "profile_id": profile_id,
-                "search_terms": search_terms,
-            }
-
+        for raw_job in jobs:
+            existing = await job_repo.get_by_url_and_user(self.db, raw_job.job_url, user_id)
             external_analysis = external_analysis_by_url.get(raw_job.job_url)
-            if isinstance(external_analysis, dict):
-                external_score_raw = external_analysis.get("relevance_score")
-                if isinstance(external_score_raw, (int, float)) and not isinstance(
-                    external_score_raw, bool
-                ):
-                    external_score = float(external_score_raw)
-                    job_data["relevance_score"] = external_score
-                    result.jobs_analyzed += 1
-                    if external_score >= 7.0:
-                        result.high_scoring += 1
+            extra_attributes = job_attributes_by_url.get(raw_job.job_url)
+            job_data, external_score = self._build_ingested_job_data(
+                raw_job,
+                ingestion_source=ingestion_source,
+                profile_id=profile_id,
+                search_terms=search_terms,
+                external_analysis=external_analysis,
+                extra_attributes=extra_attributes,
+            )
 
-                external_reasoning = external_analysis.get("reasoning")
-                if external_reasoning is None or isinstance(external_reasoning, str):
-                    job_data["reasoning"] = external_reasoning
+            if external_score is not None:
+                result.jobs_analyzed += 1
+                if external_score >= 7.0:
+                    result.high_scoring += 1
 
-            extra_attributes = job_attributes_by_url.get(raw_job.job_url, {})
-            if extra_attributes:
-                job_data.update(extra_attributes)
+            if existing is None:
+                jobs_to_save.append(job_data)
+                continue
 
-            jobs_to_save.append(job_data)
+            update_data = self._build_existing_job_update_data(existing, job_data)
+            if not update_data:
+                result.duplicates_skipped += 1
+                continue
+
+            updated_job = await job_repo.update(self.db, db_job=existing, update_data=update_data)
+            result.jobs_updated += 1
+            result.updated_jobs.append(updated_job)
+            result.updated_job_ids.append(updated_job.id)
+            self._record_explicit_analysis_outcome(result, updated_job)
 
         if jobs_to_save:
             saved = await job_repo.create_bulk(self.db, user_id, jobs_to_save)
             result.jobs_saved = len(saved)
             result.saved_jobs = saved
+            result.saved_job_ids = [job.id for job in saved]
+            for saved_job in saved:
+                self._record_explicit_analysis_outcome(result, saved_job)
 
         logger.info(
             f"Ingested {result.jobs_received} jobs: "
             f"{result.duplicates_skipped} duplicates, "
+            f"{result.jobs_updated} updated, "
             f"{result.jobs_analyzed} analyzed, "
             f"{result.jobs_saved} saved"
         )
@@ -378,7 +591,9 @@ class JobService:
             application_type=job.application_type or "unknown",
             application_url=job.application_url or job.job_url,
             requires_cover_letter=requires_cover_letter,
+            cover_letter_requested=requires_cover_letter,
             screening_questions=normalized_questions,
+            analysis_source="manual",
         )
 
     async def update_application_analysis(
@@ -390,9 +605,12 @@ class JobService:
         application_type: str | None = None,
         application_url: str | None = None,
         requires_cover_letter: bool | None = None,
+        cover_letter_requested: bool | None = None,
         requires_resume: bool | None = None,
         detected_fields: dict[str, Any] | None = None,
         screening_questions: list[dict[str, Any]] | None = None,
+        ats_family: str | None = None,
+        analysis_source: str | None = None,
         analyzed_at: datetime | None = None,
     ) -> Job:
         """Persist application-page analysis and advance NEW jobs to ANALYZED."""
@@ -407,24 +625,46 @@ class JobService:
             update_data["application_url"] = application_url
         if requires_cover_letter is not None:
             update_data["requires_cover_letter"] = requires_cover_letter
+        if cover_letter_requested is not None:
+            update_data["cover_letter_requested"] = cover_letter_requested
         if requires_resume is not None:
             update_data["requires_resume"] = requires_resume
         if detected_fields is not None:
             update_data["detected_fields"] = detected_fields
         if screening_questions is not None:
             update_data["screening_questions"] = screening_questions
+        if ats_family is not None:
+            update_data["ats_family"] = ats_family
+        if analysis_source is not None:
+            update_data["analysis_source"] = analysis_source
 
-        has_analysis_payload = any(field in update_data for field in _APPLICATION_ANALYSIS_FIELDS)
-        if not has_analysis_payload:
+        has_core_analysis_payload = any(
+            field in update_data for field in _APPLICATION_ANALYSIS_FIELDS
+        )
+        has_metadata_payload = any(
+            field in update_data for field in _APPLICATION_ANALYSIS_METADATA_FIELDS
+        )
+        if not has_core_analysis_payload and not has_metadata_payload:
             raise ValidationError(
-                message="At least one application analysis field is required",
-                details={"required_fields": list(_APPLICATION_ANALYSIS_FIELDS)},
+                message="At least one application analysis field or metadata field is required",
+                details={
+                    "required_fields": list(_APPLICATION_ANALYSIS_FIELDS)
+                    + list(_APPLICATION_ANALYSIS_METADATA_FIELDS)
+                },
             )
 
-        update_data["analyzed_at"] = analyzed_at or datetime.now(UTC)
+        if has_core_analysis_payload:
+            update_data["analyzed_at"] = analyzed_at or datetime.now(UTC)
+        elif analyzed_at is not None:
+            if not job.has_application_analysis:
+                raise ValidationError(
+                    message="Application analysis fields are required before setting analyzed_at",
+                    details={"required_fields": list(_APPLICATION_ANALYSIS_FIELDS)},
+                )
+            update_data["analyzed_at"] = analyzed_at
 
         current_status = JobStatus(job.status)
-        if current_status == JobStatus.NEW:
+        if has_core_analysis_payload and current_status == JobStatus.NEW:
             update_data["status"] = JobStatus.ANALYZED.value
 
         return await job_repo.update(self.db, db_job=job, update_data=update_data)
@@ -483,6 +723,8 @@ class JobService:
             ValidationError: If job has no cover letter text to convert
         """
         job = await self.get_by_id(job_id, user.id)
+        if profile is None:
+            profile = await self._resolve_cover_letter_profile(job, user.id)
 
         # Validate that we have a cover letter to convert
         if not job.cover_letter:
@@ -503,11 +745,7 @@ class JobService:
         )
 
         # Generate professional filename
-        filename = generate_cover_letter_filename(
-            company=job.company,
-            job_title=job.title,
-            applicant_name=contact_info.full_name,
-        )
+        filename = generate_cover_letter_filename(company=job.company)
 
         # Store in S3
         storage = await get_storage_instance()
@@ -542,17 +780,24 @@ class JobService:
 
         Priority: profile contact fields -> user fields -> sensible defaults
         """
-        # Name: profile -> user -> email prefix
-        full_name = None
-        if profile and profile.contact_full_name:
-            full_name = profile.contact_full_name
-        elif user.full_name:
-            full_name = user.full_name
-        else:
-            # Last resort: use email prefix but capitalize
-            email_prefix = user.email.split("@")[0]
-            # Try to convert underscores/dots to spaces and title case
-            full_name = email_prefix.replace("_", " ").replace(".", " ").title()
+        # Name: profile -> user
+        profile_full_name = (
+            profile.contact_full_name.strip() if profile and profile.contact_full_name else None
+        )
+        user_full_name = user.full_name.strip() if user.full_name else None
+        full_name = profile_full_name or user_full_name
+
+        if not full_name:
+            raise ValidationError(
+                message=(
+                    "Add a full name to your job profile or account before generating "
+                    "a cover letter PDF"
+                ),
+                details={
+                    "profile_id": str(profile.id) if profile else None,
+                    "user_id": str(user.id),
+                },
+            )
 
         # Email: profile -> user
         email = profile.contact_email if profile and profile.contact_email else user.email
@@ -573,6 +818,19 @@ class JobService:
             location=location,
             website=website,
         )
+
+    async def _resolve_cover_letter_profile(
+        self,
+        job: Job,
+        user_id: UUID,
+    ) -> JobProfile | None:
+        """Resolve the best profile to use for cover-letter rendering."""
+        if job.profile_id:
+            profile = await job_profile_repo.get_by_id(self.db, job.profile_id)
+            if profile and profile.user_id == user_id:
+                return profile
+
+        return await job_profile_repo.get_default_for_user(self.db, user_id)
 
     async def get_cover_letter_pdf(
         self,
@@ -610,25 +868,8 @@ class JobService:
                 details={"file_path": job.cover_letter_file_path},
             ) from e
 
-        # Generate a clean filename without the storage UUID prefix
-        # This requires us to get the user's profile for name
-        profile = await job_profile_repo.get_default_for_user(self.db, user_id)
-
-        # Get user for name fallback
-        from app.repositories import user_repo
-
-        user = await user_repo.get_by_id(self.db, user_id)
-
-        if user:
-            contact_info = self._build_contact_info(user, profile)
-            filename = generate_cover_letter_filename(
-                company=job.company,
-                job_title=job.title,
-                applicant_name=contact_info.full_name,
-            )
-        else:
-            # Fallback to extracting from path (with UUID prefix)
-            filename = job.cover_letter_file_path.split("/")[-1]
+        # Use the clean filename rather than the storage path with UUID prefix.
+        filename = generate_cover_letter_filename(company=job.company)
 
         return pdf_bytes, filename
 
@@ -653,8 +894,8 @@ class JobService:
             NotFoundError: If job doesn't exist or doesn't belong to user
             ValidationError: If job has no cover letter text
         """
-        # Get default profile for contact info
-        profile = await job_profile_repo.get_default_for_user(self.db, user.id)
+        job = await self.get_by_id(job_id, user.id)
+        profile = await self._resolve_cover_letter_profile(job, user.id)
 
         return await self.generate_cover_letter_pdf(job_id, user, profile)
 
