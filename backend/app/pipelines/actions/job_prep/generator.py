@@ -34,6 +34,23 @@ class PrepOutput(BaseModel):
     )
 
 
+class RawPrepOutput(BaseModel):
+    """Tolerant output model for first-pass LLM responses."""
+
+    cover_letter: str | None = Field(
+        default=None,
+        description="Optional cover-letter body from the model",
+    )
+    prep_notes: str | None = Field(
+        default=None,
+        description="Optional markdown prep notes from the model",
+    )
+    screening_answers: dict[str, str] = Field(
+        default_factory=dict,
+        description="Optional screening answers keyed by question text",
+    )
+
+
 class PrepDeps(BaseModel):
     """Dependencies for the job prep agent."""
 
@@ -119,16 +136,66 @@ def _needs_cover_letter_rewrite(text: str | None, company: str) -> bool:
     return word_count < 140 or word_count > 380
 
 
-def _create_prep_agent() -> Agent[PrepDeps, PrepOutput]:
+def _fallback_prep_notes(job_title: str, company: str, reason: str) -> str:
+    """Build a safe markdown fallback when the model omits prep notes."""
+    return (
+        f"# Prep Notes for {job_title} at {company}\n\n"
+        f"*{reason}*\n\n"
+        "## Resume Highlights\n"
+        "- [Add manually]\n\n"
+        "## Talking Points\n"
+        "- [Add manually]\n\n"
+        "## Skills Match\n"
+        "- [Add manually]\n\n"
+        "## Potential Questions\n"
+        "- [Add manually]\n\n"
+        "## Questions to Ask\n"
+        "- [Add manually]"
+    )
+
+
+def _normalize_prep_output(
+    raw_output: RawPrepOutput,
+    *,
+    job_title: str,
+    company: str,
+    skip_cover_letter: bool,
+) -> PrepOutput:
+    """Convert partial model output into the strict app contract."""
+    prep_notes = (raw_output.prep_notes or "").strip()
+    if not prep_notes:
+        logger.warning(
+            "Prep generator returned missing/blank prep_notes for '%s' at %s; using fallback",
+            job_title,
+            company,
+        )
+        prep_notes = _fallback_prep_notes(
+            job_title,
+            company,
+            "Prep notes were missing from AI output. Please review and expand manually.",
+        )
+
+    cover_letter = None if skip_cover_letter else raw_output.cover_letter
+    if cover_letter is not None:
+        cover_letter = cover_letter.strip() or None
+
+    return PrepOutput(
+        cover_letter=cover_letter,
+        prep_notes=prep_notes,
+        screening_answers=raw_output.screening_answers or {},
+    )
+
+
+def _create_prep_agent() -> Agent[PrepDeps, RawPrepOutput]:
     """Create the PydanticAI agent for job prep generation."""
     model = OpenAIChatModel(
         settings.AI_MODEL,
         provider=OpenAIProvider(api_key=settings.OPENAI_API_KEY),
     )
 
-    agent: Agent[PrepDeps, PrepOutput] = Agent(
+    agent: Agent[PrepDeps, RawPrepOutput] = Agent(
         model=model,
-        output_type=PrepOutput,
+        output_type=RawPrepOutput,
         system_prompt=(
             "You are an expert career coach and professional writer who helps candidates "
             "prepare compelling job applications. Your goal is to create personalized, "
@@ -166,6 +233,9 @@ def _create_prep_agent() -> Agent[PrepDeps, PrepOutput]:
             "   - Answer each question honestly and specifically from the candidate's background\n"
             "   - If there are no screening questions, return an empty object {}\n"
             "   - Screening questions should NOT change the cover-letter content; answer them separately\n\n"
+            "Return a JSON object with all three top-level keys every time:\n"
+            '{\n  "cover_letter": string | null,\n  "prep_notes": string,\n  "screening_answers": object\n}\n'
+            "Do not omit keys, even when a value is empty or null.\n\n"
             "Be specific and avoid generic phrases. Every point should connect to "
             "the actual job description and candidate's real experience."
         ),
@@ -236,11 +306,11 @@ def _create_rewrite_agent() -> Agent[PrepDeps, RewriteOutput]:
 
 
 # Lazy initialization of the agent
-_agent: Agent[PrepDeps, PrepOutput] | None = None
+_agent: Agent[PrepDeps, RawPrepOutput] | None = None
 _rewrite_agent: Agent[PrepDeps, RewriteOutput] | None = None
 
 
-def get_prep_agent() -> Agent[PrepDeps, PrepOutput]:
+def get_prep_agent() -> Agent[PrepDeps, RawPrepOutput]:
     """Get or create the prep agent singleton."""
     global _agent
     if _agent is None:
@@ -333,11 +403,14 @@ Please create a tailored cover letter and comprehensive prep notes based on the 
 
     try:
         result = await agent.run(prompt, deps=deps)
-        output = result.output
+        output = _normalize_prep_output(
+            result.output,
+            job_title=job_title,
+            company=company,
+            skip_cover_letter=skip_cover_letter,
+        )
 
-        if skip_cover_letter:
-            output.cover_letter = None
-        elif _needs_cover_letter_rewrite(output.cover_letter, company):
+        if not skip_cover_letter and _needs_cover_letter_rewrite(output.cover_letter, company):
             rewrite_agent = get_rewrite_agent()
             rewrite_prompt = f"""
 Rewrite this cover letter to sound more natural and specific without changing the underlying facts.
@@ -391,6 +464,10 @@ ORIGINAL COVER LETTER:
                 if skip_cover_letter
                 else f"I am writing to express my interest in the {job_title} position at {company}.\n\n[Generation failed: {error_msg}. Please complete this cover letter manually.]"
             ),
-            prep_notes=f"# Prep Notes for {job_title} at {company}\n\n*Generation failed: {error_msg}*\n\n## Resume Highlights\n- [Add manually]\n\n## Talking Points\n- [Add manually]",
+            prep_notes=_fallback_prep_notes(
+                job_title,
+                company,
+                f"Generation failed: {error_msg}. Please review and expand manually.",
+            ),
             screening_answers={},
         )
