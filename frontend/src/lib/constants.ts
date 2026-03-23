@@ -40,6 +40,7 @@ export const ROUTES = {
   JOBS_ASSISTANT: "/jobs/assistant",
   // Email area routes
   EMAIL: "/email",
+  EMAIL_TRIAGE: "/email/triage",
   EMAIL_SYNCS: "/email/syncs",
   EMAIL_MESSAGES: "/email/messages",
   // Finances area routes

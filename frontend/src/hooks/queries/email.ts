@@ -1,10 +1,14 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import type {
   EmailConfig,
+  EmailTriageListResponse,
+  EmailTriageRunInput,
+  EmailTriageRunResult,
+  EmailTriageStats,
   EmailMessage,
   EmailSource,
   EmailSyncListResponse,
@@ -76,6 +80,52 @@ export function useEmailStatsQuery(limit = 100) {
       );
       return buildEmailSyncStats(syncResponse);
     },
+  });
+}
+
+export function useEmailTriageMessagesQuery(params: {
+  bucket?: string;
+  sourceId?: string | null;
+  requiresReview?: boolean;
+  unsubscribeCandidate?: boolean;
+  limit?: number;
+  offset?: number;
+}) {
+  const searchParams = new URLSearchParams();
+
+  if (params.bucket && params.bucket !== "all") {
+    searchParams.set("bucket", params.bucket);
+  }
+  if (params.sourceId) {
+    searchParams.set("source_id", params.sourceId);
+  }
+  if (params.requiresReview) {
+    searchParams.set("requires_review", "true");
+  }
+  if (params.unsubscribeCandidate) {
+    searchParams.set("unsubscribe_candidate", "true");
+  }
+  searchParams.set("limit", String(params.limit ?? 100));
+  searchParams.set("offset", String(params.offset ?? 0));
+
+  return useQuery({
+    queryKey: queryKeys.email.triageMessages(params),
+    queryFn: () =>
+      apiClient.get<EmailTriageListResponse>(`/email/triage/messages?${searchParams.toString()}`),
+  });
+}
+
+export function useEmailTriageStatsQuery() {
+  return useQuery({
+    queryKey: queryKeys.email.triageStats(),
+    queryFn: () => apiClient.get<EmailTriageStats>("/email/triage/stats"),
+  });
+}
+
+export function useRunEmailTriageMutation() {
+  return useMutation({
+    mutationFn: (input: EmailTriageRunInput = {}) =>
+      apiClient.post<EmailTriageRunResult>("/email/triage/run", input),
   });
 }
 

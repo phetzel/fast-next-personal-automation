@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -59,6 +59,18 @@ class EmailMessage(Base, TimestampMixin):
     # Processing status
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     processing_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Phase 1 triage state
+    bucket: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    triage_status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    triage_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    actionability_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    requires_review: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    unsubscribe_candidate: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_vip: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    triaged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_action_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # DEPRECATED: These fields are kept for backwards compatibility during migration
     # Use EmailMessageDestination for new processing results

@@ -38,8 +38,8 @@ export function ConnectedAccountsCard({
           <Inbox className="text-muted-foreground mb-4 h-12 w-12" />
           <p className="mb-2 text-lg font-medium">No email accounts connected</p>
           <p className="text-muted-foreground mb-4 text-sm">
-            Connect Gmail to start syncing job emails. A default schedule will be created
-            for you, and you can adjust it on the Schedules page.
+            Connect Gmail to start syncing job emails. A default schedule will be created for you,
+            and you can adjust it on the Schedules page.
           </p>
         </div>
       ) : (

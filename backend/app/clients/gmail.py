@@ -28,10 +28,14 @@ class EmailContent:
     thread_id: str
     subject: str
     from_address: str
+    to_address: str | None
     received_at: datetime
     body_html: str
     body_text: str
     snippet: str
+    list_unsubscribe: str | None
+    precedence: str | None
+    auto_submitted: str | None
 
 
 class GmailClient:
@@ -208,6 +212,7 @@ class GmailClient:
 
         subject = headers.get("subject", "(No Subject)")
         from_address = headers.get("from", "")
+        to_address = headers.get("to")
         date_str = headers.get("date", "")
 
         # Parse date
@@ -224,10 +229,14 @@ class GmailClient:
             thread_id=message["threadId"],
             subject=subject,
             from_address=from_address,
+            to_address=to_address,
             received_at=received_at,
             body_html=body_html,
             body_text=body_text,
             snippet=message.get("snippet", ""),
+            list_unsubscribe=headers.get("list-unsubscribe"),
+            precedence=headers.get("precedence"),
+            auto_submitted=headers.get("auto-submitted"),
         )
 
     async def get_message(self, message_id: str) -> EmailContent:

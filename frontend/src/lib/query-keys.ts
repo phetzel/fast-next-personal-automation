@@ -9,6 +9,9 @@ export const queryKeys = {
     config: () => [...queryKeys.email.all, "config"] as const,
     syncs: (params?: unknown) => [...queryKeys.email.all, "syncs", params] as const,
     messages: (params?: unknown) => [...queryKeys.email.all, "messages", params] as const,
+    triageMessages: (params?: unknown) =>
+      [...queryKeys.email.all, "triage-messages", params] as const,
+    triageStats: () => [...queryKeys.email.all, "triage-stats"] as const,
     stats: () => [...queryKeys.email.all, "stats"] as const,
   },
   jobs: {

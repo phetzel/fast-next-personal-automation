@@ -31,6 +31,7 @@ def _create_typed_token(
         to_encode.update(extra_claims)
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
+
 # === Token Encryption (Fernet) ===
 
 
@@ -95,8 +96,7 @@ def create_access_token(
     return _create_typed_token(
         subject,
         token_type="access",
-        expires_delta=expires_delta
-        or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+        expires_delta=expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
 
 
@@ -108,8 +108,7 @@ def create_refresh_token(
     return _create_typed_token(
         subject,
         token_type="refresh",
-        expires_delta=expires_delta
-        or timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES),
+        expires_delta=expires_delta or timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES),
     )
 
 

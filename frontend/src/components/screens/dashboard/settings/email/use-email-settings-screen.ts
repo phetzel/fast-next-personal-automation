@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useConfirmDialog } from "@/components/shared/feedback";
+import { useEnsureEmailTriageSchedule } from "@/hooks/use-email-triage-schedule-bootstrap";
 import { useEmailConfigQuery, useEmailSourcesQuery } from "@/hooks/queries/email";
 import { apiClient } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/formatters";
@@ -22,6 +23,7 @@ export function useEmailSettingsScreen() {
 
   const sourcesQuery = useEmailSourcesQuery();
   const configQuery = useEmailConfigQuery();
+  useEnsureEmailTriageSchedule(sourcesQuery.data ?? []);
 
   useEffect(() => {
     const successMessage = searchParams.get("success");

@@ -64,6 +64,8 @@ async def get_email_source(
         is_active=source.is_active,
         last_sync_at=source.last_sync_at,
         last_sync_error=source.last_sync_error,
+        last_triage_at=source.last_triage_at,
+        last_triage_error=source.last_triage_error,
         custom_senders=source.custom_senders,
         created_at=source.created_at,
         updated_at=source.updated_at,

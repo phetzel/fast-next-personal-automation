@@ -42,6 +42,8 @@ class EmailSourceResponse(BaseModel):
     is_active: bool
     last_sync_at: datetime | None
     last_sync_error: str | None
+    last_triage_at: datetime | None
+    last_triage_error: str | None
     custom_senders: list[str] | None
     created_at: datetime
     updated_at: datetime | None

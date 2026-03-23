@@ -46,6 +46,8 @@ class EmailSource(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_sync_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_triage_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_triage_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Custom senders to watch (in addition to default job boards)
     # Format: ["sender@example.com", "alerts@company.com"]

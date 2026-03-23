@@ -5,13 +5,14 @@ from datetime import datetime
 from uuid import UUID
 
 from cryptography.fernet import InvalidToken
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import decrypt_token, encrypt_token, is_encrypted
 from app.db.models.email_message import EmailMessage
 from app.db.models.email_source import EmailSource
+from app.db.models.pipeline_run import PipelineRun, PipelineRunStatus
 
 logger = logging.getLogger(__name__)
 
@@ -152,6 +153,27 @@ async def update_sync_status(
     """Update sync status for an email source."""
     source.last_sync_at = last_sync_at
     source.last_sync_error = error
+    db.add(source)
+    await db.flush()
+    await db.refresh(source)
+    return source
+
+
+async def update_triage_status(
+    db: AsyncSession,
+    source: EmailSource,
+    *,
+    last_triage_at: datetime | None = None,
+    error: str | None = None,
+) -> EmailSource:
+    """Update triage status for an email source.
+
+    `last_triage_at` should only be provided on successful source completion so the
+    watermark reflects the last completed triage window.
+    """
+    if last_triage_at is not None:
+        source.last_triage_at = last_triage_at
+    source.last_triage_error = error
     db.add(source)
     await db.flush()
     await db.refresh(source)
@@ -310,6 +332,60 @@ async def update_message_processing(
     return message
 
 
+async def update_message_triage(
+    db: AsyncSession,
+    message: EmailMessage,
+    *,
+    gmail_thread_id: str | None = None,
+    subject: str | None = None,
+    from_address: str | None = None,
+    to_address: str | None = None,
+    received_at: datetime | None = None,
+    bucket: str | None = None,
+    triage_status: str | None = None,
+    triage_confidence: float | None = None,
+    actionability_score: float | None = None,
+    summary: str | None = None,
+    requires_review: bool | None = None,
+    unsubscribe_candidate: bool | None = None,
+    is_vip: bool | None = None,
+    triaged_at: datetime | None = None,
+) -> EmailMessage:
+    """Update triage fields and refreshed metadata on an email message."""
+    if gmail_thread_id is not None:
+        message.gmail_thread_id = gmail_thread_id
+    if subject is not None:
+        message.subject = subject
+    if from_address is not None:
+        message.from_address = from_address
+    if to_address is not None:
+        message.to_address = to_address
+    if received_at is not None:
+        message.received_at = received_at
+    if bucket is not None:
+        message.bucket = bucket
+    if triage_status is not None:
+        message.triage_status = triage_status
+    if triage_confidence is not None:
+        message.triage_confidence = triage_confidence
+    if actionability_score is not None:
+        message.actionability_score = actionability_score
+    if summary is not None:
+        message.summary = summary
+    if requires_review is not None:
+        message.requires_review = requires_review
+    if unsubscribe_candidate is not None:
+        message.unsubscribe_candidate = unsubscribe_candidate
+    if is_vip is not None:
+        message.is_vip = is_vip
+    if triaged_at is not None:
+        message.triaged_at = triaged_at
+    db.add(message)
+    await db.flush()
+    await db.refresh(message)
+    return message
+
+
 async def get_message_by_gmail_id(
     db: AsyncSession, source_id: UUID, gmail_message_id: str
 ) -> EmailMessage | None:
@@ -334,6 +410,147 @@ async def get_messages_by_source(
         .limit(limit)
     )
     return list(result.scalars().all())
+
+
+async def list_triage_messages_for_user(
+    db: AsyncSession,
+    user_id: UUID,
+    *,
+    bucket: str | None = None,
+    source_id: UUID | None = None,
+    requires_review: bool | None = None,
+    unsubscribe_candidate: bool | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> tuple[list[EmailMessage], int]:
+    """List triaged email messages for a user with filtering."""
+    conditions = [
+        EmailSource.user_id == user_id,
+        EmailMessage.triaged_at.is_not(None),
+    ]
+    if bucket:
+        conditions.append(EmailMessage.bucket == bucket)
+    if source_id:
+        conditions.append(EmailMessage.source_id == source_id)
+    if requires_review is not None:
+        conditions.append(EmailMessage.requires_review.is_(requires_review))
+    if unsubscribe_candidate is not None:
+        conditions.append(EmailMessage.unsubscribe_candidate.is_(unsubscribe_candidate))
+
+    query = (
+        select(EmailMessage)
+        .join(EmailSource, EmailSource.id == EmailMessage.source_id)
+        .where(*conditions)
+        .order_by(EmailMessage.received_at.desc().nullslast(), EmailMessage.created_at.desc())
+    )
+    total = await db.scalar(select(func.count()).select_from(query.subquery())) or 0
+    result = await db.execute(query.offset(offset).limit(limit))
+    return list(result.scalars().all()), total
+
+
+async def get_triage_message_by_id_for_user(
+    db: AsyncSession,
+    user_id: UUID,
+    message_id: UUID,
+) -> EmailMessage | None:
+    """Get a single triaged email message ensuring the owning user matches."""
+    result = await db.execute(
+        select(EmailMessage)
+        .join(EmailSource, EmailSource.id == EmailMessage.source_id)
+        .where(
+            EmailMessage.id == message_id,
+            EmailSource.user_id == user_id,
+            EmailMessage.triaged_at.is_not(None),
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_message_by_id_for_user(
+    db: AsyncSession,
+    user_id: UUID,
+    message_id: UUID,
+) -> EmailMessage | None:
+    """Get a single email message ensuring the owning user matches."""
+    result = await db.execute(
+        select(EmailMessage)
+        .join(EmailSource, EmailSource.id == EmailMessage.source_id)
+        .where(
+            EmailMessage.id == message_id,
+            EmailSource.user_id == user_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_triage_stats_for_user(
+    db: AsyncSession,
+    user_id: UUID,
+) -> dict:
+    """Return aggregate triage counts for a user."""
+    base_conditions = [
+        EmailSource.user_id == user_id,
+        EmailMessage.triaged_at.is_not(None),
+    ]
+
+    by_bucket_query = (
+        select(EmailMessage.bucket, func.count())
+        .join(EmailSource, EmailSource.id == EmailMessage.source_id)
+        .where(*base_conditions, EmailMessage.bucket.is_not(None))
+        .group_by(EmailMessage.bucket)
+    )
+    by_bucket_result = await db.execute(by_bucket_query)
+    by_bucket = {(bucket or "unbucketed"): count for bucket, count in by_bucket_result.all()}
+
+    total_triaged = (
+        await db.scalar(
+            select(func.count())
+            .select_from(EmailMessage)
+            .join(EmailSource, EmailSource.id == EmailMessage.source_id)
+            .where(*base_conditions, EmailMessage.bucket.is_not(None))
+        )
+        or 0
+    )
+
+    review_count = (
+        await db.scalar(
+            select(func.count())
+            .select_from(EmailMessage)
+            .join(EmailSource, EmailSource.id == EmailMessage.source_id)
+            .where(*base_conditions, EmailMessage.requires_review.is_(True))
+        )
+        or 0
+    )
+
+    unsubscribe_count = (
+        await db.scalar(
+            select(func.count())
+            .select_from(EmailMessage)
+            .join(EmailSource, EmailSource.id == EmailMessage.source_id)
+            .where(*base_conditions, EmailMessage.unsubscribe_candidate.is_(True))
+        )
+        or 0
+    )
+
+    last_run_result = await db.execute(
+        select(PipelineRun)
+        .where(
+            PipelineRun.pipeline_name == "email_triage",
+            PipelineRun.user_id == user_id,
+            PipelineRun.status == PipelineRunStatus.SUCCESS,
+        )
+        .order_by(PipelineRun.completed_at.desc().nullslast(), PipelineRun.created_at.desc())
+        .limit(1)
+    )
+    last_run = last_run_result.scalar_one_or_none()
+
+    return {
+        "by_bucket": by_bucket,
+        "total_triaged": total_triaged,
+        "review_count": review_count,
+        "unsubscribe_count": unsubscribe_count,
+        "last_run": last_run,
+    }
 
 
 async def get_message_stats(db: AsyncSession, source_id: UUID) -> dict:

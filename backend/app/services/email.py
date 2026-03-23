@@ -263,6 +263,52 @@ class EmailService:
         all_messages.sort(key=lambda m: m.processed_at or datetime.min, reverse=True)
         return all_messages[:limit]
 
+    async def list_triage_messages(
+        self,
+        user_id: UUID,
+        *,
+        bucket: str | None = None,
+        source_id: UUID | None = None,
+        requires_review: bool | None = None,
+        unsubscribe_candidate: bool | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[EmailMessage], int]:
+        """List triaged email messages for a user."""
+        if source_id:
+            source = await email_source_repo.get_by_id(self.db, source_id)
+            if source is None or source.user_id != user_id:
+                raise NotFoundError(
+                    message="Email source not found",
+                    details={"id": str(source_id)},
+                )
+
+        return await email_source_repo.list_triage_messages_for_user(
+            self.db,
+            user_id,
+            bucket=bucket,
+            source_id=source_id,
+            requires_review=requires_review,
+            unsubscribe_candidate=unsubscribe_candidate,
+            limit=limit,
+            offset=offset,
+        )
+
+    async def get_triage_message(self, message_id: UUID, user_id: UUID) -> EmailMessage:
+        """Get a triaged email message ensuring ownership."""
+        message = await email_source_repo.get_triage_message_by_id_for_user(
+            self.db,
+            user_id,
+            message_id,
+        )
+        if message is None:
+            raise NotFoundError(message="Email message not found", details={"id": str(message_id)})
+        return message
+
+    async def get_triage_stats(self, user_id: UUID) -> dict[str, Any]:
+        """Get aggregate triage stats for a user."""
+        return await email_source_repo.get_triage_stats_for_user(self.db, user_id)
+
     async def get_message_with_destinations(
         self, message_id: UUID, user_id: UUID
     ) -> tuple[EmailMessage, list]:

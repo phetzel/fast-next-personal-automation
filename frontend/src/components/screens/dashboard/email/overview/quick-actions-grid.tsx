@@ -1,10 +1,17 @@
 import { FeatureLinkCard } from "@/components/shared/navigation";
 import { ROUTES } from "@/lib/constants";
-import { Inbox, RefreshCw } from "lucide-react";
+import { Inbox, RefreshCw, Sparkles } from "lucide-react";
 
 export function EmailOverviewQuickActionsGrid() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid gap-4 sm:grid-cols-3">
+      <FeatureLinkCard
+        href={ROUTES.EMAIL_TRIAGE}
+        icon={Sparkles}
+        title="Open Triage Queue"
+        description="Review bucketed inbox items"
+        tone="amber"
+      />
       <FeatureLinkCard
         href={ROUTES.EMAIL_SYNCS}
         icon={RefreshCw}

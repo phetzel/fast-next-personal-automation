@@ -7,9 +7,10 @@ from uuid import uuid4
 
 import pytest
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_email_service
 from app.core.security import create_access_token, verify_token
 from app.main import app
+from app.schemas.email_triage import EmailTriageRunResult
 
 
 @pytest.fixture(autouse=True)
@@ -97,3 +98,119 @@ async def test_sync_email_source_returns_409_when_sync_running(client) -> None:
 
     assert response.status_code == 409
     assert response.json()["detail"] == "A sync is already in progress"
+
+
+@pytest.mark.anyio
+async def test_run_email_triage_returns_pipeline_output(client, mock_db_session) -> None:
+    """Manual triage runs should proxy the pipeline result."""
+    user = _mock_user()
+    app.dependency_overrides[get_current_user] = lambda: user
+
+    from app.api.routes.v1 import email_triage as email_triage_route
+
+    triage_result = EmailTriageRunResult(
+        messages_scanned=12,
+        messages_triaged=7,
+        bucket_counts={"jobs": 2, "newsletter": 5},
+        sources_processed=1,
+        errors=[],
+    )
+
+    with patch.object(
+        email_triage_route,
+        "execute_pipeline",
+        AsyncMock(return_value=SimpleNamespace(success=True, output=triage_result, error=None)),
+    ):
+        response = await client.post("/api/v1/email/triage/run", json={})
+
+    assert response.status_code == 200
+    assert response.json()["messages_triaged"] == 7
+    mock_db_session.commit.assert_awaited()
+
+
+@pytest.mark.anyio
+async def test_list_triage_messages_filters_and_serializes(client) -> None:
+    """Triage list endpoint should return serialized queue items."""
+    user = _mock_user()
+    app.dependency_overrides[get_current_user] = lambda: user
+
+    source = SimpleNamespace(email_address="email@example.com")
+    message = SimpleNamespace(
+        id=uuid4(),
+        source_id=uuid4(),
+        source=source,
+        sync_id=None,
+        gmail_message_id="gmail-1",
+        gmail_thread_id="thread-1",
+        subject="Weekly roundup",
+        from_address="newsletter@example.com",
+        to_address="me@example.com",
+        received_at=datetime.now(UTC),
+        processed_at=None,
+        processing_error=None,
+        bucket="newsletter",
+        triage_status="classified",
+        triage_confidence=0.92,
+        actionability_score=0.18,
+        summary="A summary",
+        requires_review=False,
+        unsubscribe_candidate=True,
+        is_vip=False,
+        triaged_at=datetime.now(UTC),
+        last_action_at=None,
+    )
+
+    email_service = SimpleNamespace(
+        list_triage_messages=AsyncMock(return_value=([message], 1)),
+    )
+    app.dependency_overrides[get_email_service] = lambda: email_service
+
+    response = await client.get(
+        "/api/v1/email/triage/messages",
+        params={"bucket": "newsletter", "unsubscribe_candidate": "true"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 1
+    assert payload["items"][0]["bucket"] == "newsletter"
+    assert payload["items"][0]["source_email_address"] == "email@example.com"
+    email_service.list_triage_messages.assert_awaited()
+
+
+@pytest.mark.anyio
+async def test_get_triage_stats_returns_last_run_summary(client) -> None:
+    """Stats endpoint should expose aggregate counts and last successful run info."""
+    user = _mock_user()
+    app.dependency_overrides[get_current_user] = lambda: user
+
+    last_run = SimpleNamespace(
+        id=uuid4(),
+        status="success",
+        started_at=datetime.now(UTC),
+        completed_at=datetime.now(UTC),
+        output_data={
+            "messages_scanned": 20,
+            "messages_triaged": 10,
+            "bucket_counts": {"jobs": 3},
+        },
+    )
+    email_service = SimpleNamespace(
+        get_triage_stats=AsyncMock(
+            return_value={
+                "by_bucket": {"jobs": 3, "review": 2},
+                "total_triaged": 5,
+                "review_count": 2,
+                "unsubscribe_count": 1,
+                "last_run": last_run,
+            }
+        )
+    )
+    app.dependency_overrides[get_email_service] = lambda: email_service
+
+    response = await client.get("/api/v1/email/triage/stats")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total_triaged"] == 5
+    assert payload["last_run"]["messages_triaged"] == 10
