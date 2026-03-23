@@ -70,6 +70,9 @@ async def trigger_sync(
             message="A sync is already in progress",
         )
 
+    # Commit the sync row before invoking the pipeline, which runs in its own DB session.
+    await db.commit()
+
     # Execute sync pipeline
     context = PipelineContext(
         user_id=current_user.id,
@@ -78,7 +81,10 @@ async def trigger_sync(
 
     result = await execute_pipeline(
         "email_sync_jobs",
-        {"force_full_sync": sync_input.force_full_sync},
+        {
+            "force_full_sync": sync_input.force_full_sync,
+            "sync_id": str(sync.id),
+        },
         context,
         db=db,
     )

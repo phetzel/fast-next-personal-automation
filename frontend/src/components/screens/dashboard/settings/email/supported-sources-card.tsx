@@ -11,8 +11,10 @@ export function SupportedSourcesCard({ config }: SupportedSourcesCardProps) {
     <Card className="p-6">
       <h2 className="mb-4 text-lg font-semibold">Supported Email Sources</h2>
       <p className="text-muted-foreground mb-4 text-sm">
-        Emails from these senders will be automatically parsed (syncs every{" "}
-        {config.sync_interval_minutes} minutes)
+        A default sync schedule is created when you connect Gmail. Messages from these
+        senders are parsed when that schedule runs, and you can adjust the cadence on
+        the Schedules page. The default interval is every {config.sync_interval_minutes}{" "}
+        minutes.
       </p>
       <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
         {config.default_senders.map((sender) => (

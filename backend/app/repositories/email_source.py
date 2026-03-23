@@ -6,6 +6,7 @@ from uuid import UUID
 
 from cryptography.fernet import InvalidToken
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import decrypt_token, encrypt_token, is_encrypted
@@ -128,9 +129,12 @@ async def update_tokens(
     source: EmailSource,
     access_token: str,
     token_expiry: datetime | None = None,
+    refresh_token: str | None = None,
 ) -> EmailSource:
-    """Update OAuth tokens for an email source (encrypts the token)."""
+    """Update OAuth tokens for an email source (encrypts tokens at rest)."""
     source.access_token = encrypt_token(access_token)
+    if refresh_token:
+        source.refresh_token = encrypt_token(refresh_token)
     if token_expiry:
         source.token_expiry = token_expiry
     db.add(source)
@@ -219,6 +223,87 @@ async def create_message(
         parser_used=parser_used,
         processing_error=processing_error,
     )
+    db.add(message)
+    await db.flush()
+    await db.refresh(message)
+    return message
+
+
+async def get_or_create_message(
+    db: AsyncSession,
+    source_id: UUID,
+    gmail_message_id: str,
+    gmail_thread_id: str | None,
+    subject: str | None,
+    from_address: str,
+    received_at: datetime | None,
+    processed_at: datetime | None,
+    sync_id: UUID | None = None,
+    to_address: str | None = None,
+    jobs_extracted: int = 0,
+    parser_used: str | None = None,
+    processing_error: str | None = None,
+) -> tuple[EmailMessage, bool]:
+    """Get an existing processed email record or create it once.
+
+    Uses a nested transaction so unique-constraint collisions only roll back the
+    message insert, not the surrounding sync transaction.
+    """
+    existing = await get_message_by_gmail_id(db, source_id, gmail_message_id)
+    if existing is not None:
+        return existing, False
+
+    message = EmailMessage(
+        source_id=source_id,
+        sync_id=sync_id,
+        gmail_message_id=gmail_message_id,
+        gmail_thread_id=gmail_thread_id,
+        subject=subject,
+        from_address=from_address,
+        to_address=to_address,
+        received_at=received_at,
+        processed_at=processed_at,
+        jobs_extracted=jobs_extracted,
+        parser_used=parser_used,
+        processing_error=processing_error,
+    )
+
+    try:
+        async with db.begin_nested():
+            db.add(message)
+            await db.flush()
+        await db.refresh(message)
+        return message, True
+    except IntegrityError:
+        logger.info(
+            "Email message already claimed during concurrent sync",
+            extra={
+                "source_id": str(source_id),
+                "gmail_message_id": gmail_message_id,
+            },
+        )
+        existing = await get_message_by_gmail_id(db, source_id, gmail_message_id)
+        if existing is None:
+            raise
+        return existing, False
+
+
+async def update_message_processing(
+    db: AsyncSession,
+    message: EmailMessage,
+    *,
+    processed_at: datetime | None = None,
+    jobs_extracted: int | None = None,
+    parser_used: str | None = None,
+    processing_error: str | None = None,
+) -> EmailMessage:
+    """Update aggregate processing fields on an email message."""
+    if processed_at is not None:
+        message.processed_at = processed_at
+    if jobs_extracted is not None:
+        message.jobs_extracted = jobs_extracted
+    message.parser_used = parser_used
+    message.processing_error = processing_error
     db.add(message)
     await db.flush()
     await db.refresh(message)

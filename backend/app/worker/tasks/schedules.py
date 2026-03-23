@@ -4,7 +4,7 @@ System crons (hardcoded, not user-manageable):
   - process_due_recurring_expenses: daily at midnight UTC
 
 User-scheduled pipelines (via ScheduledTask / calendar UI):
-  - email_sync_jobs: users schedule their own sync frequency
+  - email_sync_jobs: users can edit the default schedule created on Gmail connect
   - finance_email_sync: users schedule their own sync frequency
 """
 
@@ -19,19 +19,21 @@ logger = logging.getLogger(__name__)
 # These are picked up by the scheduler
 
 
-@broker.task  # No built-in schedule — users schedule this via the calendar UI
+@broker.task  # Legacy helper; normal email schedules execute email_sync_jobs directly.
 async def sync_all_email_sources() -> dict:
     """Sync job emails for all active email sources.
 
-    This task can be called manually or via a user-created ScheduledTask.
-    It is no longer run automatically — users control the schedule via
-    the Schedules page (Pipelines → email_sync_jobs).
+    This helper groups sources by user and invokes the email_sync_jobs pipeline once
+    per user. Normal recurring email syncs are created as ScheduledTask records when
+    Gmail is connected and run via the generic scheduled pipeline executor.
 
     Returns:
         Dict with sync results summary
     """
+    from collections import defaultdict
+
     from app.db.session import get_db_context
-    from app.pipelines.action_base import PipelineContext
+    from app.pipelines.action_base import PipelineContext, PipelineSource
     from app.pipelines.registry import execute_pipeline
     from app.repositories import email_source_repo
 
@@ -47,31 +49,36 @@ async def sync_all_email_sources() -> dict:
     async with get_db_context() as db:
         sources = await email_source_repo.get_all_active(db)
         logger.info(f"Found {len(sources)} active email sources")
-
+        sources_by_user = defaultdict(list)
         for source in sources:
+            sources_by_user[source.user_id].append(source)
+
+        for user_id, user_sources in sources_by_user.items():
             try:
                 context = PipelineContext(
-                    user_id=source.user_id,
-                    source="scheduler",
+                    user_id=user_id,
+                    source=PipelineSource.CRON,
                 )
 
                 result = await execute_pipeline(
                     "email_sync_jobs",
-                    {"source_id": str(source.id)},
+                    {},
                     context,
                     db=db,
                 )
 
-                results["sources_processed"] += 1
                 if result.success and result.output:
+                    results["sources_processed"] += result.output.sources_synced
                     results["total_emails_processed"] += result.output.emails_processed
                     results["total_jobs_saved"] += result.output.jobs_saved
                 elif not result.success:
-                    results["errors"].append(f"{source.email_address}: {result.error}")
+                    address_list = ", ".join(source.email_address for source in user_sources)
+                    results["errors"].append(f"{address_list}: {result.error}")
 
             except Exception as e:
-                error_msg = f"{source.email_address}: {e}"
-                logger.exception(f"Error syncing {source.email_address}")
+                address_list = ", ".join(source.email_address for source in user_sources)
+                error_msg = f"{address_list}: {e}"
+                logger.exception("Error syncing email sources for user %s", user_id)
                 results["errors"].append(error_msg)
 
         await db.commit()

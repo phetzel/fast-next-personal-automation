@@ -1,15 +1,22 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import {
+  backendErrorMessage,
+  BackendApiError,
+  backendFetch,
+} from "@/lib/server-api";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+interface GmailConnectTokenResponse {
+  connect_token: string;
+}
+
 /**
- * Initiates Gmail OAuth connection.
- * Gets the auth token and passes it to the backend.
+ * Initiates Gmail OAuth connection with a short-lived connect token.
  */
 export async function GET() {
   try {
-    // Get the access token from cookies
     const cookieStore = await cookies();
     const accessToken = cookieStore.get("access_token")?.value;
 
@@ -20,12 +27,28 @@ export async function GET() {
       );
     }
 
-    // Return the OAuth URL with the token as a query param
-    // The backend will validate this token and start the OAuth flow
-    const connectUrl = `${API_URL}/api/v1/email/gmail/connect?token=${encodeURIComponent(accessToken)}`;
+    const data = await backendFetch<GmailConnectTokenResponse>(
+      "/api/v1/email/gmail/connect-token",
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    const connectUrl = `${API_URL}/api/v1/email/gmail/connect?connect_token=${encodeURIComponent(
+      data.connect_token
+    )}`;
 
     return NextResponse.json({ url: connectUrl });
   } catch (error) {
+    if (error instanceof BackendApiError) {
+      return NextResponse.json(
+        { error: backendErrorMessage(error, "Failed to initiate connection") },
+        { status: error.status }
+      );
+    }
+
     console.error("Error initiating Gmail connection:", error);
     return NextResponse.json({ error: "Failed to initiate connection" }, { status: 500 });
   }

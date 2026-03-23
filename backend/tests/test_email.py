@@ -4,9 +4,12 @@ Tests email parsing, configuration, and pipeline functionality.
 """
 
 from datetime import datetime
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from app.core.security import decrypt_token, is_encrypted
 from app.email.config import (
     DEFAULT_JOB_SENDERS,
     get_default_sender_domains,
@@ -296,6 +299,7 @@ class TestEmailSyncPipeline:
 
         props = schema["properties"]
         assert "source_id" in props
+        assert "sync_id" in props
         assert "force_full_sync" in props
         assert "save_all" in props
 
@@ -333,6 +337,67 @@ class TestEmailSyncPipeline:
 
         assert result.success is False
         assert "authentication required" in result.error.lower()
+
+
+class TestEmailSourceRepository:
+    """Tests for email source repository token handling."""
+
+    @pytest.mark.anyio
+    async def test_update_tokens_encrypts_refresh_token(self):
+        """Reconnect flows should encrypt refreshed access and refresh tokens."""
+        from app.repositories import email_source as email_source_repo
+
+        db = AsyncMock()
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+        db.refresh = AsyncMock()
+
+        source = SimpleNamespace(
+            access_token="old-access",
+            refresh_token="old-refresh",
+            token_expiry=None,
+        )
+
+        await email_source_repo.update_tokens(
+            db,
+            source,
+            "new-access",
+            datetime(2026, 1, 1),
+            refresh_token="new-refresh",
+        )
+
+        assert is_encrypted(source.access_token)
+        assert decrypt_token(source.access_token) == "new-access"
+        assert is_encrypted(source.refresh_token)
+        assert decrypt_token(source.refresh_token) == "new-refresh"
+
+    @pytest.mark.anyio
+    async def test_update_tokens_preserves_existing_refresh_token_when_omitted(self):
+        """Missing refresh tokens from Google should not overwrite the stored secret."""
+        from app.repositories import email_source as email_source_repo
+
+        db = AsyncMock()
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+        db.refresh = AsyncMock()
+
+        existing_refresh = "stored-refresh"
+        source = SimpleNamespace(
+            access_token="old-access",
+            refresh_token=existing_refresh,
+            token_expiry=None,
+        )
+
+        await email_source_repo.update_tokens(
+            db,
+            source,
+            "new-access",
+            datetime(2026, 1, 1),
+        )
+
+        assert is_encrypted(source.access_token)
+        assert decrypt_token(source.access_token) == "new-access"
+        assert source.refresh_token == existing_refresh
 
 
 class TestGmailClient:

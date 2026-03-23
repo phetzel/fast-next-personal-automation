@@ -10,6 +10,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.exceptions import NotFoundError
 from app.db.models.email_destination import EmailDestination
 from app.db.models.email_message import EmailMessage
@@ -19,8 +20,11 @@ from app.repositories import (
     email_destination_repo,
     email_source_repo,
     email_sync_repo,
+    scheduled_task_repo,
 )
+from app.schemas.scheduled_task import ScheduledTaskCreate
 from app.services.job import JobService, RawJob
+from app.services.scheduled_task import ScheduledTaskService
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +38,28 @@ DEFAULT_JOB_SENDERS = [
     "ziprecruiter.com",
     "hiringcafe.com",
 ]
+
+
+def _build_default_sync_cron(interval_minutes: int) -> str:
+    """Build a safe cron expression for the default email sync cadence."""
+    if interval_minutes <= 0:
+        return "0 * * * *"
+
+    if interval_minutes < 60 and 60 % interval_minutes == 0:
+        return f"*/{interval_minutes} * * * *"
+
+    if interval_minutes % 60 == 0:
+        hours = interval_minutes // 60
+        if hours == 1:
+            return "0 * * * *"
+        if hours > 1 and 24 % hours == 0:
+            return f"0 */{hours} * * *"
+
+    logger.warning(
+        "Unsupported email sync interval for cron; falling back to hourly",
+        extra={"interval_minutes": interval_minutes},
+    )
+    return "0 * * * *"
 
 
 class EmailService:
@@ -184,6 +210,33 @@ class EmailService:
             priority=0,
         )
 
+    async def ensure_default_sync_schedule(self, user_id: UUID) -> Any:
+        """Ensure the user has a default scheduled email sync."""
+        tasks, _ = await scheduled_task_repo.get_by_user(
+            self.db,
+            user_id,
+            pipeline_name="email_sync_jobs",
+            skip=0,
+            limit=1,
+        )
+        if tasks:
+            return tasks[0]
+
+        schedule_service = ScheduledTaskService(self.db)
+        return await schedule_service.create_task(
+            user_id,
+            ScheduledTaskCreate(
+                name="Email job sync",
+                description="Default Gmail sync created when you connect email.",
+                pipeline_name="email_sync_jobs",
+                cron_expression=_build_default_sync_cron(settings.EMAIL_SYNC_INTERVAL_MINUTES),
+                timezone="UTC",
+                enabled=True,
+                input_params=None,
+                color="sky",
+            ),
+        )
+
     # === Email Message Operations ===
 
     async def list_messages(
@@ -257,6 +310,10 @@ class EmailService:
         """
         results: dict[str, Any] = {
             "items_extracted": 0,
+            "jobs_analyzed": 0,
+            "jobs_saved": 0,
+            "jobs_filtered": 0,
+            "high_scoring": 0,
             "parser_used": None,
             "error": None,
             "created_item_ids": [],
@@ -302,6 +359,14 @@ class EmailService:
                             min_score=min_score,
                             save_all=True,
                         )
+                        results["jobs_analyzed"] = ingestion.jobs_analyzed
+                        results["jobs_saved"] = ingestion.jobs_saved
+                        results["jobs_filtered"] = (
+                            ingestion.jobs_received
+                            - ingestion.jobs_saved
+                            - ingestion.duplicates_skipped
+                        )
+                        results["high_scoring"] = ingestion.high_scoring
                         # Store created job IDs
                         if ingestion.saved_jobs:
                             results["created_item_ids"] = [
