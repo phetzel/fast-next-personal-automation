@@ -4,10 +4,17 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import type {
+  EmailActionLogListResponse,
+  EmailCleanupDecisionInput,
   EmailConfig,
+  EmailDestination,
+  EmailDestinationInput,
   EmailTriageListResponse,
+  EmailTriageReviewInput,
+  EmailTriageReviewResponse,
   EmailTriageRunInput,
   EmailTriageRunResult,
+  EmailSubscriptionListResponse,
   EmailTriageStats,
   EmailMessage,
   EmailSource,
@@ -51,6 +58,20 @@ export function useEmailConfigQuery(enabled = true) {
     queryKey: queryKeys.email.config(),
     queryFn: () => apiClient.get<EmailConfig>("/email/config"),
     enabled,
+  });
+}
+
+export function useEmailDestinationsQuery(destinationType?: string | null) {
+  const searchParams = new URLSearchParams();
+  if (destinationType) {
+    searchParams.set("destination_type", destinationType);
+  }
+  const query = searchParams.toString();
+
+  return useQuery({
+    queryKey: queryKeys.email.destinations({ destinationType }),
+    queryFn: () =>
+      apiClient.get<EmailDestination[]>(`/email/destinations${query ? `?${query}` : ""}`),
   });
 }
 
@@ -126,6 +147,79 @@ export function useRunEmailTriageMutation() {
   return useMutation({
     mutationFn: (input: EmailTriageRunInput = {}) =>
       apiClient.post<EmailTriageRunResult>("/email/triage/run", input),
+  });
+}
+
+export function useReviewEmailTriageMessageMutation() {
+  return useMutation({
+    mutationFn: ({
+      messageId,
+      input,
+    }: {
+      messageId: string;
+      input: EmailTriageReviewInput;
+    }) =>
+      apiClient.post<EmailTriageReviewResponse>(`/email/triage/messages/${messageId}/review`, input),
+  });
+}
+
+export function useEmailSubscriptionsQuery(limit = 50, offset = 0) {
+  return useQuery({
+    queryKey: queryKeys.email.subscriptions({ limit, offset }),
+    queryFn: () =>
+      apiClient.get<EmailSubscriptionListResponse>(`/email/subscriptions?limit=${limit}&offset=${offset}`),
+  });
+}
+
+export function useApproveEmailSubscriptionMutation() {
+  return useMutation({
+    mutationFn: ({
+      messageId,
+      input,
+    }: {
+      messageId: string;
+      input?: EmailCleanupDecisionInput;
+    }) => apiClient.post<{ rule_id: string; status: string }>(`/email/subscriptions/${messageId}/approve`, input ?? {}),
+  });
+}
+
+export function useDismissEmailSubscriptionMutation() {
+  return useMutation({
+    mutationFn: ({
+      messageId,
+      input,
+    }: {
+      messageId: string;
+      input?: EmailCleanupDecisionInput;
+    }) => apiClient.post<{ rule_id: string; status: string }>(`/email/subscriptions/${messageId}/dismiss`, input ?? {}),
+  });
+}
+
+export function useEmailActionLogsQuery(limit = 50, offset = 0) {
+  return useQuery({
+    queryKey: queryKeys.email.actionLogs({ limit, offset }),
+    queryFn: () =>
+      apiClient.get<EmailActionLogListResponse>(`/email/actions/logs?limit=${limit}&offset=${offset}`),
+  });
+}
+
+export function useCreateEmailDestinationMutation() {
+  return useMutation({
+    mutationFn: (input: EmailDestinationInput) =>
+      apiClient.post<EmailDestination>("/email/destinations", input),
+  });
+}
+
+export function useUpdateEmailDestinationMutation() {
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Partial<EmailDestinationInput> }) =>
+      apiClient.patch<EmailDestination>(`/email/destinations/${id}`, input),
+  });
+}
+
+export function useDeleteEmailDestinationMutation() {
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete<{ message: string }>(`/email/destinations/${id}`),
   });
 }
 

@@ -11,6 +11,8 @@ from app.schemas.email_triage import (
     EmailTriageLastRunResponse,
     EmailTriageListResponse,
     EmailTriageMessageResponse,
+    EmailTriageReviewInput,
+    EmailTriageReviewResponse,
     EmailTriageRunInput,
     EmailTriageRunResult,
     EmailTriageStatsResponse,
@@ -40,6 +42,7 @@ def _serialize_triage_message(message) -> EmailTriageMessageResponse:
         summary=message.summary,
         requires_review=message.requires_review,
         unsubscribe_candidate=message.unsubscribe_candidate,
+        archive_recommended=getattr(message, "archive_recommended", False),
         is_vip=message.is_vip,
         triaged_at=message.triaged_at,
         last_action_at=message.last_action_at,
@@ -109,6 +112,26 @@ async def get_triage_message(
     """Get a single triaged email message."""
     message = await email_service.get_triage_message(message_id, current_user.id)
     return _serialize_triage_message(message)
+
+
+@router.post("/messages/{message_id}/review", response_model=EmailTriageReviewResponse)
+async def review_triage_message(
+    message_id: UUID,
+    review_input: EmailTriageReviewInput,
+    db: DBSession,
+    current_user: CurrentUser,
+    email_service: EmailSvc,
+) -> EmailTriageReviewResponse:
+    """Resolve a triaged review item without mutating Gmail."""
+    message = await email_service.review_triage_message(
+        message_id,
+        current_user.id,
+        decision=review_input.decision,
+        bucket=review_input.bucket,
+        reason=review_input.reason,
+    )
+    await db.commit()
+    return EmailTriageReviewResponse(message=_serialize_triage_message(message))
 
 
 @router.get("/stats", response_model=EmailTriageStatsResponse)

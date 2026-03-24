@@ -68,6 +68,7 @@ class EmailMessage(Base, TimestampMixin):
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     requires_review: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     unsubscribe_candidate: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    archive_recommended: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_vip: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     triaged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_action_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

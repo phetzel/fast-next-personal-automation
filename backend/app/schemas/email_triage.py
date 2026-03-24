@@ -67,6 +67,7 @@ class EmailTriageMessageResponse(BaseModel):
     summary: str | None = None
     requires_review: bool
     unsubscribe_candidate: bool
+    archive_recommended: bool
     is_vip: bool
     triaged_at: datetime | None = None
     last_action_at: datetime | None = None
@@ -101,3 +102,17 @@ class EmailTriageStatsResponse(BaseModel):
     review_count: int = 0
     unsubscribe_count: int = 0
     last_run: EmailTriageLastRunResponse | None = None
+
+
+class EmailTriageReviewInput(BaseModel):
+    """User review decision for a triaged message."""
+
+    decision: Literal["reviewed", "ignored"]
+    bucket: EmailBucket | None = None
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class EmailTriageReviewResponse(BaseModel):
+    """Response after a triage review decision is saved."""
+
+    message: EmailTriageMessageResponse

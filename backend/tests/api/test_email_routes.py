@@ -214,3 +214,128 @@ async def test_get_triage_stats_returns_last_run_summary(client) -> None:
     payload = response.json()
     assert payload["total_triaged"] == 5
     assert payload["last_run"]["messages_triaged"] == 10
+
+
+@pytest.mark.anyio
+async def test_review_triage_message_returns_updated_message(client, mock_db_session) -> None:
+    """Review endpoint should proxy the updated triage message."""
+    user = _mock_user()
+    app.dependency_overrides[get_current_user] = lambda: user
+
+    source = SimpleNamespace(email_address="email@example.com")
+    message = SimpleNamespace(
+        id=uuid4(),
+        source_id=uuid4(),
+        source=source,
+        sync_id=None,
+        gmail_message_id="gmail-1",
+        gmail_thread_id="thread-1",
+        subject="Needs review",
+        from_address="sender@example.com",
+        to_address="me@example.com",
+        received_at=datetime.now(UTC),
+        processed_at=None,
+        processing_error=None,
+        bucket="now",
+        triage_status="reviewed",
+        triage_confidence=0.72,
+        actionability_score=0.82,
+        summary="Review me",
+        requires_review=False,
+        unsubscribe_candidate=False,
+        archive_recommended=False,
+        is_vip=False,
+        triaged_at=datetime.now(UTC),
+        last_action_at=datetime.now(UTC),
+    )
+    email_service = SimpleNamespace(review_triage_message=AsyncMock(return_value=message))
+    app.dependency_overrides[get_email_service] = lambda: email_service
+
+    response = await client.post(
+        f"/api/v1/email/triage/messages/{message.id}/review",
+        json={"decision": "reviewed", "bucket": "now"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["message"]["triage_status"] == "reviewed"
+    assert payload["message"]["bucket"] == "now"
+    mock_db_session.commit.assert_awaited()
+
+
+@pytest.mark.anyio
+async def test_list_subscription_groups_serializes_groups(client) -> None:
+    """Cleanup subscriptions endpoint should serialize grouped sender review data."""
+    user = _mock_user()
+    app.dependency_overrides[get_current_user] = lambda: user
+
+    source = SimpleNamespace(email_address="email@example.com")
+    message = SimpleNamespace(
+        id=uuid4(),
+        source=source,
+        subject="Weekly roundup",
+        received_at=datetime.now(UTC),
+        bucket="newsletter",
+        unsubscribe_candidate=True,
+        archive_recommended=True,
+    )
+    email_service = SimpleNamespace(
+        list_subscription_groups=AsyncMock(
+            return_value=(
+                [
+                    {
+                        "sender_domain": "example.com",
+                        "representative_sender": "newsletter@example.com",
+                        "representative_message_id": message.id,
+                        "total_messages": 3,
+                        "unsubscribe_count": 2,
+                        "archive_count": 3,
+                        "latest_received_at": datetime.now(UTC),
+                        "sample_messages": [message],
+                    }
+                ],
+                1,
+            )
+        )
+    )
+    app.dependency_overrides[get_email_service] = lambda: email_service
+
+    response = await client.get("/api/v1/email/subscriptions")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 1
+    assert payload["items"][0]["sender_domain"] == "example.com"
+    assert payload["items"][0]["sample_messages"][0]["archive_recommended"] is True
+
+
+@pytest.mark.anyio
+async def test_list_action_logs_serializes_cleanup_history(client) -> None:
+    """Cleanup audit log endpoint should serialize action entries."""
+    user = _mock_user()
+    app.dependency_overrides[get_current_user] = lambda: user
+
+    log = SimpleNamespace(
+        id=uuid4(),
+        message_id=uuid4(),
+        message=SimpleNamespace(subject="Weekly roundup"),
+        gmail_thread_id="thread-1",
+        normalized_sender="newsletter@example.com",
+        sender_domain="example.com",
+        action_type="cleanup_rule",
+        action_status="approved",
+        action_source="user",
+        reason="Looks safe",
+        action_metadata={"bucket": "newsletter"},
+        created_at=datetime.now(UTC),
+    )
+    email_service = SimpleNamespace(list_action_logs=AsyncMock(return_value=([log], 1)))
+    app.dependency_overrides[get_email_service] = lambda: email_service
+
+    response = await client.get("/api/v1/email/actions/logs")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 1
+    assert payload["items"][0]["action_type"] == "cleanup_rule"
+    assert payload["items"][0]["metadata"]["bucket"] == "newsletter"

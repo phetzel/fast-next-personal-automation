@@ -27,7 +27,10 @@ class EmailDestinationCreate(BaseModel):
     """Schema for creating an email destination."""
 
     name: str = Field(..., min_length=1, max_length=255)
-    destination_type: str = Field(default="jobs", description="Type of destination: 'jobs'")
+    destination_type: str = Field(
+        default="jobs",
+        description="Type of destination: 'jobs' or 'cleanup'",
+    )
     filter_rules: FilterRules | None = None
     parser_name: str | None = Field(
         default=None,
@@ -35,6 +38,10 @@ class EmailDestinationCreate(BaseModel):
     )
     is_active: bool = True
     priority: int = Field(default=0, description="Higher priority destinations are checked first")
+    always_keep: bool = False
+    queue_unsubscribe: bool = False
+    suggest_archive: bool = False
+    bucket_override: str | None = Field(default=None, max_length=50)
 
 
 class EmailDestinationUpdate(BaseModel):
@@ -45,6 +52,10 @@ class EmailDestinationUpdate(BaseModel):
     parser_name: str | None = None
     is_active: bool | None = None
     priority: int | None = None
+    always_keep: bool | None = None
+    queue_unsubscribe: bool | None = None
+    suggest_archive: bool | None = None
+    bucket_override: str | None = Field(default=None, max_length=50)
 
 
 class EmailDestinationResponse(BaseModel):
@@ -58,6 +69,10 @@ class EmailDestinationResponse(BaseModel):
     parser_name: str | None
     is_active: bool
     priority: int
+    always_keep: bool
+    queue_unsubscribe: bool
+    suggest_archive: bool
+    bucket_override: str | None
     created_at: datetime
     updated_at: datetime | None
 

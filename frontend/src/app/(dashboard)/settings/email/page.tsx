@@ -5,6 +5,7 @@ import {
   ConnectedAccountsCard,
   EmailSettingsHeader,
   HowItWorksCard,
+  SenderRulesCard,
   SupportedSourcesCard,
   useEmailSettingsScreen,
 } from "@/components/screens/dashboard/settings/email";
@@ -56,6 +57,15 @@ export default function EmailSettingsPage() {
       />
 
       {screen.config && <SupportedSourcesCard config={screen.config} />}
+
+      <SenderRulesCard
+        senderRules={screen.senderRules}
+        isSaving={screen.senderRulesSaving}
+        onCreateRule={screen.onCreateSenderRule}
+        onUpdateRule={screen.onUpdateSenderRule}
+        onDeleteRule={screen.onDeleteSenderRule}
+        onToggleRule={screen.onToggleSenderRule}
+      />
 
       <HowItWorksCard />
     </div>

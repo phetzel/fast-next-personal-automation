@@ -11,6 +11,7 @@ from uuid import uuid4
 import pytest
 
 from app.clients.gmail import EmailContent
+from app.core.exceptions import BadRequestError
 from app.core.security import decrypt_token, is_encrypted
 from app.email.config import (
     DEFAULT_JOB_SENDERS,
@@ -19,8 +20,13 @@ from app.email.config import (
     get_parser_for_sender,
 )
 from app.email.parsers.base import EmailParser, ExtractedJob
+from app.email.utils import sender_matches_pattern
 from app.pipelines.actions.email_triage import classifier as triage_classifier
+from app.pipelines.actions.email_triage import pipeline as triage_pipeline
 from app.pipelines.actions.email_triage.classifier import classify_email
+from app.pipelines.actions.email_triage.pipeline import EmailTriagePipeline
+from app.repositories import email_destination as email_destination_repo
+from app.services.email import EmailService
 from app.services.job import IngestionResult, RawJob
 
 
@@ -141,6 +147,38 @@ class TestGetParser:
         """Test unknown parser name falls back to AI parser."""
         parser = get_parser("unknown_parser")
         assert parser.name == "ai"
+
+
+class TestSenderMatching:
+    """Tests for sender-pattern matching helpers."""
+
+    def test_sender_matches_domain_and_subdomain_patterns(self):
+        assert sender_matches_pattern("alerts@example.com", "example.com") is True
+        assert sender_matches_pattern("alerts@news.example.com", "example.com") is True
+        assert sender_matches_pattern("alerts@notexample.com", "example.com") is False
+
+    def test_sender_matches_exact_email_patterns(self):
+        assert sender_matches_pattern("alerts@example.com", "alerts@example.com") is True
+        assert sender_matches_pattern("other@example.com", "alerts@example.com") is False
+
+    def test_destination_matching_respects_domain_boundaries(self):
+        destination = SimpleNamespace(
+            filter_rules={
+                "sender_patterns": ["example.com"],
+                "subject_contains": [],
+                "subject_not_contains": [],
+            }
+        )
+
+        assert email_destination_repo.matches_email(destination, "alerts@example.com", None) is True
+        assert (
+            email_destination_repo.matches_email(destination, "alerts@news.example.com", None)
+            is True
+        )
+        assert (
+            email_destination_repo.matches_email(destination, "alerts@notexample.com", None)
+            is False
+        )
 
 
 class TestEmailParserBase:
@@ -562,6 +600,60 @@ class TestEmailTriagePipeline:
         assert update_kwargs.get("last_triage_at") is None
 
     @pytest.mark.anyio
+    async def test_cleanup_rules_can_override_bucket_and_suggestions(self):
+        pipeline = EmailTriagePipeline()
+        cleanup_rule = SimpleNamespace(
+            bucket_override="done",
+            always_keep=False,
+            queue_unsubscribe=False,
+            suggest_archive=True,
+        )
+
+        with patch.object(
+            triage_pipeline.email_destination_repo,
+            "find_matching_destinations",
+            AsyncMock(return_value=[cleanup_rule]),
+        ):
+            result = await pipeline._apply_cleanup_rules(
+                AsyncMock(),
+                uuid4(),
+                "newsletter@example.com",
+                "Weekly roundup",
+                bucket="newsletter",
+                requires_review=True,
+                unsubscribe_candidate=True,
+                archive_recommended=False,
+            )
+
+        assert result == ("done", False, False, True)
+
+    @pytest.mark.anyio
+    async def test_record_cleanup_suggestions_skips_existing_suggested_logs(self):
+        pipeline = EmailTriagePipeline()
+        message = SimpleNamespace(id=uuid4(), from_address="newsletter@example.com")
+        existing_log = SimpleNamespace(id=uuid4())
+
+        with (
+            patch.object(
+                triage_pipeline.email_action_log_repo,
+                "get_by_message_action",
+                AsyncMock(side_effect=[existing_log, existing_log]),
+            ),
+            patch.object(triage_pipeline.email_action_log_repo, "create", AsyncMock()) as create_log,
+        ):
+            await pipeline._record_cleanup_suggestions(
+                AsyncMock(),
+                uuid4(),
+                message,
+                "thread-1",
+                bucket="newsletter",
+                unsubscribe_candidate=True,
+                archive_recommended=True,
+            )
+
+        create_log.assert_not_awaited()
+
+    @pytest.mark.anyio
     async def test_email_sync_requires_authentication(self):
         """Test that email sync requires user authentication."""
         from app.pipelines.action_base import PipelineContext, PipelineSource
@@ -613,6 +705,115 @@ class TestEmailTriageRepositoryQueries:
         assert "email_messages.triaged_at IS NOT NULL" in str(db.execute.await_args_list[0].args[0])
         for call in db.scalar.await_args_list:
             assert "email_messages.triaged_at IS NOT NULL" in str(call.args[0])
+
+
+class TestEmailCleanupReviewService:
+    """Tests for phase-2 cleanup review flows."""
+
+    @pytest.mark.anyio
+    async def test_approve_subscription_group_requires_cleanup_candidate(self):
+        service = EmailService(AsyncMock())
+        message = SimpleNamespace(
+            id=uuid4(),
+            from_address="alerts@bank.com",
+            subject="Security alert",
+            unsubscribe_candidate=False,
+            archive_recommended=False,
+        )
+
+        with (
+            patch.object(service, "get_triage_message", AsyncMock(return_value=message)),
+            pytest.raises(BadRequestError, match="cleanup candidate"),
+        ):
+            await service.approve_subscription_group(message.id, uuid4())
+
+    @pytest.mark.anyio
+    async def test_dismiss_subscription_group_requires_cleanup_candidate(self):
+        service = EmailService(AsyncMock())
+        message = SimpleNamespace(
+            id=uuid4(),
+            from_address="alerts@bank.com",
+            subject="Security alert",
+            unsubscribe_candidate=False,
+            archive_recommended=False,
+        )
+
+        with (
+            patch.object(service, "get_triage_message", AsyncMock(return_value=message)),
+            pytest.raises(BadRequestError, match="cleanup candidate"),
+        ):
+            await service.dismiss_subscription_group(message.id, uuid4())
+
+    @pytest.mark.anyio
+    async def test_approve_subscription_group_preserves_message_cleanup_signals(self):
+        service = EmailService(AsyncMock())
+        message = SimpleNamespace(
+            id=uuid4(),
+            from_address="newsletter@example.com",
+            subject="Weekly roundup",
+            unsubscribe_candidate=True,
+            archive_recommended=False,
+        )
+        rule = SimpleNamespace(
+            id=uuid4(),
+            queue_unsubscribe=True,
+            suggest_archive=False,
+            always_keep=False,
+        )
+
+        with (
+            patch.object(service, "get_triage_message", AsyncMock(return_value=message)),
+            patch.object(
+                service,
+                "_upsert_cleanup_rule",
+                AsyncMock(return_value=(rule, True)),
+            ) as upsert_rule,
+            patch("app.services.email.email_source_repo.update_message_triage", AsyncMock()),
+            patch.object(service, "_create_action_log", AsyncMock()),
+        ):
+            await service.approve_subscription_group(message.id, uuid4())
+
+        assert upsert_rule.await_args.kwargs["queue_unsubscribe"] is True
+        assert upsert_rule.await_args.kwargs["suggest_archive"] is False
+
+    @pytest.mark.anyio
+    async def test_list_subscription_groups_fetches_all_cleanup_candidate_pages(self):
+        service = EmailService(AsyncMock())
+        user_id = uuid4()
+        now = datetime(2026, 3, 23, 18, 0, 0)
+
+        def make_message(domain: str, index: int) -> SimpleNamespace:
+            return SimpleNamespace(
+                id=uuid4(),
+                from_address=f"sender{index}@{domain}",
+                subject=f"Digest {index}",
+                received_at=now,
+                unsubscribe_candidate=True,
+                archive_recommended=False,
+                source=SimpleNamespace(email_address="me@example.com"),
+            )
+
+        first_batch = [make_message("alpha.example.com", index) for index in range(500)]
+        second_batch = [make_message("beta.example.com", 500)]
+
+        with (
+            patch(
+                "app.services.email.email_source_repo.list_cleanup_candidate_messages_for_user",
+                AsyncMock(side_effect=[(first_batch, 501), (second_batch, 501)]),
+            ) as list_candidates,
+            patch(
+                "app.services.email.email_destination_repo.get_active_by_user_id",
+                AsyncMock(return_value=[]),
+            ),
+        ):
+            groups, total = await service.list_subscription_groups(user_id, limit=10, offset=0)
+
+        assert list_candidates.await_count == 2
+        assert total == 2
+        assert [group["sender_domain"] for group in groups] == [
+            "alpha.example.com",
+            "beta.example.com",
+        ]
 
 
 class TestEmailSourceRepository:

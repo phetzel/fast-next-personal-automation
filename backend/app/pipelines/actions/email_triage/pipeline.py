@@ -7,10 +7,11 @@ from typing import ClassVar
 from app.clients.gmail import GmailClient
 from app.core.config import settings
 from app.db.session import get_db_context
+from app.email.utils import normalize_sender, sender_domain, should_archive_recommend
 from app.pipelines.action_base import ActionPipeline, ActionResult, PipelineContext
 from app.pipelines.actions.email_triage.classifier import classify_email
 from app.pipelines.registry import register_pipeline
-from app.repositories import email_source_repo
+from app.repositories import email_action_log_repo, email_destination_repo, email_source_repo
 from app.schemas.email_triage import EmailTriageRunInput, EmailTriageRunResult
 
 logger = logging.getLogger(__name__)
@@ -139,6 +140,37 @@ class EmailTriagePipeline(ActionPipeline[EmailTriageRunInput, EmailTriageRunResu
                     continue
 
                 classification = await classify_email(email_content)
+                archive_recommended = should_archive_recommend(
+                    classification.bucket,
+                    classification.confidence,
+                    classification.actionability_score,
+                    classification.is_vip,
+                )
+                source_user_id = getattr(source, "user_id", None)
+                (
+                    bucket,
+                    requires_review,
+                    unsubscribe_candidate,
+                    archive_recommended,
+                ) = (
+                    await self._apply_cleanup_rules(
+                        db,
+                        source_user_id,
+                        email_content.from_address,
+                        email_content.subject,
+                        bucket=classification.bucket,
+                        requires_review=classification.requires_review,
+                        unsubscribe_candidate=classification.unsubscribe_candidate,
+                        archive_recommended=archive_recommended,
+                    )
+                    if source_user_id is not None
+                    else (
+                        classification.bucket,
+                        classification.requires_review,
+                        classification.unsubscribe_candidate,
+                        archive_recommended,
+                    )
+                )
                 await email_source_repo.update_message_triage(
                     db,
                     message,
@@ -147,22 +179,31 @@ class EmailTriagePipeline(ActionPipeline[EmailTriageRunInput, EmailTriageRunResu
                     from_address=email_content.from_address,
                     to_address=email_content.to_address,
                     received_at=email_content.received_at,
-                    bucket=classification.bucket,
+                    bucket=bucket,
                     triage_status="classified",
                     triage_confidence=classification.confidence,
                     actionability_score=classification.actionability_score,
                     summary=classification.summary,
-                    requires_review=classification.requires_review,
-                    unsubscribe_candidate=classification.unsubscribe_candidate,
+                    requires_review=requires_review,
+                    unsubscribe_candidate=unsubscribe_candidate,
+                    archive_recommended=archive_recommended,
                     is_vip=classification.is_vip,
                     triaged_at=now,
                 )
+                if source_user_id is not None:
+                    await self._record_cleanup_suggestions(
+                        db,
+                        source_user_id,
+                        message,
+                        email_content.thread_id,
+                        bucket=bucket,
+                        unsubscribe_candidate=unsubscribe_candidate,
+                        archive_recommended=archive_recommended,
+                    )
 
                 bucket_counts = result["bucket_counts"]
                 assert isinstance(bucket_counts, dict)
-                bucket_counts[classification.bucket] = (
-                    bucket_counts.get(classification.bucket, 0) + 1
-                )
+                bucket_counts[bucket] = bucket_counts.get(bucket, 0) + 1
                 result["messages_triaged"] = int(result["messages_triaged"]) + 1
             except Exception as exc:
                 logger.exception(
@@ -210,3 +251,114 @@ class EmailTriagePipeline(ActionPipeline[EmailTriageRunInput, EmailTriageRunResu
             return datetime.now(UTC) - timedelta(hours=settings.EMAIL_SYNC_LOOKBACK_HOURS)
 
         return source.last_triage_at - timedelta(hours=1)
+
+    async def _apply_cleanup_rules(
+        self,
+        db,
+        user_id,
+        from_address: str,
+        subject: str | None,
+        *,
+        bucket: str,
+        requires_review: bool,
+        unsubscribe_candidate: bool,
+        archive_recommended: bool,
+    ) -> tuple[str, bool, bool, bool]:
+        """Apply matching cleanup rules after base classification."""
+        rules = await email_destination_repo.find_matching_destinations(
+            db,
+            user_id,
+            from_address,
+            subject,
+            destination_type="cleanup",
+        )
+        if not rules:
+            return bucket, requires_review, unsubscribe_candidate, archive_recommended
+
+        rule = rules[0]
+        if rule.bucket_override:
+            bucket = rule.bucket_override
+            requires_review = bucket == "review"
+            if bucket != "newsletter":
+                unsubscribe_candidate = False
+
+        if rule.always_keep:
+            return bucket, False, False, False
+
+        unsubscribe_candidate = unsubscribe_candidate or rule.queue_unsubscribe
+        archive_recommended = archive_recommended or rule.suggest_archive
+        return bucket, requires_review, unsubscribe_candidate, archive_recommended
+
+    async def _record_cleanup_suggestions(
+        self,
+        db,
+        user_id,
+        message,
+        gmail_thread_id: str | None,
+        *,
+        bucket: str,
+        unsubscribe_candidate: bool,
+        archive_recommended: bool,
+    ) -> None:
+        """Record suggestion logs for cleanup-related triage output."""
+        normalized = normalize_sender(message.from_address)
+        domain = sender_domain(message.from_address)
+        if unsubscribe_candidate:
+            await self._record_cleanup_suggestion(
+                db,
+                user_id,
+                message.id,
+                gmail_thread_id,
+                normalized,
+                domain,
+                action_type="unsubscribe_candidate",
+                metadata={"bucket": bucket},
+            )
+        if archive_recommended:
+            await self._record_cleanup_suggestion(
+                db,
+                user_id,
+                message.id,
+                gmail_thread_id,
+                normalized,
+                domain,
+                action_type="archive_recommendation",
+                metadata={"bucket": bucket},
+            )
+
+    async def _record_cleanup_suggestion(
+        self,
+        db,
+        user_id,
+        message_id,
+        gmail_thread_id: str | None,
+        normalized_sender: str | None,
+        sender_domain_value: str | None,
+        *,
+        action_type: str,
+        metadata: dict[str, str],
+    ) -> None:
+        """Write a single cleanup suggestion if one does not already exist."""
+        existing = await email_action_log_repo.get_by_message_action(
+            db,
+            user_id=user_id,
+            message_id=message_id,
+            action_type=action_type,
+            action_status="suggested",
+            action_source="system",
+        )
+        if existing is not None:
+            return
+
+        await email_action_log_repo.create(
+            db,
+            user_id=user_id,
+            message_id=message_id,
+            gmail_thread_id=gmail_thread_id,
+            normalized_sender=normalized_sender,
+            sender_domain=sender_domain_value,
+            action_type=action_type,
+            action_status="suggested",
+            action_source="system",
+            metadata=metadata,
+        )

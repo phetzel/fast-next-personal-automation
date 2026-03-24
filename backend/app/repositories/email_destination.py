@@ -8,6 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.email_destination import EmailDestination
 from app.db.models.email_message_destination import EmailMessageDestination
+from app.email.utils import sender_matches_pattern
+
+_UNSET = object()
 
 # Email Destination operations
 
@@ -17,21 +20,42 @@ async def get_by_id(db: AsyncSession, destination_id: UUID) -> EmailDestination 
     return await db.get(EmailDestination, destination_id)
 
 
-async def get_by_user_id(db: AsyncSession, user_id: UUID) -> list[EmailDestination]:
+async def get_by_user_id(
+    db: AsyncSession,
+    user_id: UUID,
+    *,
+    destination_type: str | None = None,
+) -> list[EmailDestination]:
     """Get all email destinations for a user, ordered by priority (highest first)."""
+    conditions = [EmailDestination.user_id == user_id]
+    if destination_type is not None:
+        conditions.append(EmailDestination.destination_type == destination_type)
+
     result = await db.execute(
         select(EmailDestination)
-        .where(EmailDestination.user_id == user_id)
+        .where(*conditions)
         .order_by(EmailDestination.priority.desc(), EmailDestination.created_at.asc())
     )
     return list(result.scalars().all())
 
 
-async def get_active_by_user_id(db: AsyncSession, user_id: UUID) -> list[EmailDestination]:
+async def get_active_by_user_id(
+    db: AsyncSession,
+    user_id: UUID,
+    *,
+    destination_type: str | None = None,
+) -> list[EmailDestination]:
     """Get all active email destinations for a user, ordered by priority."""
+    conditions = [
+        EmailDestination.user_id == user_id,
+        EmailDestination.is_active.is_(True),
+    ]
+    if destination_type is not None:
+        conditions.append(EmailDestination.destination_type == destination_type)
+
     result = await db.execute(
         select(EmailDestination)
-        .where(EmailDestination.user_id == user_id, EmailDestination.is_active.is_(True))
+        .where(*conditions)
         .order_by(EmailDestination.priority.desc(), EmailDestination.created_at.asc())
     )
     return list(result.scalars().all())
@@ -46,6 +70,10 @@ async def create(
     parser_name: str | None = None,
     is_active: bool = True,
     priority: int = 0,
+    always_keep: bool = False,
+    queue_unsubscribe: bool = False,
+    suggest_archive: bool = False,
+    bucket_override: str | None = None,
 ) -> EmailDestination:
     """Create a new email destination."""
     destination = EmailDestination(
@@ -56,6 +84,10 @@ async def create(
         parser_name=parser_name,
         is_active=is_active,
         priority=priority,
+        always_keep=always_keep,
+        queue_unsubscribe=queue_unsubscribe,
+        suggest_archive=suggest_archive,
+        bucket_override=bucket_override,
     )
     db.add(destination)
     await db.flush()
@@ -66,23 +98,35 @@ async def create(
 async def update(
     db: AsyncSession,
     destination: EmailDestination,
-    name: str | None = None,
-    filter_rules: dict | None = None,
-    parser_name: str | None = None,
-    is_active: bool | None = None,
-    priority: int | None = None,
+    name: str | None | object = _UNSET,
+    filter_rules: dict | None | object = _UNSET,
+    parser_name: str | None | object = _UNSET,
+    is_active: bool | None | object = _UNSET,
+    priority: int | None | object = _UNSET,
+    always_keep: bool | None | object = _UNSET,
+    queue_unsubscribe: bool | None | object = _UNSET,
+    suggest_archive: bool | None | object = _UNSET,
+    bucket_override: str | None | object = _UNSET,
 ) -> EmailDestination:
     """Update an email destination."""
-    if name is not None:
+    if name is not _UNSET:
         destination.name = name
-    if filter_rules is not None:
+    if filter_rules is not _UNSET:
         destination.filter_rules = filter_rules
-    if parser_name is not None:
+    if parser_name is not _UNSET:
         destination.parser_name = parser_name
-    if is_active is not None:
+    if is_active is not _UNSET:
         destination.is_active = is_active
-    if priority is not None:
+    if priority is not _UNSET:
         destination.priority = priority
+    if always_keep is not _UNSET:
+        destination.always_keep = always_keep
+    if queue_unsubscribe is not _UNSET:
+        destination.queue_unsubscribe = queue_unsubscribe
+    if suggest_archive is not _UNSET:
+        destination.suggest_archive = suggest_archive
+    if bucket_override is not _UNSET:
+        destination.bucket_override = bucket_override
     db.add(destination)
     await db.flush()
     await db.refresh(destination)
@@ -111,14 +155,17 @@ def matches_email(destination: EmailDestination, from_address: str, subject: str
     # Check sender patterns
     sender_patterns = rules.get("sender_patterns", [])
     if sender_patterns:
-        from_lower = from_address.lower()
-        sender_match = any(pattern.lower() in from_lower for pattern in sender_patterns)
+        sender_match = any(
+            sender_matches_pattern(from_address, pattern) for pattern in sender_patterns
+        )
         if not sender_match:
             return False
 
     # Check subject contains (if specified)
     subject_contains = rules.get("subject_contains", [])
-    if subject_contains and subject:
+    if subject_contains:
+        if not subject:
+            return False
         subject_lower = subject.lower()
         contains_match = any(term.lower() in subject_lower for term in subject_contains)
         if not contains_match:
@@ -140,10 +187,15 @@ def matches_email(destination: EmailDestination, from_address: str, subject: str
 
 
 async def find_matching_destinations(
-    db: AsyncSession, user_id: UUID, from_address: str, subject: str | None
+    db: AsyncSession,
+    user_id: UUID,
+    from_address: str,
+    subject: str | None,
+    *,
+    destination_type: str | None = None,
 ) -> list[EmailDestination]:
     """Find all active destinations that match an email."""
-    destinations = await get_active_by_user_id(db, user_id)
+    destinations = await get_active_by_user_id(db, user_id, destination_type=destination_type)
     return [d for d in destinations if matches_email(d, from_address, subject)]
 
 

@@ -3,7 +3,7 @@
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from app.api.deps import CurrentUser, DBSession, EmailSvc
 from app.repositories import email_destination_repo
@@ -22,9 +22,13 @@ router = APIRouter()
 async def list_destinations(
     current_user: CurrentUser,
     email_service: EmailSvc,
+    destination_type: str | None = Query(default=None),
 ):
     """List all email destinations for the current user."""
-    destinations = await email_service.list_destinations(current_user.id)
+    destinations = await email_service.list_destinations(
+        current_user.id,
+        destination_type=destination_type,
+    )
     return [EmailDestinationResponse.model_validate(d) for d in destinations]
 
 
@@ -48,6 +52,10 @@ async def create_destination(
         parser_name=destination_data.parser_name,
         is_active=destination_data.is_active,
         priority=destination_data.priority,
+        always_keep=destination_data.always_keep,
+        queue_unsubscribe=destination_data.queue_unsubscribe,
+        suggest_archive=destination_data.suggest_archive,
+        bucket_override=destination_data.bucket_override,
     )
     await db.commit()
     return EmailDestinationResponse.model_validate(destination)
@@ -73,6 +81,10 @@ async def get_destination(
         parser_name=destination.parser_name,
         is_active=destination.is_active,
         priority=destination.priority,
+        always_keep=destination.always_keep,
+        queue_unsubscribe=destination.queue_unsubscribe,
+        suggest_archive=destination.suggest_archive,
+        bucket_override=destination.bucket_override,
         created_at=destination.created_at,
         updated_at=destination.updated_at,
         stats=EmailDestinationStats(**stats_data),
@@ -90,16 +102,12 @@ async def update_destination(
     """Update an email destination's settings."""
     update_kwargs: dict[str, Any] = {}
 
-    if update_data.name is not None:
-        update_kwargs["name"] = update_data.name
-    if update_data.filter_rules is not None:
-        update_kwargs["filter_rules"] = update_data.filter_rules.model_dump()
-    if update_data.parser_name is not None:
-        update_kwargs["parser_name"] = update_data.parser_name
-    if update_data.is_active is not None:
-        update_kwargs["is_active"] = update_data.is_active
-    if update_data.priority is not None:
-        update_kwargs["priority"] = update_data.priority
+    for field_name in update_data.model_fields_set:
+        if field_name == "filter_rules":
+            filter_rules = update_data.filter_rules
+            update_kwargs["filter_rules"] = filter_rules.model_dump() if filter_rules else None
+        else:
+            update_kwargs[field_name] = getattr(update_data, field_name)
 
     destination = await email_service.update_destination(
         destination_id, current_user.id, **update_kwargs

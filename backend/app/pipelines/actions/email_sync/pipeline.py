@@ -14,6 +14,7 @@ from app.clients.gmail import GmailClient
 from app.core.config import settings
 from app.db.session import get_db_context
 from app.email.config import get_default_sender_domains
+from app.email.utils import sender_matches_pattern
 from app.pipelines.action_base import ActionPipeline, ActionResult, PipelineContext
 from app.pipelines.registry import register_pipeline
 from app.repositories import email_destination_repo, email_source_repo, email_sync_repo
@@ -243,12 +244,11 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
         return deduped
 
     def _matches_sender_patterns(self, from_address: str, patterns: list[str] | None) -> bool:
-        """Check whether a sender address matches any configured substring pattern."""
+        """Check whether a sender address matches any configured email/domain pattern."""
         if not patterns:
             return False
 
-        sender = from_address.lower()
-        return any(pattern.lower() in sender for pattern in patterns if pattern)
+        return any(sender_matches_pattern(from_address, pattern) for pattern in patterns)
 
     async def _sync_source(
         self,
@@ -275,7 +275,11 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
         }
 
         default_destination = await email_service.ensure_default_destination(user_id)
-        active_destinations = await email_destination_repo.get_active_by_user_id(db, user_id)
+        active_destinations = await email_destination_repo.get_active_by_user_id(
+            db,
+            user_id,
+            destination_type="jobs",
+        )
         if not active_destinations:
             logger.info("Skipping email sync because no active destinations are configured")
             await email_source_repo.update_sync_status(db, source, datetime.now(UTC))

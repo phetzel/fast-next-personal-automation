@@ -6,11 +6,24 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useConfirmDialog } from "@/components/shared/feedback";
 import { useEnsureEmailTriageSchedule } from "@/hooks/use-email-triage-schedule-bootstrap";
-import { useEmailConfigQuery, useEmailSourcesQuery } from "@/hooks/queries/email";
+import {
+  useCreateEmailDestinationMutation,
+  useDeleteEmailDestinationMutation,
+  useEmailConfigQuery,
+  useEmailDestinationsQuery,
+  useEmailSourcesQuery,
+  useUpdateEmailDestinationMutation,
+} from "@/hooks/queries/email";
 import { apiClient } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/formatters";
 import { queryKeys } from "@/lib/query-keys";
-import type { EmailConfig, EmailSource, EmailSyncOutput } from "@/types";
+import type {
+  EmailConfig,
+  EmailDestination,
+  EmailDestinationInput,
+  EmailSource,
+  EmailSyncOutput,
+} from "@/types";
 
 export function useEmailSettingsScreen() {
   const confirmDialog = useConfirmDialog();
@@ -23,6 +36,7 @@ export function useEmailSettingsScreen() {
 
   const sourcesQuery = useEmailSourcesQuery();
   const configQuery = useEmailConfigQuery();
+  const senderRulesQuery = useEmailDestinationsQuery("cleanup");
   useEnsureEmailTriageSchedule(sourcesQuery.data ?? []);
 
   useEffect(() => {
@@ -92,14 +106,23 @@ export function useEmailSettingsScreen() {
     },
   });
 
+  const createRuleMutation = useCreateEmailDestinationMutation();
+  const updateRuleMutation = useUpdateEmailDestinationMutation();
+  const deleteRuleMutation = useDeleteEmailDestinationMutation();
+
   return {
     sources: sourcesQuery.data ?? [],
     config: (configQuery.data ?? null) as EmailConfig | null,
+    senderRules: senderRulesQuery.data ?? [],
     loading:
       sourcesQuery.isLoading ||
       sourcesQuery.isFetching ||
       configQuery.isLoading ||
-      configQuery.isFetching,
+      configQuery.isFetching ||
+      senderRulesQuery.isLoading ||
+      senderRulesQuery.isFetching,
+    senderRulesSaving:
+      createRuleMutation.isPending || updateRuleMutation.isPending || deleteRuleMutation.isPending,
     connecting,
     syncingSourceId,
     error:
@@ -108,6 +131,8 @@ export function useEmailSettingsScreen() {
         ? sourcesQuery.error.message
         : configQuery.error instanceof Error
           ? configQuery.error.message
+          : senderRulesQuery.error instanceof Error
+            ? senderRulesQuery.error.message
           : null),
     success,
     formatDate: (value: string | null) => (value ? formatDateTime(value) : "Never"),
@@ -170,6 +195,81 @@ export function useEmailSettingsScreen() {
         await deleteMutation.mutateAsync(sourceId);
         return true;
       } catch {
+        return false;
+      }
+    },
+    onCreateSenderRule: async (input: EmailDestinationInput) => {
+      setError(null);
+      try {
+        await createRuleMutation.mutateAsync(input);
+        await queryClient.invalidateQueries({ queryKey: queryKeys.email.all });
+        toast.success("Sender rule created");
+        return true;
+      } catch (mutationError) {
+        const message =
+          mutationError instanceof Error ? mutationError.message : "Failed to create sender rule";
+        setError(message);
+        toast.error(message);
+        return false;
+      }
+    },
+    onUpdateSenderRule: async (id: string, input: Partial<EmailDestinationInput>) => {
+      setError(null);
+      try {
+        await updateRuleMutation.mutateAsync({ id, input });
+        await queryClient.invalidateQueries({ queryKey: queryKeys.email.all });
+        toast.success("Sender rule updated");
+        return true;
+      } catch (mutationError) {
+        const message =
+          mutationError instanceof Error ? mutationError.message : "Failed to update sender rule";
+        setError(message);
+        toast.error(message);
+        return false;
+      }
+    },
+    onToggleSenderRule: async (rule: EmailDestination) => {
+      setError(null);
+      try {
+        await updateRuleMutation.mutateAsync({
+          id: rule.id,
+          input: { is_active: !rule.is_active },
+        });
+        await queryClient.invalidateQueries({ queryKey: queryKeys.email.all });
+        toast.success(rule.is_active ? "Sender rule paused" : "Sender rule resumed");
+        return true;
+      } catch (mutationError) {
+        const message =
+          mutationError instanceof Error ? mutationError.message : "Failed to update sender rule";
+        setError(message);
+        toast.error(message);
+        return false;
+      }
+    },
+    onDeleteSenderRule: async (id: string) => {
+      const confirmed = await confirmDialog({
+        title: "Delete sender rule?",
+        description:
+          "This removes the cleanup rule and future messages from this sender may reappear in review queues.",
+        confirmLabel: "Delete",
+        destructive: true,
+      });
+
+      if (!confirmed) {
+        return false;
+      }
+
+      setError(null);
+      try {
+        await deleteRuleMutation.mutateAsync(id);
+        await queryClient.invalidateQueries({ queryKey: queryKeys.email.all });
+        toast.success("Sender rule deleted");
+        return true;
+      } catch (mutationError) {
+        const message =
+          mutationError instanceof Error ? mutationError.message : "Failed to delete sender rule";
+        setError(message);
+        toast.error(message);
         return false;
       }
     },

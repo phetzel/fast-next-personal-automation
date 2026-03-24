@@ -61,6 +61,7 @@ export interface EmailTriageMessage extends Omit<EmailMessage, "jobs_extracted" 
   summary: string | null;
   requires_review: boolean;
   unsubscribe_candidate: boolean;
+  archive_recommended: boolean;
   is_vip: boolean;
   triaged_at: string | null;
   last_action_at: string | null;
@@ -99,8 +100,108 @@ export interface EmailTriageStats {
   last_run: EmailTriageLastRun | null;
 }
 
+export interface EmailTriageReviewInput {
+  decision: "reviewed" | "ignored";
+  bucket?: EmailBucket | null;
+  reason?: string | null;
+}
+
+export interface EmailTriageReviewResponse {
+  message: EmailTriageMessage;
+}
+
 export interface EmailTriageListResponse {
   items: EmailTriageMessage[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface FilterRules {
+  sender_patterns: string[];
+  subject_contains: string[];
+  subject_not_contains: string[];
+}
+
+export interface EmailDestination {
+  id: string;
+  user_id: string;
+  name: string;
+  destination_type: string;
+  filter_rules: FilterRules | null;
+  parser_name: string | null;
+  is_active: boolean;
+  priority: number;
+  always_keep: boolean;
+  queue_unsubscribe: boolean;
+  suggest_archive: boolean;
+  bucket_override: EmailBucket | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface EmailDestinationInput {
+  name: string;
+  destination_type: string;
+  filter_rules: FilterRules | null;
+  parser_name?: string | null;
+  is_active: boolean;
+  priority: number;
+  always_keep: boolean;
+  queue_unsubscribe: boolean;
+  suggest_archive: boolean;
+  bucket_override: EmailBucket | null;
+}
+
+export interface EmailSubscriptionMessagePreview {
+  id: string;
+  subject: string | null;
+  received_at: string | null;
+  source_email_address: string;
+  bucket: EmailBucket | null;
+  unsubscribe_candidate: boolean;
+  archive_recommended: boolean;
+}
+
+export interface EmailSubscriptionGroup {
+  sender_domain: string;
+  representative_sender: string;
+  representative_message_id: string;
+  total_messages: number;
+  unsubscribe_count: number;
+  archive_count: number;
+  latest_received_at: string | null;
+  sample_messages: EmailSubscriptionMessagePreview[];
+}
+
+export interface EmailSubscriptionListResponse {
+  items: EmailSubscriptionGroup[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface EmailCleanupDecisionInput {
+  reason?: string | null;
+}
+
+export interface EmailActionLog {
+  id: string;
+  message_id: string | null;
+  message_subject: string | null;
+  gmail_thread_id: string | null;
+  normalized_sender: string | null;
+  sender_domain: string | null;
+  action_type: string;
+  action_status: string;
+  action_source: string;
+  reason: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface EmailActionLogListResponse {
+  items: EmailActionLog[];
   total: number;
   limit: number;
   offset: number;

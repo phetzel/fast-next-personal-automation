@@ -54,6 +54,10 @@ class EmailDestination(Base, TimestampMixin):
     priority: Mapped[int] = mapped_column(
         Integer, default=0, nullable=False
     )  # Higher = checked first
+    always_keep: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    queue_unsubscribe: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    suggest_archive: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    bucket_override: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # Relationships
     user: Mapped["User"] = relationship("User", lazy="selectin")

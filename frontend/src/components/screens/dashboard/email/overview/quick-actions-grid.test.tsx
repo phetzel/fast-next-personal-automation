@@ -15,13 +15,25 @@ vi.mock("next/link", () => ({
 }));
 
 describe("EmailOverviewQuickActionsGrid", () => {
-  it("includes the triage queue quick action", () => {
+  it("includes cleanup review shortcuts", () => {
     render(<EmailOverviewQuickActionsGrid />);
 
     expect(screen.getByText("Open Triage Queue")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /open triage queue/i })).toHaveAttribute(
       "href",
       "/email/triage"
+    );
+    expect(screen.getByRole("link", { name: /review queue/i })).toHaveAttribute(
+      "href",
+      "/email/review"
+    );
+    expect(screen.getByRole("link", { name: /subscriptions/i })).toHaveAttribute(
+      "href",
+      "/email/subscriptions"
+    );
+    expect(screen.getByRole("link", { name: /cleanup history/i })).toHaveAttribute(
+      "href",
+      "/email/history"
     );
   });
 });

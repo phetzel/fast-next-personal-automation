@@ -348,8 +348,10 @@ async def update_message_triage(
     summary: str | None = None,
     requires_review: bool | None = None,
     unsubscribe_candidate: bool | None = None,
+    archive_recommended: bool | None = None,
     is_vip: bool | None = None,
     triaged_at: datetime | None = None,
+    last_action_at: datetime | None = None,
 ) -> EmailMessage:
     """Update triage fields and refreshed metadata on an email message."""
     if gmail_thread_id is not None:
@@ -376,10 +378,14 @@ async def update_message_triage(
         message.requires_review = requires_review
     if unsubscribe_candidate is not None:
         message.unsubscribe_candidate = unsubscribe_candidate
+    if archive_recommended is not None:
+        message.archive_recommended = archive_recommended
     if is_vip is not None:
         message.is_vip = is_vip
     if triaged_at is not None:
         message.triaged_at = triaged_at
+    if last_action_at is not None:
+        message.last_action_at = last_action_at
     db.add(message)
     await db.flush()
     await db.refresh(message)
@@ -436,6 +442,31 @@ async def list_triage_messages_for_user(
         conditions.append(EmailMessage.requires_review.is_(requires_review))
     if unsubscribe_candidate is not None:
         conditions.append(EmailMessage.unsubscribe_candidate.is_(unsubscribe_candidate))
+
+    query = (
+        select(EmailMessage)
+        .join(EmailSource, EmailSource.id == EmailMessage.source_id)
+        .where(*conditions)
+        .order_by(EmailMessage.received_at.desc().nullslast(), EmailMessage.created_at.desc())
+    )
+    total = await db.scalar(select(func.count()).select_from(query.subquery())) or 0
+    result = await db.execute(query.offset(offset).limit(limit))
+    return list(result.scalars().all()), total
+
+
+async def list_cleanup_candidate_messages_for_user(
+    db: AsyncSession,
+    user_id: UUID,
+    *,
+    limit: int = 1000,
+    offset: int = 0,
+) -> tuple[list[EmailMessage], int]:
+    """List cleanup candidate messages for a user."""
+    conditions = [
+        EmailSource.user_id == user_id,
+        EmailMessage.triaged_at.is_not(None),
+        (EmailMessage.unsubscribe_candidate.is_(True) | EmailMessage.archive_recommended.is_(True)),
+    ]
 
     query = (
         select(EmailMessage)
