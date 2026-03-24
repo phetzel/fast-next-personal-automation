@@ -23,8 +23,44 @@ JOB_SUBJECT_KEYWORDS = (
     "application",
     "candidate",
     "offer",
+    "rejection",
+    "unfortunately",
+    "not moving forward",
+    "decided not to proceed",
+    "position has been filled",
+    "your application to",
+    "applied to",
+    "hiring manager",
+    "phone screen",
+    "technical interview",
+    "coding challenge",
+    "take-home",
+    "onsite interview",
+    "offer letter",
+    "compensation",
+    "background check",
+    "new job",
+    "job opportunity",
+    "we found your profile",
 )
-JOB_SENDER_KEYWORDS = ("linkedin.com", "indeed.com", "glassdoor.com", "ziprecruiter.com")
+JOB_SENDER_KEYWORDS = (
+    "linkedin.com",
+    "indeed.com",
+    "glassdoor.com",
+    "ziprecruiter.com",
+    "greenhouse.io",
+    "lever.co",
+    "workday.com",
+    "myworkday",
+    "icims.com",
+    "jobvite.com",
+    "smartrecruiters.com",
+    "ashbyhq.com",
+    "breezy.hr",
+    "welcometothejungle.com",
+    "dice.com",
+    "hiringcafe.com",
+)
 FINANCE_KEYWORDS = (
     "receipt",
     "invoice",
@@ -35,6 +71,18 @@ FINANCE_KEYWORDS = (
     "renewal",
     "subscription",
     "order confirmation",
+    "transaction",
+    "purchase",
+    "refund",
+    "credit card",
+    "direct deposit",
+    "autopay",
+    "billing",
+    "your order",
+    "payment received",
+    "payment due",
+    "amount due",
+    "balance",
 )
 FINANCE_SENDERS = (
     "paypal.com",
@@ -47,6 +95,17 @@ FINANCE_SENDERS = (
     "citibank.com",
     "apple.com",
     "amazon.com",
+    "squareup.com",
+    "cash.app",
+    "zelle",
+    "capitalone.com",
+    "amex.com",
+    "americanexpress.com",
+    "usbank.com",
+    "ally.com",
+    "netflix.com",
+    "spotify.com",
+    "hulu.com",
 )
 NEWSLETTER_KEYWORDS = ("newsletter", "digest", "roundup", "weekly", "daily", "news update")
 NOTIFICATION_KEYWORDS = (
@@ -127,12 +186,30 @@ def _job_signal(sender: str, text_blob: str) -> tuple[bool, float, float]:
     if any(keyword in sender for keyword in JOB_SENDER_KEYWORDS):
         return True, 0.95, 0.65
     if any(keyword in text_blob for keyword in JOB_SUBJECT_KEYWORDS):
-        actionability = (
-            0.88
-            if any(keyword in text_blob for keyword in ("interview", "offer", "recruiter"))
-            else 0.6
+        # Higher actionability for time-sensitive job stages
+        high_action = (
+            "interview",
+            "offer",
+            "recruiter",
+            "phone screen",
+            "onsite",
+            "coding challenge",
+            "take-home",
+            "offer letter",
+            "background check",
         )
-        return True, 0.9, actionability
+        rejection = (
+            "rejection",
+            "unfortunately",
+            "not moving forward",
+            "decided not to proceed",
+            "position has been filled",
+        )
+        if any(keyword in text_blob for keyword in high_action):
+            return True, 0.92, 0.88
+        if any(keyword in text_blob for keyword in rejection):
+            return True, 0.92, 0.7
+        return True, 0.9, 0.6
     return False, 0.0, 0.0
 
 

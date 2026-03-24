@@ -42,6 +42,12 @@ class EmailTriageRunResult(BaseModel):
     messages_triaged: int = 0
     bucket_counts: dict[str, int] = Field(default_factory=dict)
     sources_processed: int = 0
+    # Phase 3 routing counts
+    routed_job_messages: int = 0
+    created_jobs: int = 0
+    routed_finance_messages: int = 0
+    imported_transactions: int = 0
+    routing_errors: int = 0
     errors: list[str] = Field(default_factory=list)
 
 

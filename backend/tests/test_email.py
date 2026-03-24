@@ -441,7 +441,7 @@ class TestEmailTriageClassifier:
             _email_content(
                 subject="Claim your bitcoin lottery prize",
                 from_address="newsletter@totally-legit.biz",
-                snippet="Wire transfer required to unlock your winnings.",
+                snippet="Click here to claim your prize now before it expires.",
                 list_unsubscribe="<mailto:unsubscribe@example.com>",
                 precedence="bulk",
             )
@@ -588,7 +588,7 @@ class TestEmailTriagePipeline:
             ) as update_triage_status,
             patch.object(triage_pipeline, "classify_email", AsyncMock(return_value=classification)),
         ):
-            result = await pipeline._triage_source(db, source, input_data)
+            result = await pipeline._triage_source(db, source, input_data, uuid4())
 
         assert result["messages_scanned"] == 2
         assert result["messages_triaged"] == 1
@@ -639,7 +639,9 @@ class TestEmailTriagePipeline:
                 "get_by_message_action",
                 AsyncMock(side_effect=[existing_log, existing_log]),
             ),
-            patch.object(triage_pipeline.email_action_log_repo, "create", AsyncMock()) as create_log,
+            patch.object(
+                triage_pipeline.email_action_log_repo, "create", AsyncMock()
+            ) as create_log,
         ):
             await pipeline._record_cleanup_suggestions(
                 AsyncMock(),

@@ -79,7 +79,28 @@ export interface EmailTriageRunResult {
   messages_triaged: number;
   bucket_counts: Record<string, number>;
   sources_processed: number;
+  routed_job_messages: number;
+  created_jobs: number;
+  routed_finance_messages: number;
+  imported_transactions: number;
+  routing_errors: number;
   errors: string[];
+}
+
+/**
+ * Shared email context for cross-area traceability.
+ * Attached to jobs and transactions that were created from email routing.
+ */
+export interface LinkedEmailContext {
+  id: string;
+  source_email_address: string;
+  gmail_message_id: string;
+  gmail_thread_id: string | null;
+  subject: string | null;
+  from_address: string;
+  received_at: string | null;
+  bucket: EmailBucket | null;
+  summary: string | null;
 }
 
 export interface EmailTriageLastRun {

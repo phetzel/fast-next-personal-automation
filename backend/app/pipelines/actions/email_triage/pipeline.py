@@ -1,10 +1,11 @@
-"""Read-only email triage pipeline for bucketing inbox messages."""
+"""Email triage pipeline: classify inbox messages and route jobs/finance."""
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import ClassVar
+from typing import Any, ClassVar
+from uuid import UUID
 
-from app.clients.gmail import GmailClient
+from app.clients.gmail import EmailContent, GmailClient
 from app.core.config import settings
 from app.db.session import get_db_context
 from app.email.utils import normalize_sender, sender_domain, should_archive_recommend
@@ -19,11 +20,11 @@ logger = logging.getLogger(__name__)
 
 @register_pipeline
 class EmailTriagePipeline(ActionPipeline[EmailTriageRunInput, EmailTriageRunResult]):
-    """Classify inbox emails into Phase 1 triage buckets without mutating Gmail."""
+    """Classify inbox emails into triage buckets and route jobs/finance messages."""
 
     name = "email_triage"
-    description = "Classify recent Gmail messages into triage buckets"
-    tags: ClassVar[list[str]] = ["email", "triage", "read-only"]
+    description = "Classify recent Gmail messages and route jobs/finance into their domains"
+    tags: ClassVar[list[str]] = ["email", "triage", "routing"]
     area: ClassVar[str | None] = "email"
 
     async def execute(
@@ -60,12 +61,19 @@ class EmailTriagePipeline(ActionPipeline[EmailTriageRunInput, EmailTriageRunResu
 
             for source in sources:
                 try:
-                    source_result = await self._triage_source(db, source, input)
+                    source_result = await self._triage_source(db, source, input, context.user_id)
                     output.messages_scanned += source_result["messages_scanned"]
                     output.messages_triaged += source_result["messages_triaged"]
                     output.sources_processed += 1
                     for bucket, count in source_result["bucket_counts"].items():
                         output.bucket_counts[bucket] = output.bucket_counts.get(bucket, 0) + count
+                    output.routed_job_messages += source_result.get("routed_job_messages", 0)
+                    output.created_jobs += source_result.get("created_jobs", 0)
+                    output.routed_finance_messages += source_result.get(
+                        "routed_finance_messages", 0
+                    )
+                    output.imported_transactions += source_result.get("imported_transactions", 0)
+                    output.routing_errors += source_result.get("routing_errors", 0)
                     errors.extend(source_result["errors"])
                 except Exception as exc:
                     logger.exception("Error triaging %s", source.email_address)
@@ -86,11 +94,18 @@ class EmailTriagePipeline(ActionPipeline[EmailTriageRunInput, EmailTriageRunResu
             },
         )
 
-    async def _triage_source(self, db, source, input: EmailTriageRunInput) -> dict[str, object]:
+    async def _triage_source(
+        self, db, source, input: EmailTriageRunInput, user_id: UUID
+    ) -> dict[str, object]:
         result: dict[str, object] = {
             "messages_scanned": 0,
             "messages_triaged": 0,
             "bucket_counts": {},
+            "routed_job_messages": 0,
+            "created_jobs": 0,
+            "routed_finance_messages": 0,
+            "imported_transactions": 0,
+            "routing_errors": 0,
             "errors": [],
         }
 
@@ -108,6 +123,8 @@ class EmailTriagePipeline(ActionPipeline[EmailTriageRunInput, EmailTriageRunResu
 
         now = datetime.now(UTC)
         source_errors: list[str] = []
+        # Collect messages eligible for routing after classification
+        routable: list[tuple[Any, EmailContent, str]] = []  # (message, email_content, bucket)
 
         for msg_info in messages:
             message_id = msg_info["id"]
@@ -205,6 +222,11 @@ class EmailTriagePipeline(ActionPipeline[EmailTriageRunInput, EmailTriageRunResu
                 assert isinstance(bucket_counts, dict)
                 bucket_counts[bucket] = bucket_counts.get(bucket, 0) + 1
                 result["messages_triaged"] = int(result["messages_triaged"]) + 1
+
+                # Collect for routing
+                if bucket in ("jobs", "finance"):
+                    routable.append((message, email_content, bucket))
+
             except Exception as exc:
                 logger.exception(
                     "Error triaging message %s for %s",
@@ -214,6 +236,18 @@ class EmailTriagePipeline(ActionPipeline[EmailTriageRunInput, EmailTriageRunResu
                 source_errors.append(
                     f"Error triaging message {message_id} for {source.email_address}: {exc}"
                 )
+
+        # Phase 3: route classified messages into Jobs and Finances
+        if routable:
+            routing_result = await self._route_classified_messages(
+                db, user_id, routable, input.force_full_run
+            )
+            result["routed_job_messages"] = routing_result["routed_job_messages"]
+            result["created_jobs"] = routing_result["created_jobs"]
+            result["routed_finance_messages"] = routing_result["routed_finance_messages"]
+            result["imported_transactions"] = routing_result["imported_transactions"]
+            result["routing_errors"] = routing_result["routing_errors"]
+            source_errors.extend(routing_result["errors"])
 
         if gmail.tokens_refreshed and gmail.new_access_token:
             await email_source_repo.update_tokens(
@@ -251,6 +285,260 @@ class EmailTriagePipeline(ActionPipeline[EmailTriageRunInput, EmailTriageRunResu
             return datetime.now(UTC) - timedelta(hours=settings.EMAIL_SYNC_LOOKBACK_HOURS)
 
         return source.last_triage_at - timedelta(hours=1)
+
+    async def _route_classified_messages(
+        self,
+        db,
+        user_id: UUID,
+        routable: list[tuple[Any, EmailContent, str]],
+        force_full_run: bool,
+    ) -> dict[str, Any]:
+        """Route jobs and finance messages into their domains after classification."""
+        result: dict[str, Any] = {
+            "routed_job_messages": 0,
+            "created_jobs": 0,
+            "routed_finance_messages": 0,
+            "imported_transactions": 0,
+            "routing_errors": 0,
+            "errors": [],
+        }
+
+        from app.services.email import EmailService
+        from app.services.finance_service import FinanceService
+        from app.services.job import JobService
+        from app.services.job_profile import JobProfileService
+
+        email_service = EmailService(db)
+        job_service = JobService(db)
+        finance_service = FinanceService(db)
+        profile_service = JobProfileService(db)
+
+        # Ensure default destinations exist for audit trail
+        jobs_destination = await email_service.ensure_default_destination(user_id)
+        finance_destination = await email_service.ensure_default_finance_destination(user_id)
+
+        # Load default job profile for scoring
+        profile = await profile_service.get_default_for_user(user_id)
+        resume_text = None
+        target_roles = None
+        min_score = 7.0
+        if profile:
+            resume_text = profile.resume.text_content if profile.resume else None
+            target_roles = profile.target_roles
+            min_score = profile.min_score_threshold or 7.0
+
+        for message, email_content, bucket in routable:
+            try:
+                if bucket == "jobs":
+                    routed = await self._route_job_message(
+                        db,
+                        user_id,
+                        message,
+                        email_content,
+                        job_service,
+                        email_service,
+                        jobs_destination,
+                        profile_id=profile.id if profile else None,
+                        resume_text=resume_text,
+                        target_roles=target_roles,
+                        min_score=min_score,
+                        force=force_full_run,
+                    )
+                    if routed is not None:
+                        result["routed_job_messages"] += 1
+                        result["created_jobs"] += routed
+
+                elif bucket == "finance":
+                    routed = await self._route_finance_message(
+                        db,
+                        user_id,
+                        message,
+                        email_content,
+                        finance_service,
+                        email_service,
+                        finance_destination,
+                        force=force_full_run,
+                    )
+                    if routed is not None:
+                        result["routed_finance_messages"] += 1
+                        result["imported_transactions"] += routed
+
+            except Exception as exc:
+                result["routing_errors"] += 1
+                logger.exception("Error routing %s message %s", bucket, message.id)
+                result["errors"].append(f"Error routing {bucket} message {message.id}: {exc}")
+                # Mark for review on routing failure
+                await email_source_repo.update_message_triage(db, message, requires_review=True)
+                await email_action_log_repo.create(
+                    db,
+                    user_id=user_id,
+                    message_id=message.id,
+                    gmail_thread_id=message.gmail_thread_id,
+                    action_type=f"route_{bucket}",
+                    action_status="failed",
+                    action_source="system",
+                    reason=str(exc),
+                )
+
+        return result
+
+    async def _route_job_message(
+        self,
+        db,
+        user_id: UUID,
+        message,
+        email_content: EmailContent,
+        job_service,
+        email_service,
+        destination,
+        *,
+        profile_id: UUID | None,
+        resume_text: str | None,
+        target_roles: list[str] | None,
+        min_score: float,
+        force: bool,
+    ) -> int | None:
+        """Route a single jobs-bucket message. Returns created job count or None if skipped."""
+        # Idempotency: check if already routed to this destination
+        existing = await email_destination_repo.get_message_destinations(db, message.id)
+        for emd in existing:
+            if emd.destination_id == destination.id and not force:
+                return None
+
+        # Use the existing email processing path
+        processing_result = await email_service.process_email_for_destination(
+            message=message,
+            destination=destination,
+            email_content={
+                "subject": email_content.subject,
+                "body_html": email_content.body_html,
+                "body_text": email_content.body_text,
+            },
+            job_service=job_service,
+            profile_id=profile_id,
+            resume_text=resume_text,
+            target_roles=target_roles,
+            min_score=min_score,
+        )
+
+        # Set source_email_message_id on created jobs
+        created_ids = processing_result.get("created_item_ids", [])
+        if created_ids:
+            from app.repositories import job_repo
+
+            for job_id_str in created_ids:
+                try:
+                    from uuid import UUID as UUIDType
+
+                    job = await job_repo.get_by_id(db, UUIDType(job_id_str))
+                    if job and job.source_email_message_id is None:
+                        job.source_email_message_id = message.id
+                except Exception:
+                    logger.warning("Could not set source_email_message_id on job %s", job_id_str)
+
+        # Record destination processing
+        await email_service.record_destination_processing(
+            message_id=message.id,
+            destination_id=destination.id,
+            parser_used=processing_result.get("parser_used"),
+            items_extracted=processing_result.get("items_extracted", 0),
+            processing_error=processing_result.get("error"),
+            created_item_ids=created_ids,
+        )
+
+        # Log the routing action
+        jobs_saved = processing_result.get("jobs_saved", 0)
+        await email_action_log_repo.create(
+            db,
+            user_id=user_id,
+            message_id=message.id,
+            gmail_thread_id=message.gmail_thread_id,
+            action_type="route_jobs",
+            action_status="applied",
+            action_source="system",
+            metadata={
+                "items_extracted": processing_result.get("items_extracted", 0),
+                "jobs_saved": jobs_saved,
+                "created_item_ids": created_ids,
+            },
+        )
+
+        if jobs_saved == 0 and processing_result.get("items_extracted", 0) == 0:
+            await email_source_repo.update_message_triage(db, message, requires_review=True)
+
+        return jobs_saved
+
+    async def _route_finance_message(
+        self,
+        db,
+        user_id: UUID,
+        message,
+        email_content: EmailContent,
+        finance_service,
+        email_service,
+        destination,
+        *,
+        force: bool,
+    ) -> int | None:
+        """Route a single finance-bucket message. Returns imported tx count or None if skipped."""
+        # Idempotency: check if already routed to this destination
+        existing = await email_destination_repo.get_message_destinations(db, message.id)
+        for emd in existing:
+            if emd.destination_id == destination.id and not force:
+                return None
+
+        from app.pipelines.actions.finance_email_sync.parser import parse_transaction_email
+
+        parsed = await parse_transaction_email(
+            subject=email_content.subject,
+            body_text=email_content.body_text or "",
+            body_html=email_content.body_html or "",
+            openai_api_key=settings.OPENAI_API_KEY,
+        )
+
+        imported_count = 0
+        created_item_ids: list[str] = []
+
+        if parsed:
+            # Attach raw_email_id for dedup and source_email_message_id for traceability
+            for tx in parsed:
+                tx["raw_email_id"] = email_content.message_id
+                tx["source_email_message_id"] = message.id
+
+            imported_count, _skipped, created_txns = await finance_service.ingest_from_email(
+                user_id, parsed
+            )
+            created_item_ids = [str(tx.id) for tx in created_txns]
+
+        # Record destination processing
+        await email_service.record_destination_processing(
+            message_id=message.id,
+            destination_id=destination.id,
+            parser_used="finance_ai",
+            items_extracted=len(parsed) if parsed else 0,
+            processing_error=None,
+            created_item_ids=created_item_ids,
+        )
+
+        # Log the routing action
+        await email_action_log_repo.create(
+            db,
+            user_id=user_id,
+            message_id=message.id,
+            gmail_thread_id=message.gmail_thread_id,
+            action_type="route_finance",
+            action_status="applied",
+            action_source="system",
+            metadata={
+                "transactions_found": len(parsed) if parsed else 0,
+                "transactions_imported": imported_count,
+            },
+        )
+
+        if imported_count == 0 and (not parsed or len(parsed) == 0):
+            await email_source_repo.update_message_triage(db, message, requires_review=True)
+
+        return imported_count
 
     async def _apply_cleanup_rules(
         self,

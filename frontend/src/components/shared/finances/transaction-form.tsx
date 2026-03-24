@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { FormDialogShell } from "@/components/shared/forms";
 import type { FinanceCategory, FinancialAccount, Transaction } from "@/types";
 import { Button, Input, Label } from "@/components/ui";
+import { Mail } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -95,6 +96,23 @@ export function TransactionForm({
       }
     >
       <form id={formId} onSubmit={handleSubmit} className="space-y-4">
+        {isEdit && transaction?.linked_email && (
+          <div className="flex items-start gap-2 rounded-md border bg-blue-50/50 p-3 dark:bg-blue-950/20">
+            <Mail className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+            <div className="min-w-0 text-xs">
+              <p className="font-medium text-blue-700 dark:text-blue-300">
+                Source Email
+              </p>
+              {transaction.linked_email.subject && (
+                <p className="mt-0.5 truncate">{transaction.linked_email.subject}</p>
+              )}
+              <p className="text-muted-foreground truncate">
+                {transaction.linked_email.from_address}
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-1.5">
           <Label htmlFor="description">Description *</Label>
           <Input

@@ -212,10 +212,10 @@ class FinanceService:
 
     async def ingest_from_email(
         self, user_id: UUID, parsed_transactions: list[dict[str, Any]]
-    ) -> tuple[int, int]:
+    ) -> tuple[int, int, list]:
         """Ingest email-parsed transactions, deduplicating by raw_email_id.
 
-        Returns (imported_count, skipped_count).
+        Returns (imported_count, skipped_count, created_transactions).
         """
         for tx in parsed_transactions:
             tx["source"] = TransactionSource.EMAIL_PARSED.value
@@ -223,7 +223,7 @@ class FinanceService:
         created, skipped = await finance_repo.create_bulk_transactions(
             self.db, user_id, parsed_transactions
         )
-        return len(created), skipped
+        return len(created), skipped, created
 
     async def import_csv(
         self,

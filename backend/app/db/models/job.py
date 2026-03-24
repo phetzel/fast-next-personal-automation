@@ -5,13 +5,14 @@ from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
+    from app.db.models.email_message import EmailMessage
     from app.db.models.job_profile import JobProfile
     from app.db.models.user import User
 
@@ -44,6 +45,7 @@ class Job(Base, TimestampMixin):
     __table_args__ = (
         # Prevent duplicate job URLs per user
         UniqueConstraint("user_id", "job_url", name="jobs_user_id_job_url_key"),
+        Index("ix_jobs_source_email_message_id", "source_email_message_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -59,6 +61,13 @@ class Job(Base, TimestampMixin):
         ForeignKey("job_profiles.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
+    )
+
+    # Email traceability — links to the source email that created this job
+    source_email_message_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("email_messages.id", ondelete="SET NULL"),
+        nullable=True,
     )
 
     # Job details from scraping
@@ -144,6 +153,9 @@ class Job(Base, TimestampMixin):
     # Relationships
     user: Mapped["User"] = relationship("User", lazy="selectin")
     profile: Mapped["JobProfile | None"] = relationship("JobProfile", lazy="selectin")
+    source_email_message: Mapped["EmailMessage | None"] = relationship(
+        "EmailMessage", lazy="selectin"
+    )
 
     @property
     def job_status(self) -> JobStatus:

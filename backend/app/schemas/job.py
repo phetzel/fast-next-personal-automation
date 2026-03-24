@@ -4,10 +4,11 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from app.db.models.job import JobStatus
 from app.schemas.base import BaseSchema, TimestampSchema
+from app.schemas.linked_email import LinkedEmailContext
 
 # Application type literals
 ApplicationType = Literal["easy_apply", "ats", "direct", "email", "unknown"]
@@ -109,6 +110,34 @@ class JobResponse(JobBase, TimestampSchema):
     applied_at: datetime | None = None
     application_method: str | None = None
     confirmation_code: str | None = None
+    # Linked email context
+    linked_email: LinkedEmailContext | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _resolve_linked_email(cls, data: Any) -> Any:
+        """Build linked_email from the source_email_message relationship."""
+        if isinstance(data, dict):
+            return data
+        msg = getattr(data, "source_email_message", None)
+        if msg is not None and not hasattr(data, "linked_email"):
+            source = getattr(msg, "source", None)
+            object.__setattr__(
+                data,
+                "linked_email",
+                LinkedEmailContext(
+                    id=msg.id,
+                    source_email_address=source.email_address if source else "",
+                    gmail_message_id=msg.gmail_message_id,
+                    gmail_thread_id=msg.gmail_thread_id,
+                    subject=msg.subject,
+                    from_address=msg.from_address,
+                    received_at=msg.received_at,
+                    bucket=msg.bucket,
+                    summary=msg.summary,
+                ),
+            )
+        return data
 
 
 class JobSummary(BaseSchema):

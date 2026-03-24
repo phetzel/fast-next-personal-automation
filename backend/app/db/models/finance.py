@@ -24,6 +24,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
+    from app.db.models.email_message import EmailMessage
     from app.db.models.user import User
 
 
@@ -143,6 +144,10 @@ class Transaction(Base, TimestampMixin):
             unique=True,
             postgresql_where=sa_text("raw_email_id IS NOT NULL"),
         ),
+        Index(
+            "ix_finance_transactions_source_email_message_id",
+            "source_email_message_id",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -184,6 +189,11 @@ class Transaction(Base, TimestampMixin):
         String(20), nullable=False, default=TransactionSource.MANUAL.value, index=True
     )
     raw_email_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    source_email_message_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("email_messages.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     # User review status
     is_reviewed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
@@ -196,6 +206,9 @@ class Transaction(Base, TimestampMixin):
     )
     recurring_expense: Mapped["RecurringExpense | None"] = relationship(
         "RecurringExpense", back_populates="transactions", lazy="selectin"
+    )
+    source_email_message: Mapped["EmailMessage | None"] = relationship(
+        "EmailMessage", lazy="selectin"
     )
 
     def __repr__(self) -> str:

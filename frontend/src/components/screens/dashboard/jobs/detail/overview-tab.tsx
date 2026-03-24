@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { Button, Card, CardContent, CardHeader, CardTitle, Textarea } from "@/components/ui";
 import type { Job } from "@/types";
 import { ExternalLink, Loader2, MessageSquare, Save, Sparkles, Clock } from "lucide-react";
+import { LinkedEmailCard } from "@/components/shared/linked-email-card";
 import { TimelineItem } from "./timeline-item";
 
 interface OverviewTabProps {
@@ -175,6 +176,8 @@ export function OverviewTab({
             </CardContent>
           </Card>
         )}
+
+        {job.linked_email && <LinkedEmailCard email={job.linked_email} />}
 
         <Card>
           <CardHeader>

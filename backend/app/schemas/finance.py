@@ -2,10 +2,10 @@
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from app.db.models.finance import (
     AccountType,
@@ -14,6 +14,7 @@ from app.db.models.finance import (
     TransactionType,
 )
 from app.schemas.base import BaseSchema, TimestampSchema
+from app.schemas.linked_email import LinkedEmailContext
 
 # ──────────────────────────── FinanceCategory ────────────────────────────────
 
@@ -128,6 +129,33 @@ class TransactionResponse(TransactionBase, TimestampSchema):
     source: TransactionSource = TransactionSource.MANUAL
     raw_email_id: str | None = None
     is_reviewed: bool = False
+    linked_email: LinkedEmailContext | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _resolve_linked_email(cls, data: Any) -> Any:
+        """Build linked_email from the source_email_message relationship."""
+        if isinstance(data, dict):
+            return data
+        msg = getattr(data, "source_email_message", None)
+        if msg is not None and not hasattr(data, "linked_email"):
+            email_source = getattr(msg, "source", None)
+            object.__setattr__(
+                data,
+                "linked_email",
+                LinkedEmailContext(
+                    id=msg.id,
+                    source_email_address=email_source.email_address if email_source else "",
+                    gmail_message_id=msg.gmail_message_id,
+                    gmail_thread_id=msg.gmail_thread_id,
+                    subject=msg.subject,
+                    from_address=msg.from_address,
+                    received_at=msg.received_at,
+                    bucket=msg.bucket,
+                    summary=msg.summary,
+                ),
+            )
+        return data
 
 
 class TransactionListResponse(BaseSchema):

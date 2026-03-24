@@ -81,7 +81,9 @@ class EmailMessage(Base, TimestampMixin):
     )  # "indeed", "ai", etc.
 
     # Relationships
-    source: Mapped["EmailSource"] = relationship("EmailSource", back_populates="messages")
+    source: Mapped["EmailSource"] = relationship(
+        "EmailSource", back_populates="messages", lazy="selectin"
+    )
     sync: Mapped["EmailSync | None"] = relationship("EmailSync", back_populates="messages")
     destinations: Mapped[list["EmailMessageDestination"]] = relationship(
         "EmailMessageDestination",

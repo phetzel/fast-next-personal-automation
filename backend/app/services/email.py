@@ -46,6 +46,24 @@ DEFAULT_JOB_SENDERS = [
     "ziprecruiter.com",
     "hiringcafe.com",
 ]
+# Default financial senders for the finance destination
+DEFAULT_FINANCE_SENDERS = [
+    "chase.com",
+    "bankofamerica.com",
+    "paypal.com",
+    "venmo.com",
+    "apple.com",
+    "netflix.com",
+    "discover.com",
+    "citibank.com",
+    "wellsfargo.com",
+    "stripe.com",
+    "billing@",
+    "receipt@",
+    "invoice@",
+    "statement@",
+    "alerts@",
+]
 DEFAULT_CLEANUP_PRIORITY = 100
 CLEANUP_GROUP_BATCH_SIZE = 500
 
@@ -242,6 +260,30 @@ class EmailService:
             priority=0,
         )
 
+    async def ensure_default_finance_destination(self, user_id: UUID) -> EmailDestination:
+        """Ensure the user has a default 'Finance Alerts' destination.
+
+        Creates one if it doesn't exist.
+        """
+        destinations = await email_destination_repo.get_by_user_id(self.db, user_id)
+
+        for dest in destinations:
+            if dest.destination_type == "finance":
+                return dest
+
+        return await email_destination_repo.create(
+            self.db,
+            user_id=user_id,
+            name="Finance Alerts",
+            destination_type="finance",
+            filter_rules={
+                "sender_patterns": DEFAULT_FINANCE_SENDERS,
+            },
+            parser_name=None,
+            is_active=True,
+            priority=0,
+        )
+
     async def ensure_default_sync_schedule(self, user_id: UUID) -> Any:
         """Ensure the user has a default scheduled email sync."""
         tasks, _ = await scheduled_task_repo.get_by_user(
@@ -357,9 +399,7 @@ class EmailService:
         message = await self.get_triage_message(message_id, user_id)
         previous_bucket = message.bucket
         final_bucket = bucket or message.bucket
-        final_unsubscribe = (
-            message.unsubscribe_candidate if final_bucket == "newsletter" else False
-        )
+        final_unsubscribe = message.unsubscribe_candidate if final_bucket == "newsletter" else False
         final_archive = should_archive_recommend(
             final_bucket,
             message.triage_confidence,
@@ -439,9 +479,8 @@ class EmailService:
                 group["unsubscribe_count"] += 1
             if message.archive_recommended:
                 group["archive_count"] += 1
-            if (
-                group["latest_received_at"] is None
-                or (message.received_at and message.received_at > group["latest_received_at"])
+            if group["latest_received_at"] is None or (
+                message.received_at and message.received_at > group["latest_received_at"]
             ):
                 group["latest_received_at"] = message.received_at
                 group["representative_message_id"] = message.id
@@ -724,11 +763,18 @@ class EmailService:
         matching_rule = None
         for rule in cleanup_rules:
             sender_patterns = (rule.filter_rules or {}).get("sender_patterns", [])
-            if any(sender_matches_pattern(message.from_address, sender_pattern) for sender_pattern in sender_patterns):
+            if any(
+                sender_matches_pattern(message.from_address, sender_pattern)
+                for sender_pattern in sender_patterns
+            ):
                 matching_rule = rule
                 break
 
-        filter_rules = {"sender_patterns": [pattern], "subject_contains": [], "subject_not_contains": []}
+        filter_rules = {
+            "sender_patterns": [pattern],
+            "subject_contains": [],
+            "subject_not_contains": [],
+        }
         if matching_rule is not None:
             updated = await email_destination_repo.update(
                 self.db,
