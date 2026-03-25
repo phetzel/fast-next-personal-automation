@@ -334,15 +334,8 @@ class EmailTriagePipeline(ActionPipeline[EmailTriageRunInput, EmailTriageRunResu
         jobs_destination = await email_service.ensure_default_destination(user_id)
         finance_destination = await email_service.ensure_default_finance_destination(user_id)
 
-        # Load default job profile for scoring
+        # Load default job profile for ingestion context
         profile = await profile_service.get_default_for_user(user_id)
-        resume_text = None
-        target_roles = None
-        min_score = 7.0
-        if profile:
-            resume_text = profile.resume.text_content if profile.resume else None
-            target_roles = profile.target_roles
-            min_score = profile.min_score_threshold or 7.0
 
         for message, email_content, bucket in routable:
             try:
@@ -356,9 +349,6 @@ class EmailTriagePipeline(ActionPipeline[EmailTriageRunInput, EmailTriageRunResu
                         email_service,
                         jobs_destination,
                         profile_id=profile.id if profile else None,
-                        resume_text=resume_text,
-                        target_roles=target_roles,
-                        min_score=min_score,
                         force=force_full_run,
                     )
                     if routed is not None:
@@ -410,9 +400,6 @@ class EmailTriagePipeline(ActionPipeline[EmailTriageRunInput, EmailTriageRunResu
         destination,
         *,
         profile_id: UUID | None,
-        resume_text: str | None,
-        target_roles: list[str] | None,
-        min_score: float,
         force: bool,
     ) -> int | None:
         """Route a single jobs-bucket message. Returns created job count or None if skipped."""
@@ -433,9 +420,6 @@ class EmailTriagePipeline(ActionPipeline[EmailTriageRunInput, EmailTriageRunResu
             },
             job_service=job_service,
             profile_id=profile_id,
-            resume_text=resume_text,
-            target_roles=target_roles,
-            min_score=min_score,
         )
 
         # Set source_email_message_id on created jobs
