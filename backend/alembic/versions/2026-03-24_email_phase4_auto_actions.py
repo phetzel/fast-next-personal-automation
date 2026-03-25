@@ -4,7 +4,7 @@ Add auto_actions_enabled and auto_action_confidence_threshold columns
 to email_sources for per-account auto-action configuration.
 
 Revision ID: email_phase4_001
-Revises: email_triage_phase3_001
+Revises: email_triage_phase3_001, job_analysis_metadata_001
 Create Date: 2026-03-24 12:00:00.000000
 """
 
@@ -16,7 +16,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "email_phase4_001"
-down_revision: str | None = "email_triage_phase3_001"
+down_revision: tuple[str, ...] = ("email_triage_phase3_001", "job_analysis_metadata_001")
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
