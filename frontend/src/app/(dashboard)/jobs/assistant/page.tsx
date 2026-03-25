@@ -45,7 +45,7 @@ export default function JobsAssistantPage() {
         <div>
           <h1 className="font-semibold">Jobs Assistant</h1>
           <p className="text-muted-foreground text-xs">
-            Specialized help for job search, profiles, and applications
+            Specialized help for saved jobs, profiles, prep, and applications
           </p>
         </div>
       </div>

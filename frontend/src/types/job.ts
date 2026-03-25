@@ -1,5 +1,5 @@
 /**
- * Job-related types for the job search pipeline.
+ * Job-related types for the jobs workflow.
  */
 import type { LinkedEmailContext } from "./email";
 
@@ -22,6 +22,12 @@ export const JOB_STATUSES = [
  */
 export type JobStatus = (typeof JOB_STATUSES)[number];
 
+export const PRE_APPLIED_JOB_STATUSES: JobStatus[] = ["new", "analyzed", "prepped", "reviewed"];
+
+export const POST_APPLIED_JOB_STATUSES: JobStatus[] = ["applied", "interviewing", "rejected"];
+
+export const DEFAULT_JOB_STATUS_FILTERS: JobStatus[] = [...PRE_APPLIED_JOB_STATUSES];
+
 /**
  * Metadata for each job status including display info and allowed transitions.
  */
@@ -36,28 +42,28 @@ export const JOB_STATUS_CONFIG: Record<
 > = {
   new: {
     label: "New",
-    description: "Added and scored, waiting for application-page analysis",
+    description: "Added and waiting for application requirements",
     allowedFrom: [], // Initial state, nothing transitions to new
   },
   analyzed: {
     label: "Analyzed",
-    description: "Application page inspected and requirements captured by OpenClaw",
+    description: "Application requirements captured and ready for prep",
     allowedFrom: [],
   },
   prepped: {
     label: "Prepped",
-    description: "Cover letter & notes generated",
+    description: "Prep notes and optional application materials generated",
     allowedFrom: ["analyzed"],
   },
   reviewed: {
     label: "Reviewed",
-    description: "Ready to apply, PDF generated",
+    description: "Ready to apply",
     allowedFrom: ["prepped"],
   },
   applied: {
     label: "Applied",
     description: "Application submitted",
-    allowedFrom: ["reviewed"],
+    allowedFrom: ["new", "analyzed", "prepped", "reviewed"],
   },
   interviewing: {
     label: "Interviewing",
@@ -97,6 +103,7 @@ export type IngestionSource = "scrape" | "email" | "manual" | "openclaw";
 export interface Job {
   id: string;
   user_id: string;
+  profile_id: string | null;
   title: string;
   company: string;
   location: string | null;
@@ -124,11 +131,16 @@ export interface Job {
   application_type: "easy_apply" | "ats" | "direct" | "email" | "unknown" | null;
   application_url: string | null;
   requires_cover_letter: boolean | null;
+  cover_letter_requested?: boolean | null;
   requires_resume: boolean | null;
   detected_fields: Record<string, unknown> | null;
   screening_questions: Array<Record<string, unknown>> | null;
   screening_answers: Record<string, string> | null;
+  ats_family?: string | null;
+  analysis_source?: string | null;
   analyzed_at: string | null;
+  has_application_analysis?: boolean;
+  is_prep_eligible?: boolean;
   applied_at: string | null;
   application_method: string | null;
   confirmation_code: string | null;
@@ -142,7 +154,7 @@ export interface Job {
  */
 export function hasCoverLetterText(coverLetter: string | null | undefined): boolean {
   const text = coverLetter?.trim();
-  return Boolean(text && text !== "Not requested");
+  return Boolean(text);
 }
 
 /**
@@ -150,14 +162,56 @@ export function hasCoverLetterText(coverLetter: string | null | undefined): bool
  * application analysis explicitly says one is required.
  */
 export function shouldGenerateReviewPdf(
-  job: Pick<Job, "cover_letter" | "requires_cover_letter">,
+  job: Pick<Job, "cover_letter" | "requires_cover_letter"> & {
+    cover_letter_requested?: boolean | null;
+  },
   draftCoverLetter?: string | null
 ): boolean {
   if (hasCoverLetterText(draftCoverLetter ?? job.cover_letter)) {
     return true;
   }
 
-  return job.requires_cover_letter === true;
+  return job.requires_cover_letter === true || job.cover_letter_requested === true;
+}
+
+export function getScreeningQuestionText(question: Record<string, unknown>): string {
+  const candidates = [
+    question.question,
+    question.label,
+    question.prompt,
+    question.name,
+    question.text,
+  ];
+
+  const match = candidates.find(
+    (value): value is string => typeof value === "string" && value.trim().length > 0
+  );
+
+  return match?.trim() ?? "";
+}
+
+export function getOrderedScreeningAnswers(
+  job: Pick<Job, "screening_questions" | "screening_answers">
+): Array<{ question: string; answer: string }> {
+  const orderedQuestions =
+    job.screening_questions?.map(getScreeningQuestionText).filter(Boolean) ?? [];
+  const answers = job.screening_answers ?? {};
+  const seen = new Set<string>();
+  const ordered = orderedQuestions.flatMap((question) => {
+    const answer = answers[question];
+    if (!answer) {
+      return [];
+    }
+    seen.add(question);
+    return [{ question, answer }];
+  });
+
+  const remaining = Object.entries(answers)
+    .filter(([question, answer]) => Boolean(question.trim()) && Boolean(answer.trim()))
+    .filter(([question]) => !seen.has(question))
+    .map(([question, answer]) => ({ question, answer }));
+
+  return [...ordered, ...remaining];
 }
 
 /**
@@ -205,11 +259,13 @@ export interface JobStats {
  */
 export interface JobFilters {
   status?: JobStatus;
+  statuses?: JobStatus[];
   source?: string;
   ingestion_source?: IngestionSource;
   min_score?: number;
   max_score?: number;
   search?: string;
+  prep_eligible?: boolean;
   posted_within_hours?: number;
   page?: number;
   page_size?: number;
@@ -225,6 +281,11 @@ export interface JobUpdate {
   notes?: string;
   cover_letter?: string;
   prep_notes?: string;
+}
+
+export interface ManualAnalyzeRequest {
+  requires_cover_letter?: boolean;
+  screening_questions?: string[];
 }
 
 export interface ManualJobCreateRequest {
@@ -342,6 +403,7 @@ export interface JobProfileSummary {
   name: string;
   is_default: boolean;
   has_resume: boolean;
+  has_cover_letter_full_name: boolean;
   resume_name: string | null;
   has_story: boolean;
   story_name: string | null;
@@ -390,37 +452,6 @@ export interface JobProfileUpdate {
   contact_email?: string | null;
   contact_location?: string | null;
   contact_website?: string | null;
-}
-
-// ===========================================================================
-// Job Search Pipeline Types
-// ===========================================================================
-
-/**
- * Input for the job search pipeline.
- */
-export interface JobSearchInput {
-  profile_id?: string;
-  terms?: string[];
-  locations?: string[];
-  is_remote?: boolean;
-  hours_old?: number;
-  results_per_term?: number;
-  min_score?: number;
-  save_all?: boolean;
-  scraper?: "jobspy" | "mock";
-}
-
-/**
- * Output from the job search pipeline.
- */
-export interface JobSearchOutput {
-  total_scraped: number;
-  total_analyzed: number;
-  jobs_saved: number;
-  high_scoring: number;
-  duplicates_skipped: number;
-  top_jobs: JobSummary[];
 }
 
 // ===========================================================================

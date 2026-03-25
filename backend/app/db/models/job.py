@@ -1,4 +1,4 @@
-"""Job database model for storing scraped and analyzed job listings."""
+"""Job database model for storing job listings and application workflow state."""
 
 import uuid
 from datetime import datetime
@@ -21,6 +21,7 @@ class JobStatus(StrEnum):
     """Status of a job in the user's pipeline.
 
     Flow: NEW → ANALYZED → PREPPED → REVIEWED → APPLIED → INTERVIEWING
+    - Direct shortcut to APPLIED is allowed from any pre-applied state
     - Can go to REJECTED from APPLIED or INTERVIEWING (employer rejects)
     - To remove a job from listings, use soft delete (sets deleted_at)
     """
@@ -35,10 +36,10 @@ class JobStatus(StrEnum):
 
 
 class Job(Base, TimestampMixin):
-    """Job model for storing scraped job listings with analysis results.
+    """Job model for storing job listings with optional analysis and prep data.
 
-    Each job is associated with a user and contains the scraped job data
-    plus AI-generated relevance scoring and reasoning.
+    Each job is associated with a user and contains the listing data plus
+    optional external scoring, application analysis, and prep artifacts.
     """
 
     __tablename__ = "jobs"
@@ -55,7 +56,7 @@ class Job(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    # Profile used to search for this job (for prep to use same profile)
+    # Optional prep-context profile to reuse later during material generation
     profile_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("job_profiles.id", ondelete="SET NULL"),
@@ -123,6 +124,7 @@ class Job(Base, TimestampMixin):
         String(2048), nullable=True
     )  # Direct application URL (may differ from job_url)
     requires_cover_letter: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    cover_letter_requested: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     requires_resume: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     detected_fields: Mapped[dict | None] = mapped_column(
         JSON, nullable=True
@@ -133,6 +135,8 @@ class Job(Base, TimestampMixin):
     screening_answers: Mapped[dict | None] = mapped_column(
         JSON, nullable=True
     )  # Generated answers for screening questions
+    ats_family: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    analysis_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
     analyzed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Application submission tracking
@@ -143,7 +147,7 @@ class Job(Base, TimestampMixin):
     # Soft delete - prevents re-scraping deleted jobs
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    # Additional scrape fields from python-jobspy
+    # Additional source metadata captured during ingestion
     is_remote: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     job_type: Mapped[str | None] = mapped_column(
         String(50), nullable=True
@@ -171,11 +175,17 @@ class Job(Base, TimestampMixin):
                 self.application_type,
                 self.application_url,
                 self.requires_cover_letter,
+                self.cover_letter_requested,
                 self.requires_resume,
                 self.detected_fields,
                 self.screening_questions,
             )
         )
+
+    @property
+    def is_prep_eligible(self) -> bool:
+        """Return whether the job is explicitly analyzed and waiting for prep."""
+        return self.job_status == JobStatus.ANALYZED and self.has_application_analysis
 
     def __repr__(self) -> str:
         return f"<Job(id={self.id}, title={self.title}, company={self.company}, score={self.relevance_score})>"

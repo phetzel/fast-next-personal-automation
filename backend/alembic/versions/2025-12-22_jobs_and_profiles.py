@@ -1,4 +1,4 @@
-"""Add jobs and user_profiles tables for job search pipeline.
+"""Add jobs and user_profiles tables.
 
 Revision ID: 4a9bb3cd2345
 Revises: 3f8aa2bc1234

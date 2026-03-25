@@ -53,7 +53,7 @@ export function ProfileSelectField({
                 No Job Profiles Found
               </p>
               <p className="text-muted-foreground mt-1 text-sm">
-                Create a job profile with your resume to start searching for jobs.
+                Create a job profile with your resume to prep jobs with the right context.
               </p>
               <Button asChild className="mt-3 bg-amber-500 text-white hover:bg-amber-600">
                 <Link href="/jobs/profiles">Create Profile</Link>
@@ -180,27 +180,51 @@ export function ProfileSelectField({
 function SelectedProfileInfo({
   profile,
 }: {
-  profile?: { name: string; has_resume: boolean; resume_name: string | null };
+  profile?: {
+    name: string;
+    has_resume: boolean;
+    has_cover_letter_full_name: boolean;
+    resume_name: string | null;
+  };
 }) {
   if (!profile) return null;
 
   return (
-    <div
-      className={cn(
-        "rounded-md border px-3 py-2 text-sm",
-        profile.has_resume
-          ? "border-green-500/20 bg-green-500/5"
-          : "border-amber-500/30 bg-amber-500/5"
-      )}
-    >
-      {profile.has_resume ? (
-        <p className="text-green-600 dark:text-green-400">✓ Resume: {profile.resume_name}</p>
-      ) : (
-        <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
-          <AlertTriangle className="h-4 w-4" />
-          <span>No resume linked to this profile</span>
-        </div>
-      )}
+    <div className="space-y-2 rounded-md border px-3 py-2 text-sm">
+      <div
+        className={cn(
+          "flex items-center gap-2",
+          profile.has_resume
+            ? "text-green-600 dark:text-green-400"
+            : "text-amber-600 dark:text-amber-400"
+        )}
+      >
+        {profile.has_resume ? (
+          <span>✓ Resume: {profile.resume_name}</span>
+        ) : (
+          <>
+            <AlertTriangle className="h-4 w-4" />
+            <span>No resume linked to this profile</span>
+          </>
+        )}
+      </div>
+      <div
+        className={cn(
+          "flex items-center gap-2",
+          profile.has_cover_letter_full_name
+            ? "text-green-600 dark:text-green-400"
+            : "text-amber-600 dark:text-amber-400"
+        )}
+      >
+        {profile.has_cover_letter_full_name ? (
+          <span>✓ Cover-letter full name configured</span>
+        ) : (
+          <>
+            <AlertTriangle className="h-4 w-4" />
+            <span>Add a full name for cover-letter PDFs</span>
+          </>
+        )}
+      </div>
     </div>
   );
 }

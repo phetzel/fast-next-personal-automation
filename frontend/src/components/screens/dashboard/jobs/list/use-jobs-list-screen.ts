@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { useJobs } from "@/hooks";
 import { usePipelines } from "@/hooks/use-pipelines";
 import type { Job } from "@/types";
+import { useManualAnalyzeDialog } from "@/components/shared/jobs";
 
 export function useJobsListScreen() {
   const {
@@ -25,10 +26,20 @@ export function useJobsListScreen() {
   } = useJobs();
   const { getExecutionState } = usePipelines();
   const prepExecState = getExecutionState("job_prep");
+  const {
+    job: analyzeJob,
+    isOpen: isManualAnalyzeModalOpen,
+    open: openManualAnalyze,
+    close: closeManualAnalyze,
+    complete: completeManualAnalyze,
+  } = useManualAnalyzeDialog({
+    onComplete: (updatedJob) => {
+      refresh();
+      setSelectedJob(updatedJob);
+    },
+  });
 
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
-  const [isSearchAllModalOpen, setIsSearchAllModalOpen] = useState(false);
   const [isManualJobModalOpen, setIsManualJobModalOpen] = useState(false);
   const [isPrepModalOpen, setIsPrepModalOpen] = useState(false);
   const [isBatchPrepModalOpen, setIsBatchPrepModalOpen] = useState(false);
@@ -75,6 +86,13 @@ export function useJobsListScreen() {
     setIsPrepModalOpen(true);
   }, []);
 
+  const handleAnalyze = useCallback(
+    (job: Job) => {
+      openManualAnalyze(job);
+    },
+    [openManualAnalyze]
+  );
+
   const handlePrepComplete = useCallback(() => {
     refresh();
     setSelectedJob(null);
@@ -95,11 +113,11 @@ export function useJobsListScreen() {
     stats,
     statsLoading,
     selectedJob,
+    analyzeJob,
     prepJob,
     isDetailModalOpen,
-    isSearchModalOpen,
-    isSearchAllModalOpen,
     isManualJobModalOpen,
+    isManualAnalyzeModalOpen,
     isPrepModalOpen,
     isBatchPrepModalOpen,
     isDeleteByStatusModalOpen,
@@ -114,11 +132,12 @@ export function useJobsListScreen() {
     handleCloseDetailModal,
     handleSort,
     handleDelete,
+    handleAnalyze,
     handlePrep,
+    handleManualAnalyzeComplete: completeManualAnalyze,
+    handleCloseManualAnalyzeModal: closeManualAnalyze,
     handlePrepComplete,
     handleClosePrepModal,
-    setIsSearchModalOpen,
-    setIsSearchAllModalOpen,
     setIsManualJobModalOpen,
     setIsBatchPrepModalOpen,
     setIsDeleteByStatusModalOpen,

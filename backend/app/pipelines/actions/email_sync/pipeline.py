@@ -13,13 +13,11 @@ from pydantic import BaseModel, Field
 from app.clients.gmail import GmailClient
 from app.core.config import settings
 from app.db.session import get_db_context
-from app.email.config import get_default_sender_domains
-from app.email.utils import sender_matches_pattern
+from app.email.config import get_default_sender_domains, get_parser, get_parser_for_sender
 from app.pipelines.action_base import ActionPipeline, ActionResult, PipelineContext
 from app.pipelines.registry import register_pipeline
-from app.repositories import email_destination_repo, email_source_repo, email_sync_repo
-from app.services.email import EmailService
-from app.services.job import JobService
+from app.repositories import email_source_repo, email_sync_repo, job_profile_repo
+from app.services.job import JobService, RawJob
 
 logger = logging.getLogger(__name__)
 
@@ -31,17 +29,13 @@ class EmailSyncInput(BaseModel):
         default=None,
         description="Specific email source to sync. If not provided, syncs all active sources.",
     )
-    sync_id: UUID | None = Field(
-        default=None,
-        description="Existing EmailSync row to update. Used by manual API triggers.",
-    )
     force_full_sync: bool = Field(
         default=False,
         description="If true, ignores last_sync_at and syncs all matching emails.",
     )
     save_all: bool = Field(
         default=False,
-        description="If true, save all jobs regardless of score. If false, only save jobs meeting min_score threshold.",
+        description="Retained for compatibility; email-ingested jobs are always saved after deduplication.",
     )
 
 
@@ -50,17 +44,35 @@ class EmailSyncOutput(BaseModel):
 
     emails_processed: int = Field(default=0, description="Number of emails processed")
     jobs_extracted: int = Field(default=0, description="Total jobs extracted from emails")
-    jobs_analyzed: int = Field(default=0, description="Jobs analyzed with AI scoring")
+    jobs_analyzed: int = Field(default=0, description="Jobs that arrived with external scoring")
     jobs_saved: int = Field(default=0, description="New jobs saved (after deduplication)")
-    jobs_filtered: int = Field(default=0, description="Jobs filtered out due to low score")
-    high_scoring: int = Field(default=0, description="Jobs with score >= min threshold")
+    jobs_filtered: int = Field(
+        default=0, description="Jobs skipped due to duplication or filtering"
+    )
+    high_scoring: int = Field(default=0, description="Jobs with external score >= 7.0")
     sources_synced: int = Field(default=0, description="Number of email sources synced")
     errors: list[str] = Field(default_factory=list, description="Any errors encountered")
 
 
 @register_pipeline
 class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
-    """Email sync pipeline that fetches and parses job alert emails."""
+    """Email sync pipeline that fetches and parses job alert emails.
+
+    This pipeline:
+    1. Connects to Gmail via OAuth
+    2. Fetches emails from known job board senders
+    3. Parses emails using template or AI parsers
+    4. Creates new Job records (deduplicating by URL)
+    5. Records processed emails to avoid re-processing
+
+    Prerequisites:
+    - User must have a connected Gmail account (EmailSource)
+
+    Can be invoked via:
+    - API: POST /api/v1/pipelines/email_sync_jobs/execute
+    - Scheduled task: Every hour for all active sources
+    - Manual trigger: POST /api/v1/email/sources/{id}/sync
+    """
 
     name = "email_sync_jobs"
     description = "Sync job listings from email alerts"
@@ -75,6 +87,7 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
         """Execute the email sync pipeline."""
         logger.info("Starting email sync pipeline")
 
+        # Require user context
         if context.user_id is None:
             return ActionResult(
                 success=False,
@@ -83,47 +96,25 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
 
         output = EmailSyncOutput()
         errors: list[str] = []
-        sources = []
         sync = None
 
         async with get_db_context() as db:
-            email_service = EmailService(db)
+            # Create EmailSync record
+            sync = await email_sync_repo.create(
+                db,
+                user_id=context.user_id,
+                started_at=datetime.now(UTC),
+                status="running",
+            )
 
-            if input.sync_id:
-                sync = await email_sync_repo.get_by_id(db, input.sync_id)
-                if sync is None or sync.user_id != context.user_id:
-                    return ActionResult(
-                        success=False,
-                        error="Email sync not found or access denied",
-                    )
-            else:
-                sync, is_new = await email_service.start_sync(
-                    context.user_id,
-                    input.force_full_sync,
-                )
-                if not is_new:
-                    return ActionResult(
-                        success=True,
-                        output=EmailSyncOutput(
-                            errors=["Another email sync is already running."],
-                        ),
-                        metadata={
-                            "sync_id": str(sync.id),
-                            "status": "already_running",
-                        },
-                    )
-
+            # Get email sources to sync
             if input.source_id:
                 source = await email_source_repo.get_by_id(db, input.source_id)
                 if source is None or source.user_id != context.user_id:
                     await email_sync_repo.complete(
-                        db,
-                        sync,
-                        0,
-                        0,
-                        0,
-                        error_message="Email source not found or access denied",
+                        db, sync, 0, 0, 0, error_message="Email source not found or access denied"
                     )
+                    await db.commit()
                     return ActionResult(
                         success=False,
                         error="Email source not found or access denied",
@@ -134,56 +125,50 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
 
             if not sources:
                 await email_sync_repo.complete(
-                    db,
-                    sync,
-                    0,
-                    0,
-                    0,
-                    error_message="No active email sources found",
+                    db, sync, 0, 0, 0, error_message="No active email sources found"
                 )
+                await db.commit()
                 return ActionResult(
                     success=True,
                     output=EmailSyncOutput(
                         errors=["No active email sources found. Connect your Gmail first."]
                     ),
-                    metadata={
-                        "message": "No email sources to sync",
-                        "sync_id": str(sync.id),
-                    },
+                    metadata={"message": "No email sources to sync"},
                 )
 
             total_emails_fetched = 0
 
+            # Process each source
             for source in sources:
                 try:
-                    source_result = await self._sync_source(
+                    result = await self._sync_source(
                         db,
                         source,
                         context.user_id,
-                        email_service=email_service,
                         sync_id=sync.id,
                         force_full_sync=input.force_full_sync,
                         save_all=input.save_all,
                     )
-                    output.emails_processed += source_result["emails_processed"]
-                    output.jobs_extracted += source_result["jobs_extracted"]
-                    output.jobs_analyzed += source_result["jobs_analyzed"]
-                    output.jobs_saved += source_result["jobs_saved"]
-                    output.jobs_filtered += source_result["jobs_filtered"]
-                    output.high_scoring += source_result["high_scoring"]
+                    output.emails_processed += result["emails_processed"]
+                    output.jobs_extracted += result["jobs_extracted"]
+                    output.jobs_analyzed += result["jobs_analyzed"]
+                    output.jobs_saved += result["jobs_saved"]
+                    output.jobs_filtered += result.get("jobs_filtered", 0)
+                    output.high_scoring += result["high_scoring"]
                     output.sources_synced += 1
-                    total_emails_fetched += source_result["emails_fetched"]
-                except Exception as exc:
-                    error_msg = f"Error syncing {source.email_address}: {exc}"
+                    total_emails_fetched += result.get("emails_fetched", result["emails_processed"])
+
+                except Exception as e:
+                    error_msg = f"Error syncing {source.email_address}: {e}"
                     logger.exception(error_msg)
                     errors.append(error_msg)
+
+                    # Update source with error
                     await email_source_repo.update_sync_status(
-                        db,
-                        source,
-                        datetime.now(UTC),
-                        error=str(exc),
+                        db, source, datetime.now(UTC), error=str(e)
                     )
 
+            # Complete the sync record
             await email_sync_repo.complete(
                 db,
                 sync,
@@ -200,6 +185,8 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
                 error_message="; ".join(errors) if errors else None,
             )
 
+            await db.commit()
+
         output.errors = errors
 
         return ActionResult(
@@ -213,56 +200,26 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
             },
         )
 
-    def _build_query_senders(
-        self,
-        active_destinations: list,
-        custom_senders: list[str] | None,
-    ) -> list[str]:
-        """Collect sender patterns that should be queried from Gmail."""
-        senders: list[str] = []
-
-        for destination in active_destinations:
-            rules = destination.filter_rules or {}
-            sender_patterns = rules.get("sender_patterns", [])
-            senders.extend(pattern for pattern in sender_patterns if pattern)
-
-        if custom_senders:
-            senders.extend(pattern for pattern in custom_senders if pattern)
-
-        if not senders:
-            senders.extend(get_default_sender_domains())
-
-        deduped: list[str] = []
-        seen: set[str] = set()
-        for sender in senders:
-            normalized = sender.strip().lower()
-            if not normalized or normalized in seen:
-                continue
-            seen.add(normalized)
-            deduped.append(normalized)
-
-        return deduped
-
-    def _matches_sender_patterns(self, from_address: str, patterns: list[str] | None) -> bool:
-        """Check whether a sender address matches any configured email/domain pattern."""
-        if not patterns:
-            return False
-
-        return any(sender_matches_pattern(from_address, pattern) for pattern in patterns)
-
     async def _sync_source(
         self,
         db,
         source,
         user_id: UUID,
-        *,
-        email_service: EmailService,
         sync_id: UUID | None = None,
         force_full_sync: bool = False,
         save_all: bool = False,
     ) -> dict:
-        """Sync a single email source."""
-        logger.info("Syncing email source: %s", source.email_address)
+        """Sync a single email source.
+
+        Args:
+            db: Database session
+            source: EmailSource to sync
+            user_id: User ID
+            sync_id: Optional sync record ID
+        force_full_sync: If true, ignore last_sync_at
+        save_all: Retained for compatibility; ignored during ingestion
+        """
+        logger.info(f"Syncing email source: {source.email_address}")
 
         result = {
             "emails_processed": 0,
@@ -274,27 +231,13 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
             "high_scoring": 0,
         }
 
-        default_destination = await email_service.ensure_default_destination(user_id)
-        active_destinations = await email_destination_repo.get_active_by_user_id(
-            db,
-            user_id,
-            destination_type="jobs",
-        )
-        if not active_destinations:
-            logger.info("Skipping email sync because no active destinations are configured")
-            await email_source_repo.update_sync_status(db, source, datetime.now(UTC))
-            return result
-
+        # Initialize job service
         job_service = JobService(db)
-        profile = await job_service.require_scorable_profile(
-            user_id,
-            purpose="email job ingestion",
-        )
-        resume_text = profile.resume.text_content if profile.resume else None
-        target_roles = profile.target_roles
-        min_score = profile.min_score_threshold or 7.0
-        logger.info("AI scoring enabled with profile '%s'", profile.name)
+        profile = await job_profile_repo.get_default_for_user(db, user_id)
+        if profile:
+            logger.info("Using profile '%s' as prep context for email-ingested jobs", profile.name)
 
+        # Initialize Gmail client with decrypted tokens
         access_token, refresh_token = email_source_repo.get_decrypted_tokens(source)
         gmail = GmailClient(
             access_token=access_token,
@@ -302,62 +245,80 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
             token_expiry=source.token_expiry,
         )
 
-        all_senders = self._build_query_senders(active_destinations, source.custom_senders)
+        # Build query for job board senders
+        all_senders = get_default_sender_domains()
+        if source.custom_senders:
+            all_senders.extend(source.custom_senders)
 
+        # Determine date filter
         if force_full_sync or source.last_sync_at is None:
+            # First sync or forced: look back configured hours
             after_timestamp = datetime.now(UTC) - timedelta(
                 hours=settings.EMAIL_SYNC_LOOKBACK_HOURS
             )
         else:
+            # Incremental sync: from last sync time
             after_timestamp = source.last_sync_at
 
         query = gmail.build_sender_query(all_senders, after_timestamp=after_timestamp)
-        logger.info("Gmail query: %s", query)
+        logger.info(f"Gmail query: {query}")
 
+        # Fetch matching messages
         messages = await gmail.list_messages(query, max_results=100)
-        logger.info("Found %d matching emails", len(messages))
+        logger.info(f"Found {len(messages)} matching emails")
         result["emails_fetched"] = len(messages)
 
+        # Process each message
         for msg_info in messages:
             message_id = msg_info["id"]
+
+            # Check if already processed
             existing = await email_source_repo.get_message_by_gmail_id(db, source.id, message_id)
             if existing:
-                logger.debug("Skipping already processed message: %s", message_id)
+                logger.debug(f"Skipping already processed message: {message_id}")
                 continue
 
-            claimed_message = None
-
             try:
+                # Fetch full message content
                 email_content = await gmail.get_message(message_id)
+                result["emails_processed"] += 1
 
-                matching_destinations = [
-                    destination
-                    for destination in active_destinations
-                    if email_destination_repo.matches_email(
-                        destination,
-                        email_content.from_address,
-                        email_content.subject,
-                    )
+                # Determine parser based on sender
+                parser_name, source_name = get_parser_for_sender(email_content.from_address)
+                parser = get_parser(parser_name)
+
+                # Parse email
+                extracted_jobs = await parser.parse(
+                    subject=email_content.subject,
+                    body_html=email_content.body_html,
+                    body_text=email_content.body_text,
+                )
+                result["jobs_extracted"] += len(extracted_jobs)
+
+                # Convert to RawJob format
+                raw_jobs = [
+                    RawJob.from_extracted(job, source_override=source_name.lower())
+                    for job in extracted_jobs
                 ]
 
-                if (
-                    not matching_destinations
-                    and default_destination.is_active
-                    and self._matches_sender_patterns(
-                        email_content.from_address,
-                        source.custom_senders,
+                if raw_jobs:
+                    ingestion = await job_service.ingest_jobs(
+                        user_id=user_id,
+                        jobs=raw_jobs,
+                        ingestion_source="email",
+                        profile_id=profile.id if profile else None,
                     )
-                ):
-                    matching_destinations = [default_destination]
-
-                if not matching_destinations:
-                    logger.debug(
-                        "Skipping email with no matching destinations: %s",
-                        email_content.subject,
+                    result["jobs_analyzed"] += ingestion.jobs_analyzed
+                    result["jobs_saved"] += ingestion.jobs_saved
+                    result["jobs_filtered"] += (
+                        ingestion.jobs_received
+                        - ingestion.jobs_saved
+                        - ingestion.duplicates_skipped
                     )
-                    continue
+                    result["high_scoring"] += ingestion.high_scoring
 
-                claimed_message, created = await email_source_repo.get_or_create_message(
+                # Record processed message
+                await email_source_repo.create_message(
                     db,
                     source_id=source.id,
                     gmail_message_id=message_id,
@@ -367,87 +328,20 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
                     received_at=email_content.received_at,
                     processed_at=datetime.now(UTC),
                     sync_id=sync_id,
-                )
-                if not created:
-                    logger.debug("Skipping concurrently claimed message: %s", message_id)
-                    continue
-
-                result["emails_processed"] += 1
-                message_jobs_extracted = 0
-                message_parser_used: str | None = None
-                destination_errors: list[str] = []
-
-                email_payload = {
-                    "subject": email_content.subject,
-                    "body_html": email_content.body_html,
-                    "body_text": email_content.body_text,
-                }
-
-                for destination in matching_destinations:
-                    destination_result = await email_service.process_email_for_destination(
-                        claimed_message,
-                        destination,
-                        email_payload,
-                        job_service,
-                        profile_id=profile.id,
-                        resume_text=resume_text,
-                        target_roles=target_roles,
-                        min_score=min_score,
-                    )
-                    await email_service.record_destination_processing(
-                        claimed_message.id,
-                        destination.id,
-                        parser_used=destination_result["parser_used"],
-                        items_extracted=destination_result["items_extracted"],
-                        processing_error=destination_result["error"],
-                        created_item_ids=destination_result["created_item_ids"],
-                    )
-
-                    message_jobs_extracted += destination_result["items_extracted"]
-                    result["jobs_extracted"] += destination_result["items_extracted"]
-                    result["jobs_analyzed"] += destination_result["jobs_analyzed"]
-                    result["jobs_saved"] += destination_result["jobs_saved"]
-                    result["jobs_filtered"] += destination_result["jobs_filtered"]
-                    result["high_scoring"] += destination_result["high_scoring"]
-
-                    if message_parser_used is None and destination_result["parser_used"]:
-                        message_parser_used = destination_result["parser_used"]
-                    if destination_result["error"]:
-                        destination_errors.append(
-                            f"{destination.name}: {destination_result['error']}"
-                        )
-
-                await email_source_repo.update_message_processing(
-                    db,
-                    claimed_message,
-                    processed_at=datetime.now(UTC),
-                    jobs_extracted=message_jobs_extracted,
-                    parser_used=message_parser_used,
-                    processing_error="; ".join(destination_errors) if destination_errors else None,
+                    jobs_extracted=len(extracted_jobs),
+                    parser_used=parser_name,
                 )
 
                 logger.info(
-                    "Processed email '%s' into %d destination(s); extracted %d item(s)",
-                    email_content.subject[:50],
-                    len(matching_destinations),
-                    message_jobs_extracted,
+                    f"Processed email: {email_content.subject[:50]} - "
+                    f"extracted {len(extracted_jobs)} jobs"
                 )
 
-            except Exception as exc:
-                logger.exception("Error processing message %s: %s", message_id, exc)
+            except Exception as e:
+                logger.exception(f"Error processing message {message_id}: {e}")
 
-                if claimed_message is not None:
-                    await email_source_repo.update_message_processing(
-                        db,
-                        claimed_message,
-                        processed_at=datetime.now(UTC),
-                        jobs_extracted=0,
-                        parser_used=None,
-                        processing_error=str(exc),
-                    )
-                    continue
-
-                await email_source_repo.get_or_create_message(
+                # Record failed message
+                await email_source_repo.create_message(
                     db,
                     source_id=source.id,
                     gmail_message_id=message_id,
@@ -457,28 +351,27 @@ class EmailSyncJobsPipeline(ActionPipeline[EmailSyncInput, EmailSyncOutput]):
                     received_at=datetime.now(UTC),
                     processed_at=datetime.now(UTC),
                     sync_id=sync_id,
-                    processing_error=str(exc),
+                    jobs_extracted=0,
+                    processing_error=str(e),
                 )
 
+        # Update tokens if refreshed
         if gmail.tokens_refreshed and gmail.new_access_token:
             await email_source_repo.update_tokens(
-                db,
-                source,
-                gmail.new_access_token,
-                gmail.new_token_expiry,
+                db, source, gmail.new_access_token, gmail.new_token_expiry
             )
 
+        # Update sync status
         await email_source_repo.update_sync_status(db, source, datetime.now(UTC))
 
         logger.info(
-            "Sync complete for %s: %d emails, %d extracted, %d analyzed, %d saved, %d filtered, %d high scoring",
-            source.email_address,
-            result["emails_processed"],
-            result["jobs_extracted"],
-            result["jobs_analyzed"],
-            result["jobs_saved"],
-            result["jobs_filtered"],
-            result["high_scoring"],
+            f"Sync complete for {source.email_address}: "
+            f"{result['emails_processed']} emails, "
+            f"{result['jobs_extracted']} extracted, "
+            f"{result['jobs_analyzed']} analyzed, "
+            f"{result['jobs_saved']} saved, "
+            f"{result['jobs_filtered']} filtered, "
+            f"{result['high_scoring']} high scoring"
         )
 
         return result

@@ -118,7 +118,7 @@ export function ProfilesTab() {
       {/* Header with create button */}
       <div className="flex items-center justify-between">
         <p className="text-muted-foreground text-sm">
-          Configure your job search preferences and linked resumes
+          Configure your prep context, linked resume, and application defaults
         </p>
         <Button onClick={() => setView("create")} size="sm">
           <Plus className="mr-2 h-4 w-4" />
@@ -142,8 +142,8 @@ export function ProfilesTab() {
             </div>
             <h2 className="mb-2 text-xl font-semibold">No Profiles Yet</h2>
             <p className="text-muted-foreground mb-4 max-w-md">
-              Create your first job search profile to get started. Link your resume and set
-              preferences to help the AI find the best job matches for you.
+              Create your first job profile to get started. Link your resume and prep context so the
+              app can generate better materials for each application.
             </p>
             <Button onClick={() => setView("create")}>
               <Plus className="mr-2 h-4 w-4" />

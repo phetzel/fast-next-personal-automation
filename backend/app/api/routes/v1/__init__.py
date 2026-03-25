@@ -63,7 +63,7 @@ v1_router.include_router(pipelines.router, prefix="/pipelines", tags=["pipelines
 # Public config routes (no auth required)
 v1_router.include_router(config.router, prefix="/config", tags=["config"])
 
-# Jobs routes (job search results)
+# Jobs routes
 v1_router.include_router(jobs.router, prefix="/jobs", tags=["jobs"])
 
 # Job profile routes (resume and preferences)

@@ -18,7 +18,7 @@ export default function ProfilesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Profiles & Materials"
-        description="Manage your job search profiles, resumes, stories, and projects"
+        description="Manage your job profiles, resumes, stories, and projects"
       />
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabId)}>

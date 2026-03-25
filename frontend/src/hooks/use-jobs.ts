@@ -1,22 +1,17 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import { useJobQuery, useJobsListQuery, useJobStatsQuery } from "./queries/jobs";
-import type {
-  Job,
-  JobFilters,
-  JobListResponse,
-  JobStats,
-  JobStatus,
-  JobUpdate,
-  ManualJobCreateRequest,
-} from "@/types";
+import type { Job, JobFilters, JobListResponse, JobStats } from "@/types";
+import { DEFAULT_JOB_STATUS_FILTERS } from "@/types";
 import { toSearchParams } from "./queries/utils";
+import { useJobMutations } from "./use-job-mutations";
 
 const defaultFilters: JobFilters = {
+  statuses: DEFAULT_JOB_STATUS_FILTERS,
   page: 1,
   page_size: 20,
   sort_by: "created_at",
@@ -29,10 +24,13 @@ interface UseJobsOptions {
 
 export function useJobs(options?: UseJobsOptions) {
   const queryClient = useQueryClient();
-  const initialFilters = { ...defaultFilters, ...options?.initialFilters };
+  const initialFilters = useMemo(
+    () => ({ ...defaultFilters, ...options?.initialFilters }),
+    [options?.initialFilters]
+  );
   const [filters, setFiltersState] = useState<JobFilters>(initialFilters);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [queryError, setQueryError] = useState<string | null>(null);
   const filtersRef = useRef<JobFilters>(initialFilters);
 
   filtersRef.current = filters;
@@ -41,62 +39,12 @@ export function useJobs(options?: UseJobsOptions) {
   const statsQuery = useJobStatsQuery();
   const selectedJobQuery = useJobQuery(selectedJobId);
 
-  const createMutation = useMutation({
-    mutationFn: (payload: ManualJobCreateRequest) => apiClient.post<Job>("/jobs", payload),
-    onSuccess: async (created) => {
-      setSelectedJobId(created.id);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.jobs.stats() }),
-      ]);
-    },
-    onError: (mutationError) => {
-      setError(mutationError instanceof Error ? mutationError.message : "Failed to create job");
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ jobId, update }: { jobId: string; update: JobUpdate }) =>
-      apiClient.patch<Job>(`/jobs/${jobId}`, update),
-    onSuccess: async (updated) => {
-      queryClient.setQueryData(queryKeys.jobs.detail(updated.id), updated);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.jobs.stats() }),
-      ]);
-    },
-    onError: (mutationError) => {
-      setError(mutationError instanceof Error ? mutationError.message : "Failed to update job");
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (jobId: string) => apiClient.delete(`/jobs/${jobId}`),
-    onSuccess: async (_, jobId) => {
+  const mutations = useJobMutations({
+    onJobCreated: (created) => setSelectedJobId(created.id),
+    onJobDeleted: (jobId) => {
       if (selectedJobId === jobId) {
         setSelectedJobId(null);
       }
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.jobs.stats() }),
-      ]);
-    },
-    onError: () => {
-      setError("Failed to delete job");
-    },
-  });
-
-  const deleteByStatusMutation = useMutation({
-    mutationFn: (status: JobStatus) =>
-      apiClient.post<{ deleted_count: number; status: string }>("/jobs/batch/delete", { status }),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.jobs.stats() }),
-      ]);
-    },
-    onError: () => {
-      setError("Failed to delete jobs");
     },
   });
 
@@ -105,7 +53,7 @@ export function useJobs(options?: UseJobsOptions) {
       const nextFilters = { ...filtersRef.current, ...customFilters };
       const queryString = toSearchParams(nextFilters);
       setFiltersState(nextFilters);
-      setError(null);
+      setQueryError(null);
 
       try {
         const response = await queryClient.fetchQuery({
@@ -116,7 +64,7 @@ export function useJobs(options?: UseJobsOptions) {
         return response.jobs;
       } catch (queryError) {
         const message = queryError instanceof Error ? queryError.message : "Failed to fetch jobs";
-        setError(message);
+        setQueryError(message);
         return [];
       }
     },
@@ -124,7 +72,7 @@ export function useJobs(options?: UseJobsOptions) {
   );
 
   const fetchStats = useCallback(async () => {
-    setError(null);
+    setQueryError(null);
 
     try {
       return await queryClient.fetchQuery({
@@ -139,7 +87,7 @@ export function useJobs(options?: UseJobsOptions) {
   const fetchJob = useCallback(
     async (jobId: string): Promise<Job | null> => {
       setSelectedJobId(jobId);
-      setError(null);
+      setQueryError(null);
 
       try {
         return await queryClient.fetchQuery({
@@ -156,18 +104,26 @@ export function useJobs(options?: UseJobsOptions) {
   const jobs = jobsQuery.data?.jobs ?? [];
   const total = jobsQuery.data?.total ?? 0;
   const selectedJob = selectedJobQuery.data ?? null;
+  const setFilters = useCallback((newFilters: Partial<JobFilters>) => {
+    setFiltersState((currentFilters) => ({ ...currentFilters, ...newFilters }));
+  }, []);
+  const resetFilters = useCallback(() => {
+    setFiltersState(initialFilters);
+  }, [initialFilters]);
+  const setSelectedJob = useCallback((job: Job | null) => {
+    setSelectedJobId(job?.id ?? null);
+  }, []);
+  const goToPage = useCallback((page: number) => {
+    setFiltersState((currentFilters) => ({ ...currentFilters, page }));
+  }, []);
 
   return {
     jobs,
     total,
-    isLoading:
-      jobsQuery.isLoading ||
-      jobsQuery.isFetching ||
-      createMutation.isPending ||
-      updateMutation.isPending ||
-      deleteMutation.isPending,
+    isLoading: jobsQuery.isLoading || jobsQuery.isFetching || mutations.isMutating,
     error:
-      error ??
+      queryError ??
+      mutations.error ??
       (jobsQuery.error instanceof Error
         ? jobsQuery.error.message
         : selectedJobQuery.error instanceof Error
@@ -181,40 +137,11 @@ export function useJobs(options?: UseJobsOptions) {
     fetchJobs,
     fetchStats,
     fetchJob,
-    createJob: async (payload: ManualJobCreateRequest) => {
-      setError(null);
-      try {
-        return await createMutation.mutateAsync(payload);
-      } catch {
-        return null;
-      }
-    },
-    updateJobStatus: async (jobId: string, update: JobUpdate) => {
-      setError(null);
-      try {
-        return await updateMutation.mutateAsync({ jobId, update });
-      } catch {
-        return null;
-      }
-    },
-    deleteJob: async (jobId: string) => {
-      setError(null);
-      try {
-        await deleteMutation.mutateAsync(jobId);
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    deleteByStatus: async (status: JobStatus) => {
-      setError(null);
-      const response = await deleteByStatusMutation.mutateAsync(status);
-      return response.deleted_count;
-    },
-    setFilters: (newFilters: Partial<JobFilters>) =>
-      setFiltersState((currentFilters) => ({ ...currentFilters, ...newFilters })),
-    resetFilters: () => setFiltersState(initialFilters),
-    setSelectedJob: (job: Job | null) => setSelectedJobId(job?.id ?? null),
-    goToPage: (page: number) => setFiltersState((currentFilters) => ({ ...currentFilters, page })),
+    updateJobStatus: mutations.updateJobStatus,
+    deleteJob: mutations.deleteJob,
+    setFilters,
+    resetFilters,
+    setSelectedJob,
+    goToPage,
   };
 }

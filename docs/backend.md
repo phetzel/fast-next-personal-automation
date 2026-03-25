@@ -8,98 +8,99 @@ All endpoints are prefixed with `/api/v1`.
 
 ### Health Check
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/health` | Basic health check |
-| GET | `/ready` | Readiness probe (checks DB/Redis) |
+| Method | Endpoint  | Description                       |
+| ------ | --------- | --------------------------------- |
+| GET    | `/health` | Basic health check                |
+| GET    | `/ready`  | Readiness probe (checks DB/Redis) |
 
 ### Authentication
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/auth/login` | Login with email/password |
-| POST | `/auth/register` | Register new user |
-| POST | `/auth/refresh` | Refresh access token |
-| POST | `/auth/logout` | Logout (invalidate session) |
-| GET | `/auth/me` | Get current user info |
+| Method | Endpoint         | Description                 |
+| ------ | ---------------- | --------------------------- |
+| POST   | `/auth/login`    | Login with email/password   |
+| POST   | `/auth/register` | Register new user           |
+| POST   | `/auth/refresh`  | Refresh access token        |
+| POST   | `/auth/logout`   | Logout (invalidate session) |
+| GET    | `/auth/me`       | Get current user info       |
 
 ### OAuth
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/oauth/google/login` | Redirect to Google login |
-| GET | `/oauth/google/callback` | Google OAuth callback |
+| Method | Endpoint                 | Description              |
+| ------ | ------------------------ | ------------------------ |
+| GET    | `/oauth/google/login`    | Redirect to Google login |
+| GET    | `/oauth/google/callback` | Google OAuth callback    |
 
 ### Users
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/users/me` | Get current user |
-| PATCH | `/users/me` | Update current user |
-| GET | `/users/{user_id}` | Get user by ID (admin) |
+| Method | Endpoint           | Description            |
+| ------ | ------------------ | ---------------------- |
+| GET    | `/users/me`        | Get current user       |
+| PATCH  | `/users/me`        | Update current user    |
+| GET    | `/users/{user_id}` | Get user by ID (admin) |
 
 ### Sessions
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/sessions` | List active sessions |
-| DELETE | `/sessions/{session_id}` | Revoke session |
+| Method | Endpoint                 | Description          |
+| ------ | ------------------------ | -------------------- |
+| GET    | `/sessions`              | List active sessions |
+| DELETE | `/sessions/{session_id}` | Revoke session       |
 
 ### Conversations
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/conversations` | List user's conversations |
-| POST | `/conversations` | Create new conversation |
-| GET | `/conversations/{id}` | Get conversation with messages |
-| DELETE | `/conversations/{id}` | Delete conversation |
+| Method | Endpoint              | Description                    |
+| ------ | --------------------- | ------------------------------ |
+| GET    | `/conversations`      | List user's conversations      |
+| POST   | `/conversations`      | Create new conversation        |
+| GET    | `/conversations/{id}` | Get conversation with messages |
+| DELETE | `/conversations/{id}` | Delete conversation            |
 
 ### Webhooks
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/webhooks` | List webhooks |
-| POST | `/webhooks` | Create webhook |
-| GET | `/webhooks/{id}` | Get webhook |
-| PATCH | `/webhooks/{id}` | Update webhook |
-| DELETE | `/webhooks/{id}` | Delete webhook |
-| GET | `/webhooks/{id}/deliveries` | Get delivery logs |
+| Method | Endpoint                    | Description       |
+| ------ | --------------------------- | ----------------- |
+| GET    | `/webhooks`                 | List webhooks     |
+| POST   | `/webhooks`                 | Create webhook    |
+| GET    | `/webhooks/{id}`            | Get webhook       |
+| PATCH  | `/webhooks/{id}`            | Update webhook    |
+| DELETE | `/webhooks/{id}`            | Delete webhook    |
+| GET    | `/webhooks/{id}/deliveries` | Get delivery logs |
 
 ### WebSocket
 
-| Endpoint | Description |
-|----------|-------------|
-| `/ws/agent` | AI chat WebSocket (authenticated) |
-| `/ws/agent?area=jobs` | Area-specific AI chat |
+| Endpoint              | Description                       |
+| --------------------- | --------------------------------- |
+| `/ws/agent`           | AI chat WebSocket (authenticated) |
+| `/ws/agent?area=jobs` | Area-specific AI chat             |
 
 ### Jobs
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/jobs` | List user's job listings |
-| POST | `/jobs` | Create a manual job and score it against a profile |
-| GET | `/jobs/{id}` | Get job details |
-| PATCH | `/jobs/{id}` | Update job (status, notes, cover_letter) |
-| DELETE | `/jobs/{id}` | Delete job |
-| GET | `/jobs/stats` | Get job statistics |
-| POST | `/jobs/batch/delete` | Soft-delete all jobs for one status (`new`, `analyzed`, `prepped`, `reviewed`) |
-| POST | `/jobs/{id}/cover-letter/generate-pdf` | Generate/regenerate cover letter PDF |
-| GET | `/jobs/{id}/cover-letter/download` | Download cover letter PDF |
-| GET | `/jobs/{id}/cover-letter/preview` | Preview cover letter PDF in browser |
+| Method | Endpoint                               | Description                                                                    |
+| ------ | -------------------------------------- | ------------------------------------------------------------------------------ |
+| GET    | `/jobs`                                | List user's job listings                                                       |
+| POST   | `/jobs`                                | Create a manual job and score it against a profile                             |
+| GET    | `/jobs/{id}`                           | Get job details                                                                |
+| PATCH  | `/jobs/{id}`                           | Update job (status, notes, cover_letter)                                       |
+| DELETE | `/jobs/{id}`                           | Delete job                                                                     |
+| GET    | `/jobs/stats`                          | Get job statistics                                                             |
+| POST   | `/jobs/batch/delete`                   | Soft-delete all jobs for one status (`new`, `analyzed`, `prepped`, `reviewed`) |
+| POST   | `/jobs/{id}/cover-letter/generate-pdf` | Generate/regenerate cover letter PDF                                           |
+| GET    | `/jobs/{id}/cover-letter/download`     | Download cover letter PDF                                                      |
+| GET    | `/jobs/{id}/cover-letter/preview`      | Preview cover letter PDF in browser                                            |
 
 ### Job Profiles
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/job-profiles` | List user's profiles |
-| POST | `/job-profiles` | Create profile |
-| GET | `/job-profiles/{id}` | Get profile |
-| PATCH | `/job-profiles/{id}` | Update profile (including contact info for cover letters) |
-| DELETE | `/job-profiles/{id}` | Delete profile |
-| POST | `/job-profiles/{id}/set-default` | Set as default |
-| GET | `/job-profiles/default` | Get default profile |
+| Method | Endpoint                         | Description                                               |
+| ------ | -------------------------------- | --------------------------------------------------------- |
+| GET    | `/job-profiles`                  | List user's profiles                                      |
+| POST   | `/job-profiles`                  | Create profile                                            |
+| GET    | `/job-profiles/{id}`             | Get profile                                               |
+| PATCH  | `/job-profiles/{id}`             | Update profile (including contact info for cover letters) |
+| DELETE | `/job-profiles/{id}`             | Delete profile                                            |
+| POST   | `/job-profiles/{id}/set-default` | Set as default                                            |
+| GET    | `/job-profiles/default`          | Get default profile                                       |
 
 Job profiles include contact info fields for cover letter generation:
+
 - `contact_full_name` - Full name for cover letter header
 - `contact_phone` - Phone number
 - `contact_email` - Email (falls back to user email)
@@ -108,28 +109,28 @@ Job profiles include contact info fields for cover letter generation:
 
 ### Resumes
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/resumes` | List user's resumes |
-| POST | `/resumes/upload` | Upload resume file |
-| GET | `/resumes/{id}` | Get resume details |
-| DELETE | `/resumes/{id}` | Delete resume |
-| POST | `/resumes/{id}/set-primary` | Set as primary |
-| POST | `/resumes/{id}/re-extract` | Re-extract text |
+| Method | Endpoint                    | Description         |
+| ------ | --------------------------- | ------------------- |
+| GET    | `/resumes`                  | List user's resumes |
+| POST   | `/resumes/upload`           | Upload resume file  |
+| GET    | `/resumes/{id}`             | Get resume details  |
+| DELETE | `/resumes/{id}`             | Delete resume       |
+| POST   | `/resumes/{id}/set-primary` | Set as primary      |
+| POST   | `/resumes/{id}/re-extract`  | Re-extract text     |
 
 ### Email Integration
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/email/sources` | List connected email accounts |
-| GET | `/email/sources/{id}` | Get email source with stats |
-| GET | `/email/gmail/connect` | Start Gmail OAuth flow |
-| GET | `/email/gmail/callback` | Handle Gmail OAuth callback |
-| POST | `/email/sources/{id}/sync` | Trigger manual email sync |
-| PATCH | `/email/sources/{id}` | Update source settings |
-| DELETE | `/email/sources/{id}` | Disconnect email account |
-| GET | `/email/sources/{id}/messages` | List processed messages |
-| GET | `/email/config` | Get email config (supported senders) |
+| Method | Endpoint                       | Description                          |
+| ------ | ------------------------------ | ------------------------------------ |
+| GET    | `/email/sources`               | List connected email accounts        |
+| GET    | `/email/sources/{id}`          | Get email source with stats          |
+| GET    | `/email/gmail/connect`         | Start Gmail OAuth flow               |
+| GET    | `/email/gmail/callback`        | Handle Gmail OAuth callback          |
+| POST   | `/email/sources/{id}/sync`     | Trigger manual email sync            |
+| PATCH  | `/email/sources/{id}`          | Update source settings               |
+| DELETE | `/email/sources/{id}`          | Disconnect email account             |
+| GET    | `/email/sources/{id}/messages` | List processed messages              |
+| GET    | `/email/config`                | Get email config (supported senders) |
 
 ### Finances
 
@@ -137,113 +138,112 @@ All finance endpoints are prefixed with `/finances`.
 
 #### Accounts
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/finances/accounts` | List user's financial accounts |
-| POST | `/finances/accounts` | Create account |
-| GET | `/finances/accounts/{id}` | Get account |
-| PATCH | `/finances/accounts/{id}` | Update account |
-| DELETE | `/finances/accounts/{id}` | Delete account |
-| PATCH | `/finances/accounts/{id}/balance` | Manually adjust balance |
-| GET | `/finances/stats` | Overview stats (net worth, income, expenses) |
+| Method | Endpoint                          | Description                                  |
+| ------ | --------------------------------- | -------------------------------------------- |
+| GET    | `/finances/accounts`              | List user's financial accounts               |
+| POST   | `/finances/accounts`              | Create account                               |
+| GET    | `/finances/accounts/{id}`         | Get account                                  |
+| PATCH  | `/finances/accounts/{id}`         | Update account                               |
+| DELETE | `/finances/accounts/{id}`         | Delete account                               |
+| PATCH  | `/finances/accounts/{id}/balance` | Manually adjust balance                      |
+| GET    | `/finances/stats`                 | Overview stats (net worth, income, expenses) |
 
 #### Transactions
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/finances/transactions` | List transactions (filterable by account, category, date range, type) |
-| POST | `/finances/transactions` | Create transaction |
-| GET | `/finances/transactions/{id}` | Get transaction |
-| PATCH | `/finances/transactions/{id}` | Update transaction |
-| DELETE | `/finances/transactions/{id}` | Delete transaction |
-| POST | `/finances/transactions/import-csv` | Bulk import from CSV |
-| POST | `/finances/transactions/categorize` | AI-categorize uncategorized transactions |
-| POST | `/finances/transactions/{id}/review` | Mark transaction as reviewed |
+| Method | Endpoint                             | Description                                                           |
+| ------ | ------------------------------------ | --------------------------------------------------------------------- |
+| GET    | `/finances/transactions`             | List transactions (filterable by account, category, date range, type) |
+| POST   | `/finances/transactions`             | Create transaction                                                    |
+| GET    | `/finances/transactions/{id}`        | Get transaction                                                       |
+| PATCH  | `/finances/transactions/{id}`        | Update transaction                                                    |
+| DELETE | `/finances/transactions/{id}`        | Delete transaction                                                    |
+| POST   | `/finances/transactions/import-csv`  | Bulk import from CSV                                                  |
+| POST   | `/finances/transactions/categorize`  | AI-categorize uncategorized transactions                              |
+| POST   | `/finances/transactions/{id}/review` | Mark transaction as reviewed                                          |
 
 #### Budgets
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/finances/budgets` | List budgets for a month/year |
-| GET | `/finances/budgets/status` | Budget status with spent/remaining amounts |
-| POST | `/finances/budgets` | Create budget (category optional — omit for a general all-expenses budget) |
-| PATCH | `/finances/budgets/{id}` | Update budget |
-| DELETE | `/finances/budgets/{id}` | Delete budget |
+| Method | Endpoint                   | Description                                                                |
+| ------ | -------------------------- | -------------------------------------------------------------------------- |
+| GET    | `/finances/budgets`        | List budgets for a month/year                                              |
+| GET    | `/finances/budgets/status` | Budget status with spent/remaining amounts                                 |
+| POST   | `/finances/budgets`        | Create budget (category optional — omit for a general all-expenses budget) |
+| PATCH  | `/finances/budgets/{id}`   | Update budget                                                              |
+| DELETE | `/finances/budgets/{id}`   | Delete budget                                                              |
 
 #### Recurring Expenses
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/finances/recurring` | List recurring expenses |
-| POST | `/finances/recurring` | Create recurring expense |
-| PATCH | `/finances/recurring/{id}` | Update recurring expense |
-| DELETE | `/finances/recurring/{id}` | Delete recurring expense |
-| GET | `/finances/recurring/calendar` | Expand recurring expenses into calendar occurrences for a date range |
+| Method | Endpoint                       | Description                                                          |
+| ------ | ------------------------------ | -------------------------------------------------------------------- |
+| GET    | `/finances/recurring`          | List recurring expenses                                              |
+| POST   | `/finances/recurring`          | Create recurring expense                                             |
+| PATCH  | `/finances/recurring/{id}`     | Update recurring expense                                             |
+| DELETE | `/finances/recurring/{id}`     | Delete recurring expense                                             |
+| GET    | `/finances/recurring/calendar` | Expand recurring expenses into calendar occurrences for a date range |
 
 Recurring expenses support an optional `account_id` field. When set, a nightly worker task (`process_due_recurring_expenses`, cron `0 0 * * *`) automatically creates a debit transaction and deducts the amount from the linked account balance on the due date, then advances the next due date by one billing cycle.
 
 #### Categories
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/finances/categories` | List user's custom categories |
-| POST | `/finances/categories` | Create category |
-| PATCH | `/finances/categories/{id}` | Update category |
-| DELETE | `/finances/categories/{id}` | Delete category |
+| Method | Endpoint                    | Description                   |
+| ------ | --------------------------- | ----------------------------- |
+| GET    | `/finances/categories`      | List user's custom categories |
+| POST   | `/finances/categories`      | Create category               |
+| PATCH  | `/finances/categories/{id}` | Update category               |
+| DELETE | `/finances/categories/{id}` | Delete category               |
 
 #### Finance Pipelines
 
-| Pipeline | Description |
-|----------|-------------|
+| Pipeline             | Description                                                     |
+| -------------------- | --------------------------------------------------------------- |
 | `finance_email_sync` | Sync financial transaction emails from connected Gmail accounts |
-| `finance_categorize` | AI-categorize uncategorized transactions in bulk |
+| `finance_categorize` | AI-categorize uncategorized transactions in bulk                |
 
 ### Pipelines
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/pipelines` | List available pipelines |
-| GET | `/pipelines?area=jobs` | List pipelines filtered by area |
-| POST | `/pipelines/{name}/execute` | Execute a pipeline |
-| GET | `/pipeline-runs` | List pipeline run history |
+| Method | Endpoint                    | Description                     |
+| ------ | --------------------------- | ------------------------------- |
+| GET    | `/pipelines`                | List available pipelines        |
+| GET    | `/pipelines?area=jobs`      | List pipelines filtered by area |
+| POST   | `/pipelines/{name}/execute` | Execute a pipeline              |
+| GET    | `/pipeline-runs`            | List pipeline run history       |
 
 #### Job Pipelines
 
-| Pipeline | Description |
-|----------|-------------|
-| `job_search` | Search job boards and analyze fit against resume |
-| `job_search_batch` | Search across all job profiles with resumes |
-| `job_prep` | Generate cover letter and prep notes for a job |
-| `job_prep_batch` | Prep analyzed jobs in score order |
+| Pipeline          | Description                                     |
+| ----------------- | ----------------------------------------------- |
+| `job_prep`        | Generate cover letter and prep notes for a job  |
+| `job_prep_batch`  | Prep analyzed jobs in score order               |
 | `email_sync_jobs` | Sync job listings from connected email accounts |
 
 ### Schedules
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/schedules` | List scheduled tasks (paginated) |
-| POST | `/schedules` | Create a scheduled pipeline task |
-| GET | `/schedules/{id}` | Get a scheduled task |
-| PUT | `/schedules/{id}` | Update a scheduled task |
-| DELETE | `/schedules/{id}` | Delete a scheduled task |
-| POST | `/schedules/{id}/toggle` | Enable/disable task (or invert when `enabled` is omitted) |
-| GET | `/schedules/occurrences` | Expand cron schedules into calendar occurrences for a date range |
+| Method | Endpoint                 | Description                                                      |
+| ------ | ------------------------ | ---------------------------------------------------------------- |
+| GET    | `/schedules`             | List scheduled tasks (paginated)                                 |
+| POST   | `/schedules`             | Create a scheduled pipeline task                                 |
+| GET    | `/schedules/{id}`        | Get a scheduled task                                             |
+| PUT    | `/schedules/{id}`        | Update a scheduled task                                          |
+| DELETE | `/schedules/{id}`        | Delete a scheduled task                                          |
+| POST   | `/schedules/{id}/toggle` | Enable/disable task (or invert when `enabled` is omitted)        |
+| GET    | `/schedules/occurrences` | Expand cron schedules into calendar occurrences for a date range |
 
 ### Integrations (OpenClaw)
 
 All integration endpoints are prefixed with `/integrations/openclaw`.
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/integrations/openclaw/tokens` | Create a scoped integration token (shown once) |
-| GET | `/integrations/openclaw/tokens` | List current user's integration tokens |
-| DELETE | `/integrations/openclaw/tokens/{token_id}` | Revoke an integration token |
-| POST | `/integrations/openclaw/jobs/ingest` | Ingest jobs from OpenClaw using `X-Integration-Token` |
-| POST | `/integrations/openclaw/jobs/{job_id}/analyze` | Persist application-page analysis for an existing job |
-| POST | `/integrations/openclaw/jobs/prep-batch` | Trigger the analyzed-job prep batch pipeline |
-| POST | `/integrations/openclaw/jobs/{job_id}/apply-success` | Mark a reviewed job as applied |
+| Method | Endpoint                                             | Description                                           |
+| ------ | ---------------------------------------------------- | ----------------------------------------------------- |
+| POST   | `/integrations/openclaw/tokens`                      | Create a scoped integration token (shown once)        |
+| GET    | `/integrations/openclaw/tokens`                      | List current user's integration tokens                |
+| DELETE | `/integrations/openclaw/tokens/{token_id}`           | Revoke an integration token                           |
+| POST   | `/integrations/openclaw/jobs/ingest`                 | Ingest jobs from OpenClaw using `X-Integration-Token` |
+| POST   | `/integrations/openclaw/jobs/{job_id}/analyze`       | Persist application-page analysis for an existing job |
+| POST   | `/integrations/openclaw/jobs/prep-batch`             | Trigger the analyzed-job prep batch pipeline          |
+| POST   | `/integrations/openclaw/jobs/{job_id}/apply-success` | Mark a pre-applied job as applied                     |
 
 Authentication model:
+
 - Token management (`/tokens`) uses standard user JWT auth (`Authorization: Bearer ...`).
 - Machine routes use integration token auth (`X-Integration-Token: oct_...`).
 - Each integration token is owned by one user, and ingested jobs are written for that user.
@@ -251,30 +251,32 @@ Authentication model:
 - The web app exposes token management at `/settings/openclaw`.
 
 `/jobs/ingest` reuses the internal job ingestion service for:
+
 - URL deduplication by `job_url` per user
+- Updating existing jobs in place when richer analysis arrives for the same `job_url`
+- Keeping duplicate ingest monotonic for application analysis so weaker follow-up payloads do not clear stronger existing analysis
 - External score/reasoning passthrough (`relevance_score`, `reasoning`) when provided
-- Optional internal AI scoring fallback with a profile resume (`analyze_with_profile`)
-- Score filtering (`min_score`) or forced save (`save_all`)
 - Persisting jobs with `ingestion_source="openclaw"` for source tracking
-- Directly saving jobs as `analyzed` when application-analysis fields are provided
+- Directly saving or updating jobs as `analyzed` when application-analysis fields are provided
+- Returning explicit `saved_job_ids`, `updated_job_ids`, `analyzed_job_ids`, and `prep_eligible_job_ids`
 
 Current payload limits/behavior:
+
 - `jobs` minimum length: `1` (request validation)
 - `jobs` maximum length: currently not enforced at API schema level
 - If a job has external `relevance_score`, that score is stored directly
-- If external scores are missing, internal analysis can fill scores when profile resume context is available
-- `analyze_with_profile=true` tries `profile_id` (if provided) or default profile
-- `qa_with_internal_analysis=true` runs internal analysis as QA comparison while still storing external scores
-- If no profile resume text is available, ingestion still works but skips fit scoring
+- If external scores are missing, the job is still saved without a score
+- `profile_id` is stored as prep context when provided
+- Manual Analyze in the web app is the built-in fallback when external analysis is unavailable
 
 See [OpenClaw Job Ingest](./openclaw.md) for the exact end-to-end flow and the minimal OpenClaw skill.
 
 ### Area Agents
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/areas` | List available area configs |
-| POST | `/areas/{area}/chat` | Chat with area agent (non-streaming) |
+| Method | Endpoint             | Description                          |
+| ------ | -------------------- | ------------------------------------ |
+| GET    | `/areas`             | List available area configs          |
+| POST   | `/areas/{area}/chat` | Chat with area agent (non-streaming) |
 
 ## Services
 
@@ -359,7 +361,7 @@ from app.repositories.base import BaseRepository, UserOwnedRepository, PrimaryEn
 # BaseRepository - Generic CRUD operations
 class BaseRepository(Generic[ModelType]):
     model: type[ModelType]
-    
+
     async def get(db, id) -> ModelType | None
     async def create(db, **data) -> ModelType
     async def update(db, db_obj, update_data) -> ModelType
@@ -372,7 +374,7 @@ class UserOwnedRepository(BaseRepository[ModelType]):
 # PrimaryEntityRepository - Adds primary/default management
 class PrimaryEntityRepository(UserOwnedRepository[ModelType]):
     primary_field: str = "is_primary"  # or "is_default"
-    
+
     async def get_primary_for_user(db, user_id) -> ModelType | None
     async def set_primary(db, item_id, user_id) -> ModelType
 ```
@@ -403,7 +405,7 @@ from app.repositories.resume import ResumeRepository
 class ResumeService(PrimaryEntityService[Resume, ResumeRepository]):
     def __init__(self, db: AsyncSession):
         super().__init__(db, ResumeRepository())
-    
+
     # Add custom methods as needed
     async def create_from_upload(self, user_id, file, name) -> Resume:
         ...
@@ -424,20 +426,20 @@ settings.OPENAI_API_KEY
 
 ### Key Settings
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ENVIRONMENT` | `local` | `local`, `development`, `staging`, `production` |
-| `DEBUG` | `False` | Enable debug mode |
-| `SECRET_KEY` | - | JWT signing key (32+ chars) |
-| `POSTGRES_*` | - | Database connection |
-| `REDIS_*` | - | Redis connection |
-| `OPENAI_API_KEY` | - | OpenAI API key |
-| `AI_MODEL` | `gpt-4o-mini` | Default AI model |
-| `RATE_LIMIT_REQUESTS` | `100` | Requests per period |
-| `RATE_LIMIT_PERIOD` | `60` | Rate limit period (seconds) |
-| `GOOGLE_GMAIL_REDIRECT_URI` | - | Gmail OAuth callback URL |
-| `EMAIL_SYNC_INTERVAL_MINUTES` | `60` | How often to sync email sources |
-| `EMAIL_SYNC_LOOKBACK_HOURS` | `72` | How far back to look on first sync |
+| Variable                      | Default       | Description                                     |
+| ----------------------------- | ------------- | ----------------------------------------------- |
+| `ENVIRONMENT`                 | `local`       | `local`, `development`, `staging`, `production` |
+| `DEBUG`                       | `False`       | Enable debug mode                               |
+| `SECRET_KEY`                  | -             | JWT signing key (32+ chars)                     |
+| `POSTGRES_*`                  | -             | Database connection                             |
+| `REDIS_*`                     | -             | Redis connection                                |
+| `OPENAI_API_KEY`              | -             | OpenAI API key                                  |
+| `AI_MODEL`                    | `gpt-4o-mini` | Default AI model                                |
+| `RATE_LIMIT_REQUESTS`         | `100`         | Requests per period                             |
+| `RATE_LIMIT_PERIOD`           | `60`          | Rate limit period (seconds)                     |
+| `GOOGLE_GMAIL_REDIRECT_URI`   | -             | Gmail OAuth callback URL                        |
+| `EMAIL_SYNC_INTERVAL_MINUTES` | `60`          | How often to sync email sources                 |
+| `EMAIL_SYNC_LOOKBACK_HOURS`   | `72`          | How far back to look on first sync              |
 
 ## Exception Handling
 
@@ -459,13 +461,13 @@ raise AuthenticationError(message="Invalid credentials")
 
 Exception handlers convert these to proper HTTP responses:
 
-| Exception | HTTP Status |
-|-----------|-------------|
-| `NotFoundError` | 404 |
-| `AlreadyExistsError` | 409 |
-| `AuthenticationError` | 401 |
-| `AuthorizationError` | 403 |
-| `ValidationError` | 422 |
+| Exception             | HTTP Status |
+| --------------------- | ----------- |
+| `NotFoundError`       | 404         |
+| `AlreadyExistsError`  | 409         |
+| `AuthenticationError` | 401         |
+| `AuthorizationError`  | 403         |
+| `ValidationError`     | 422         |
 
 ## Database Migrations
 
@@ -506,6 +508,7 @@ await send_email_task.kiq("user@example.com", "Hello", "Body text")
 ```
 
 Start workers:
+
 ```bash
 uv run personal_automations taskiq worker
 uv run personal_automations taskiq scheduler  # For scheduled tasks
@@ -546,6 +549,7 @@ def seed_database(count: int):
 ```
 
 Run with:
+
 ```bash
 personal_automations cmd seed --count 100
 ```
@@ -572,51 +576,57 @@ The email integration syncs job alert emails from connected Gmail accounts:
 - **Supported Job Boards**: Indeed, LinkedIn, HiringCafe, Glassdoor, Dice, ZipRecruiter
 - **Sync Frequency**: A default hourly schedule is created when Gmail is connected and can be edited on the Schedules page
 - **Parsers**: Template-based (BeautifulSoup) for known formats, AI fallback (GPT-4o-mini) for unknown
-- **Score Filtering**: Optionally filters jobs by AI relevance score before saving
+- **Persistence**: Saves deduplicated jobs and preserves any external scores already present in parsed data
 
 ### Architecture
 
 ```
-Gmail API → GmailClient → Email Parsers → AI Scoring → Job Records
-                ↑                ↓                        ↓
-          EmailSource      EmailMessage            (filtered by score)
+Gmail API → GmailClient → Email Parsers → Job Records
+                ↑                ↓             ↓
+          EmailSource      EmailMessage   prep-context profile (optional)
           (OAuth tokens)   (processed tracking)
 ```
 
 ### Pipeline Options
 
 The `email_sync_jobs` pipeline accepts:
+
 - `source_id` - Specific email source to sync (optional, syncs all if not provided)
 - `force_full_sync` - Ignore last sync time and sync all matching emails
-- `save_all` - Save all jobs regardless of score (default: false, uses profile's min_score_threshold)
+- `save_all` - Retained for compatibility but ignored during ingestion
 
 ### Future Enhancements (Phase 3)
 
 #### Real-Time Sync
+
 - Gmail Watch API for push notifications instead of polling
 - Pub/Sub webhook endpoint for instant processing
 - WebSocket updates to frontend for live notifications
 - Toast notifications: "3 new jobs found!"
 
 #### Smart Parser Improvements
+
 - Self-improving AI parser that learns from user corrections
 - User feedback buttons: "This wasn't a job" / "Add missing job"
 - Parser confidence scores displayed on job cards
 - Auto-generate template parsers from successful AI extractions
 
 #### Processed Email Viewer
+
 - View original email that created a job
 - "View source email" link on job detail page
 - Re-parse emails with different parser
 - Mark emails for manual review queue
 
 #### Sync Dashboard
+
 - Real-time sync status indicator
 - Historical sync timeline and statistics
 - Per-source success/failure rates
 - Parser performance metrics
 
 #### Cross-Area Integrations
+
 - Detect "interview scheduled" emails → update job status
 - Detect "rejection" emails → auto-dismiss job
 - Detect "offer" emails → highlight job
@@ -627,12 +637,14 @@ The `email_sync_jobs` pipeline accepts:
 If expanding beyond job alerts to a full email management system:
 
 ### Core Features
+
 - **Inbox View**: List, search, filter all emails
 - **Email Actions**: Mark read/unread, star, archive, delete
 - **Compose**: Send emails (requires `gmail.send` scope)
 - **Threads**: View email conversations grouped by thread
 
 ### Smart Parsing
+
 - Job alerts → Extract to Jobs area
 - Receipts → Extract to Expenses
 - Calendar invites → Extract to Calendar
@@ -640,7 +652,9 @@ If expanding beyond job alerts to a full email management system:
 - Custom rules: "If sender=X, apply label Y"
 
 ### Automation Rules
+
 User-defined rules with conditions and actions:
+
 ```python
 class EmailRule:
     conditions: dict  # {"from_contains": "recruiter", "subject_contains": "interview"}
@@ -648,6 +662,7 @@ class EmailRule:
 ```
 
 ### Analytics
+
 - Email volume trends over time
 - Top senders/domains
 - Response time analytics

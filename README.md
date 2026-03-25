@@ -12,7 +12,7 @@ A personal productivity platform for automating job search, applications, and re
 - **Job Search Automation** — Scrapes job listings, analyzes fit with AI, scores matches
 - **Resume Management** — Upload resumes, extract text, link to job profiles
 - **Cover Letter Generation** — AI-generated cover letters with PDF export
-- **Application Tracking** — Track jobs through: New → Prepped → Reviewed → Applied
+- **Application Tracking** — Track jobs through: New → Analyzed → Prepped → Reviewed/Applied
 - **Pipeline System** — Configurable workflows triggered via chat or UI
 - **Area-Specific Agents** — Jobs area has its own AI assistant with focused tooling
 

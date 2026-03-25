@@ -8,7 +8,6 @@ import { ROUTES } from "@/lib/constants";
 
 // Breadcrumb configuration
 const routeLabels: Record<string, string> = {
-  [ROUTES.JOBS]: "Overview",
   [ROUTES.JOBS_LIST]: "Listings",
   [ROUTES.JOBS_PROFILES]: "Profiles",
   [ROUTES.JOBS_PIPELINES]: "Pipelines",
@@ -22,18 +21,17 @@ interface BreadcrumbItem {
 }
 
 function getBreadcrumbs(pathname: string): BreadcrumbItem[] {
+  const isListingsRoute = pathname === ROUTES.JOBS || pathname === ROUTES.JOBS_LIST;
   const breadcrumbs: BreadcrumbItem[] = [
-    { label: "Jobs", href: ROUTES.JOBS, isActive: pathname === ROUTES.JOBS },
+    { label: "Jobs", href: ROUTES.JOBS_LIST, isActive: isListingsRoute },
   ];
 
-  // Add current page if not on overview
-  if (pathname !== ROUTES.JOBS && routeLabels[pathname]) {
+  if (!isListingsRoute && routeLabels[pathname]) {
     breadcrumbs.push({
       label: routeLabels[pathname],
       href: pathname,
       isActive: true,
     });
-    // Mark Jobs as not active when on a sub-route
     breadcrumbs[0].isActive = false;
   }
 

@@ -15,6 +15,7 @@ from app.core.cover_letter_pdf import (
     generate_cover_letter_filename,
     generate_cover_letter_pdf,
 )
+from app.core.exceptions import ValidationError
 from app.core.storage import get_storage_instance
 from app.db.models.job import JobStatus
 from app.db.session import get_db_context
@@ -22,9 +23,35 @@ from app.pipelines.action_base import ActionPipeline, ActionResult, PipelineCont
 from app.pipelines.actions.job_prep.generator import generate_prep_materials
 from app.pipelines.registry import register_pipeline
 from app.repositories import job_profile_repo, job_repo, project_repo, user_repo
-from app.schemas.job_profile import JobProfileSummary, ProfileRequiredError
+from app.schemas.job_profile import JobProfileSummary, ProfileRequiredError, profile_to_summary
 
 logger = logging.getLogger(__name__)
+
+
+def _job_has_explicit_application_analysis(job) -> bool:
+    has_analysis_property = getattr(job, "has_application_analysis", None)
+    if has_analysis_property is not None:
+        return bool(has_analysis_property)
+
+    return getattr(job, "analyzed_at", None) is not None and any(
+        getattr(job, field, None) is not None
+        for field in (
+            "application_type",
+            "application_url",
+            "requires_cover_letter",
+            "cover_letter_requested",
+            "requires_resume",
+            "detected_fields",
+            "screening_questions",
+        )
+    )
+
+
+async def _available_profile_summaries(user_id: UUID) -> list[JobProfileSummary]:
+    """Load profile summaries for profile-selection errors."""
+    async with get_db_context() as db:
+        profiles = await job_profile_repo.get_by_user_id(db, user_id)
+    return [profile_to_summary(profile) for profile in profiles]
 
 
 class JobPrepInput(BaseModel):
@@ -132,8 +159,16 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
             return ActionResult(
                 success=False,
                 error=(
-                    "Job prep requires an analyzed job. Run OpenClaw analysis before preparing "
-                    "application materials."
+                    "Job prep requires an analyzed job. Run manual or external analysis before "
+                    "preparing application materials."
+                ),
+            )
+        if job.job_status == JobStatus.ANALYZED and not _job_has_explicit_application_analysis(job):
+            return ActionResult(
+                success=False,
+                error=(
+                    "Job prep requires explicit application analysis fields. Re-run OpenClaw "
+                    "analysis or manual analyze before preparing application materials."
                 ),
             )
 
@@ -142,19 +177,7 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
             if input.profile_id is not None:
                 profile = await job_profile_repo.get_by_id(db, input.profile_id)
                 if profile is None or profile.user_id != context.user_id:
-                    all_profiles = await job_profile_repo.get_by_user_id(db, context.user_id)
-                    available_profiles = [
-                        JobProfileSummary(
-                            id=p.id,
-                            name=p.name,
-                            is_default=p.is_default,
-                            has_resume=p.resume is not None and p.resume.text_content is not None,
-                            resume_name=p.resume.name if p.resume else None,
-                            target_roles_count=len(p.target_roles) if p.target_roles else 0,
-                            min_score_threshold=p.min_score_threshold,
-                        )
-                        for p in all_profiles
-                    ]
+                    available_profiles = await _available_profile_summaries(context.user_id)
                     error_data = ProfileRequiredError(
                         message="The selected profile was not found or you don't have access to it.",
                         available_profiles=available_profiles,
@@ -169,20 +192,7 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
 
         # Handle no profile case
         if profile is None:
-            async with get_db_context() as db:
-                all_profiles = await job_profile_repo.get_by_user_id(db, context.user_id)
-                available_profiles = [
-                    JobProfileSummary(
-                        id=p.id,
-                        name=p.name,
-                        is_default=p.is_default,
-                        has_resume=p.resume is not None and p.resume.text_content is not None,
-                        resume_name=p.resume.name if p.resume else None,
-                        target_roles_count=len(p.target_roles) if p.target_roles else 0,
-                        min_score_threshold=p.min_score_threshold,
-                    )
-                    for p in all_profiles
-                ]
+            available_profiles = await _available_profile_summaries(context.user_id)
             if available_profiles:
                 error_data = ProfileRequiredError(
                     message="No default profile set. Please select a profile to use for job prep.",
@@ -201,20 +211,7 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
 
         # Verify resume exists
         if not profile.resume or not profile.resume.text_content:
-            async with get_db_context() as db:
-                all_profiles = await job_profile_repo.get_by_user_id(db, context.user_id)
-                available_profiles = [
-                    JobProfileSummary(
-                        id=p.id,
-                        name=p.name,
-                        is_default=p.is_default,
-                        has_resume=p.resume is not None and p.resume.text_content is not None,
-                        resume_name=p.resume.name if p.resume else None,
-                        target_roles_count=len(p.target_roles) if p.target_roles else 0,
-                        min_score_threshold=p.min_score_threshold,
-                    )
-                    for p in all_profiles
-                ]
+            available_profiles = await _available_profile_summaries(context.user_id)
             error_data = ProfileRequiredError(
                 message=f"Profile '{profile.name}' has no resume linked. Please add a resume to the profile or select a different profile.",
                 available_profiles=available_profiles,
@@ -248,7 +245,11 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                     logger.info(f"Including {len(projects_content)} projects from profile")
 
         # Step 4: Generate a cover letter only when analysis requires it or the caller forces it.
-        should_generate_cover_letter = input.force_cover_letter or job.requires_cover_letter is True
+        should_generate_cover_letter = (
+            input.force_cover_letter
+            or job.requires_cover_letter is True
+            or job.cover_letter_requested is True
+        )
         skipped_cover_letter = not should_generate_cover_letter
         logger.info(
             "Generating cover letter=%s (requires_cover_letter=%s, force=%s)",
@@ -267,6 +268,12 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                 resume_text=resume_text,
                 story_content=story_content,
                 projects_content=projects_content if projects_content else None,
+                screening_questions=(
+                    job.screening_questions if input.generate_screening_answers else None
+                ),
+                reasoning=job.reasoning,
+                application_type=job.application_type,
+                source=job.source,
                 tone=input.tone,
                 skip_cover_letter=not should_generate_cover_letter,
             )
@@ -277,32 +284,16 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                 error=f"Failed to generate prep materials: {e}",
             )
 
-        # Step 6: Generate screening answers if requested
-        screening_answers: dict[str, str] = {}
-        if input.generate_screening_answers and job.screening_questions:
-            try:
-                from app.pipelines.actions.job_prep.answer_generator import (
-                    generate_screening_answers,
-                )
-
-                screening_answers = await generate_screening_answers(
-                    questions=job.screening_questions,
-                    resume_text=resume_text,
-                    job_title=job.title,
-                    company=job.company,
-                )
-                logger.info(f"Generated {len(screening_answers)} screening answers")
-            except Exception as e:
-                logger.warning(f"Failed to generate screening answers: {e}")
-                # Continue without screening answers
+        # Step 6: Screening answers now come from the main prep generation pass.
+        screening_answers = (
+            prep_output.screening_answers if input.generate_screening_answers else {}
+        )
+        if screening_answers:
+            logger.info(f"Generated {len(screening_answers)} screening answers")
 
         # Step 7: Update the job record
         # Check if we have a real cover letter (not just placeholder)
-        has_real_cover_letter = (
-            prep_output.cover_letter
-            and prep_output.cover_letter.strip()
-            and prep_output.cover_letter != "Not requested"
-        )
+        has_real_cover_letter = bool(prep_output.cover_letter and prep_output.cover_letter.strip())
         cover_letter_len = len(prep_output.cover_letter) if has_real_cover_letter else 0
         logger.info(
             f"Generated materials: cover_letter={cover_letter_len} chars, "
@@ -315,6 +306,7 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                 update_data = {
                     "prep_notes": prep_output.prep_notes,
                     "prepped_at": datetime.now(UTC),
+                    "profile_id": profile.id,
                     "status": (
                         JobStatus.PREPPED.value
                         if job.job_status == JobStatus.ANALYZED
@@ -345,13 +337,29 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                     user = await user_repo.get_by_id(db, context.user_id)
 
                 if user:
+                    profile_full_name = (
+                        profile.contact_full_name.strip()
+                        if profile.contact_full_name and profile.contact_full_name.strip()
+                        else None
+                    )
+                    user_full_name = (
+                        user.full_name.strip()
+                        if user.full_name and user.full_name.strip()
+                        else None
+                    )
+                    full_name = profile_full_name or user_full_name
+                    if not full_name:
+                        raise ValidationError(
+                            message=(
+                                "Add a full name to your job profile or account before "
+                                "generating a cover letter PDF"
+                            ),
+                            details={"profile_id": str(profile.id), "job_id": str(job.id)},
+                        )
+
                     # Build contact info from profile with fallbacks
                     contact_info = ContactInfo(
-                        full_name=(
-                            profile.contact_full_name
-                            or user.full_name
-                            or user.email.split("@")[0].replace("_", " ").replace(".", " ").title()
-                        ),
+                        full_name=full_name,
                         phone=profile.contact_phone,
                         email=profile.contact_email or user.email,
                         location=profile.contact_location,
@@ -367,11 +375,7 @@ class JobPrepPipeline(ActionPipeline[JobPrepInput, JobPrepOutput]):
                     )
 
                     # Generate filename
-                    filename = generate_cover_letter_filename(
-                        company=job.company,
-                        job_title=job.title,
-                        applicant_name=contact_info.full_name,
-                    )
+                    filename = generate_cover_letter_filename(company=job.company)
 
                     # Store in S3
                     storage = await get_storage_instance()

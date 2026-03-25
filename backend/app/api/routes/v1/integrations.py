@@ -58,16 +58,22 @@ def _job_attributes_from_openclaw_payload(job) -> dict:
     attributes: dict = {}
     if job.description is not None:
         attributes["description"] = job.description
+    if job.ats_family is not None:
+        attributes["ats_family"] = job.ats_family
+    if job.analysis_source is not None:
+        attributes["analysis_source"] = job.analysis_source
     if job.has_application_analysis:
         attributes.update(
             {
                 "application_type": job.application_type,
                 "application_url": job.application_url,
                 "requires_cover_letter": job.requires_cover_letter,
+                "cover_letter_requested": job.cover_letter_requested,
                 "requires_resume": job.requires_resume,
                 "detected_fields": job.detected_fields,
                 "screening_questions": job.screening_questions,
                 "analyzed_at": job.analyzed_at or datetime.now(UTC),
+                "analysis_source": job.analysis_source or "openclaw",
                 "status": JobStatus.ANALYZED.value,
             }
         )
@@ -133,11 +139,6 @@ async def ingest_openclaw_jobs(
     user_id = openclaw_token.user_id
 
     profile = None
-    resume_text: str | None = None
-    target_roles: list[str] | None = None
-    preferences: dict | None = None
-    analysis_enabled = False
-    min_score = payload.min_score if payload.min_score is not None else 7.0
     external_analysis_by_url = {
         job.job_url: {
             "relevance_score": job.relevance_score,
@@ -146,38 +147,19 @@ async def ingest_openclaw_jobs(
         for job in payload.jobs
         if job.relevance_score is not None
     }
-    external_analysis_used = bool(external_analysis_by_url)
+    external_analysis_used = bool(
+        external_analysis_by_url or any(job.has_application_analysis for job in payload.jobs)
+    )
     job_attributes_by_url = {}
     for job in payload.jobs:
         attributes = _job_attributes_from_openclaw_payload(job)
         if attributes:
             job_attributes_by_url[job.job_url] = attributes
 
-    if payload.analyze_with_profile:
-        if payload.profile_id:
-            profile = await job_profile_repo.get_by_id(db, payload.profile_id)
-            if profile is None or profile.user_id != user_id:
-                raise ValidationError(message="Profile not found or access denied")
-            if not profile.resume or not profile.resume.text_content:
-                raise ValidationError(
-                    message="Selected profile has no resume text for analysis",
-                    details={"profile_id": str(profile.id)},
-                )
-        else:
-            profile = await job_profile_repo.get_default_for_user(db, user_id)
-
-        if profile and profile.resume and profile.resume.text_content:
-            resume_text = profile.resume.text_content
-            target_roles = profile.target_roles
-            preferences = profile.preferences
-            analysis_enabled = True
-            if payload.min_score is None:
-                min_score = profile.min_score_threshold or 7.0
-
-    if payload.qa_with_internal_analysis and not resume_text:
-        raise ValidationError(
-            message="QA analysis requested but no profile resume text is available"
-        )
+    if payload.profile_id:
+        profile = await job_profile_repo.get_by_id(db, payload.profile_id)
+        if profile is None or profile.user_id != user_id:
+            raise ValidationError(message="Profile not found or access denied")
 
     raw_jobs = [
         RawJob(
@@ -201,15 +183,9 @@ async def ingest_openclaw_jobs(
         jobs=raw_jobs,
         ingestion_source="openclaw",
         profile_id=profile.id if profile else None,
-        resume_text=resume_text,
-        target_roles=target_roles,
-        preferences=preferences,
-        min_score=min_score,
-        save_all=payload.save_all,
         search_terms=payload.search_terms,
         external_analysis_by_url=external_analysis_by_url,
         job_attributes_by_url=job_attributes_by_url,
-        qa_with_internal_analysis=payload.qa_with_internal_analysis,
     )
     await db.commit()
 
@@ -217,13 +193,14 @@ async def ingest_openclaw_jobs(
         jobs_received=ingestion.jobs_received,
         jobs_analyzed=ingestion.jobs_analyzed,
         jobs_saved=ingestion.jobs_saved,
+        jobs_updated=ingestion.jobs_updated,
         duplicates_skipped=ingestion.duplicates_skipped,
         high_scoring=ingestion.high_scoring,
-        analysis_enabled=analysis_enabled,
         external_analysis_used=external_analysis_used,
-        qa_with_internal_analysis=payload.qa_with_internal_analysis,
-        qa_jobs_checked=ingestion.qa_jobs_checked,
-        qa_large_score_drift=ingestion.qa_large_score_drift,
+        saved_job_ids=ingestion.saved_job_ids,
+        updated_job_ids=ingestion.updated_job_ids,
+        analyzed_job_ids=ingestion.analyzed_job_ids,
+        prep_eligible_job_ids=ingestion.prep_eligible_job_ids,
         profile_id=profile.id if profile else None,
         profile_name=profile.name if profile else None,
         token_id=openclaw_token.id,
@@ -246,9 +223,12 @@ async def analyze_openclaw_job(
         application_type=payload.application_type,
         application_url=payload.application_url,
         requires_cover_letter=payload.requires_cover_letter,
+        cover_letter_requested=payload.cover_letter_requested,
         requires_resume=payload.requires_resume,
         detected_fields=payload.detected_fields,
         screening_questions=payload.screening_questions,
+        ats_family=payload.ats_family,
+        analysis_source=payload.analysis_source or "openclaw",
         analyzed_at=payload.analyzed_at,
     )
     return JobResponse.model_validate(job)

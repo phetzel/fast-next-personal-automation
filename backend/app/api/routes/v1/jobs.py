@@ -1,7 +1,4 @@
-"""Jobs API routes.
-
-Provides REST endpoints for managing user's job listings from the search pipeline.
-"""
+"""Jobs API routes."""
 
 import logging
 from typing import Literal
@@ -20,6 +17,7 @@ from app.schemas.job import (
     JobResponse,
     JobStatsResponse,
     JobUpdate,
+    ManualAnalyzeRequest,
     ManualJobCreateRequest,
 )
 
@@ -33,6 +31,7 @@ async def list_jobs(
     current_user: CurrentUser,
     job_service: JobSvc,
     status: JobStatus | None = Query(None, description="Filter by status"),
+    statuses: list[JobStatus] | None = Query(None, description="Filter by one or more statuses"),
     source: str | None = Query(None, description="Filter by source (linkedin, indeed, etc.)"),
     ingestion_source: IngestionSource | None = Query(
         None,
@@ -41,6 +40,10 @@ async def list_jobs(
     min_score: float | None = Query(None, ge=0.0, le=10.0, description="Minimum relevance score"),
     max_score: float | None = Query(None, ge=0.0, le=10.0, description="Maximum relevance score"),
     search: str | None = Query(None, description="Search in title, company, description"),
+    prep_eligible: bool | None = Query(
+        None,
+        description="Filter to jobs explicitly analyzed and ready for prep",
+    ),
     posted_within_hours: int | None = Query(
         None,
         ge=1,
@@ -54,18 +57,16 @@ async def list_jobs(
     ),
     sort_order: Literal["asc", "desc"] = Query("desc", description="Sort order (asc/desc)"),
 ) -> JobListResponse:
-    """List user's jobs with filtering and pagination.
-
-    Returns scraped jobs from the job search pipeline, with their
-    analysis scores and workflow status.
-    """
+    """List user's jobs with filtering and pagination."""
     filters = JobFilters(
         status=status,
+        statuses=statuses,
         source=source,
         ingestion_source=ingestion_source,
         min_score=min_score,
         max_score=max_score,
         search=search,
+        prep_eligible=prep_eligible,
         posted_within_hours=posted_within_hours,
         page=page,
         page_size=page_size,
@@ -161,8 +162,25 @@ async def create_job(
     current_user: CurrentUser,
     job_service: JobSvc,
 ) -> JobResponse:
-    """Create a manual job and score it with the selected/default profile."""
+    """Create a manual job with optional prep-profile context."""
     job = await job_service.create_manual_job(current_user.id, job_in)
+    return JobResponse.model_validate(job)
+
+
+@router.post("/{job_id}/manual-analyze", response_model=JobResponse)
+async def manual_analyze_job(
+    job_id: UUID,
+    request: ManualAnalyzeRequest,
+    current_user: CurrentUser,
+    job_service: JobSvc,
+) -> JobResponse:
+    """Manually mark a job as ready for prep with lightweight application inputs."""
+    job = await job_service.manual_analyze(
+        job_id,
+        current_user.id,
+        requires_cover_letter=request.requires_cover_letter,
+        screening_questions=request.screening_questions,
+    )
     return JobResponse.model_validate(job)
 
 

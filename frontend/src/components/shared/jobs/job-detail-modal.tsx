@@ -1,18 +1,23 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   Button,
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   Textarea,
 } from "@/components/ui";
-import type { Job, JobStatus, JobUpdate } from "@/types";
+import { CoverLetterProfileNotice } from "@/components/shared/jobs/cover-letter-profile-notice";
+import { ScreeningAnswersSection } from "@/components/shared/jobs/screening-answers-section";
+import { getScreeningQuestionText, type Job, type JobStatus, type JobUpdate } from "@/types";
 import { JOB_STATUSES, JOB_STATUS_CONFIG, canTransitionTo, shouldGenerateReviewPdf } from "@/types";
 import { cn } from "@/lib/utils";
 import { ScoreBadge } from "./score-badge";
@@ -29,13 +34,13 @@ import {
   Download,
   CheckCircle,
   Save,
-  ChevronDown,
-  ChevronUp,
   AlertCircle,
   Sparkles,
   Eye,
   RefreshCw,
   Maximize2,
+  ClipboardCheck,
+  MessageSquare,
 } from "lucide-react";
 
 interface JobDetailModalProps {
@@ -45,6 +50,7 @@ interface JobDetailModalProps {
   onJobChange?: (job: Job | null) => void;
   onUpdate: (jobId: string, update: JobUpdate) => Promise<Job | null>;
   onDelete: (jobId: string) => Promise<boolean>;
+  onAnalyze?: (job: Job) => void;
   onPrep?: (job: Job) => void;
 }
 
@@ -61,9 +67,9 @@ export function JobDetailModal({
   onJobChange,
   onUpdate,
   onDelete,
+  onAnalyze,
   onPrep,
 }: JobDetailModalProps) {
-  const [showPrepNotes, setShowPrepNotes] = useState(false);
   const detail = useJobDetail({
     initialJob: job,
     onDelete,
@@ -95,6 +101,12 @@ export function JobDetailModal({
 
     await detail.handleStatusChange(newStatus);
   };
+  const defaultSections = [
+    "snapshot",
+    detail.hasApplicationAnalysis ? "analysis" : null,
+    detail.hasPreppedMaterials ? "materials" : null,
+    "notes",
+  ].filter((value): value is string => Boolean(value));
 
   return (
     <Dialog open={isOpen} onOpenChange={() => onClose()}>
@@ -192,73 +204,44 @@ export function JobDetailModal({
             </div>
             {currentJob.status === "new" && (
               <p className="text-muted-foreground mt-2 text-xs">
-                <span className="text-blue-600 dark:text-blue-400">Next step:</span> OpenClaw still
-                needs to analyze the application page before this job can be prepped.
+                <span className="text-blue-600 dark:text-blue-400">Next step:</span> Capture the
+                application requirements, then run prep. If you already submitted it elsewhere,
+                click &quot;Applied&quot; directly.
               </p>
             )}
             {currentJob.status === "analyzed" && (
               <p className="text-muted-foreground mt-2 text-xs">
                 <span className="text-cyan-600 dark:text-cyan-400">Next step:</span> Click
-                &quot;Prepped&quot; to generate the cover letter and screening answers.
+                &quot;Prepped&quot; to generate the cover letter and screening answers, or jump
+                straight to &quot;Applied&quot; if you already submitted.
               </p>
             )}
             {currentJob.status === "prepped" && (
               <p className="text-muted-foreground mt-2 text-xs">
                 <span className="text-purple-600 dark:text-purple-400">Tip:</span> Clicking
-                &quot;Reviewed&quot;{" "}
+                &quot;Reviewed&quot; or &quot;Applied&quot;{" "}
                 {shouldGenerateReviewPdf(currentJob)
-                  ? "will generate a PDF of your cover letter."
-                  : "will move this job into the reviewed stage."}
+                  ? "is available now. Reviewed will generate a PDF of your cover letter."
+                  : "is available now."}
               </p>
             )}
           </div>
 
-          {detail.hasApplicationAnalysis && (
-            <div className="space-y-3 rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-4">
-              <div className="flex items-center justify-between">
-                <p className="font-medium text-indigo-700 dark:text-indigo-300">
-                  Application Analysis
-                </p>
-                {currentJob.analyzed_at && (
-                  <span className="text-xs text-indigo-700/80 dark:text-indigo-300/80">
-                    {format(new Date(currentJob.analyzed_at), "MMM d, h:mm a")}
-                  </span>
-                )}
-              </div>
-              <div className="grid gap-2 text-sm sm:grid-cols-2">
+          {currentJob.status === "new" && onAnalyze && (
+            <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4">
+              <div className="flex items-start justify-between gap-4">
                 <div>
-                  <span className="text-muted-foreground">Application type:</span>{" "}
-                  <span className="capitalize">{currentJob.application_type || "Unknown"}</span>
+                  <p className="font-medium text-blue-700 dark:text-blue-300">Ready for prep?</p>
+                  <p className="text-sm text-blue-700/80 dark:text-blue-300/80">
+                    Run Manual Analyze to mark whether a cover letter is needed and add any custom
+                    questions you want prepped.
+                  </p>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Cover letter:</span>{" "}
-                  {currentJob.requires_cover_letter === null
-                    ? "Unknown"
-                    : currentJob.requires_cover_letter
-                      ? "Required"
-                      : "Not required"}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Resume:</span>{" "}
-                  {currentJob.requires_resume === null
-                    ? "Unknown"
-                    : currentJob.requires_resume
-                      ? "Required"
-                      : "Not required"}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Screening questions:</span>{" "}
-                  {currentJob.screening_questions?.length ?? 0}
-                </div>
-              </div>
-              {currentJob.application_url && (
-                <Button variant="outline" size="sm" asChild className="w-fit">
-                  <a href={currentJob.application_url} target="_blank" rel="noopener noreferrer">
-                    Open Application
-                    <ExternalLink className="ml-2 h-4 w-4" />
-                  </a>
+                <Button variant="outline" size="sm" onClick={() => onAnalyze?.(currentJob)}>
+                  <ClipboardCheck className="mr-2 h-4 w-4" />
+                  Manual Analyze
                 </Button>
-              )}
+              </div>
             </div>
           )}
 
@@ -277,137 +260,6 @@ export function JobDetailModal({
                 <AlertCircle className="h-4 w-4" />
                 <span>{detail.downloadError}</span>
               </div>
-            </div>
-          )}
-
-          {detail.hasPreppedMaterials && (
-            <div className="space-y-4 rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-cyan-600" />
-                  <span className="font-medium text-cyan-700 dark:text-cyan-300">
-                    Application Materials
-                  </span>
-                </div>
-                {detail.hasPdf && (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={detail.handlePreviewPdf}
-                      className="border-cyan-500/30 hover:bg-cyan-500/10"
-                    >
-                      <Eye className="mr-2 h-4 w-4" />
-                      Preview
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={detail.handleDownloadPdf}
-                      disabled={detail.isDownloading}
-                      className="border-cyan-500/30 hover:bg-cyan-500/10"
-                    >
-                      {detail.isDownloading ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Download className="mr-2 h-4 w-4" />
-                      )}
-                      Download
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {currentJob.cover_letter && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Cover Letter</label>
-                    {detail.coverLetterDirty && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={detail.handleSaveCoverLetter}
-                        disabled={detail.isUpdating}
-                        className="h-7 text-xs"
-                      >
-                        {detail.isUpdating ? (
-                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                        ) : (
-                          <Save className="mr-1 h-3 w-3" />
-                        )}
-                        Save Changes
-                      </Button>
-                    )}
-                  </div>
-                  <Textarea
-                    value={detail.coverLetter}
-                    onChange={(e) => {
-                      detail.setCoverLetter(e.target.value);
-                      detail.setCoverLetterDirty(e.target.value !== currentJob.cover_letter);
-                    }}
-                    placeholder="Your cover letter..."
-                    rows={8}
-                    className="font-mono text-sm"
-                  />
-                </div>
-              )}
-
-              {currentJob.prep_notes && (
-                <div className="space-y-2">
-                  <button
-                    onClick={() => setShowPrepNotes(!showPrepNotes)}
-                    className="flex w-full items-center justify-between text-sm font-medium hover:text-cyan-600"
-                  >
-                    <span>Prep Notes & Talking Points</span>
-                    {showPrepNotes ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </button>
-                  {showPrepNotes && (
-                    <div className="bg-background/80 rounded-md p-3 text-sm">
-                      <pre className="font-sans whitespace-pre-wrap">{currentJob.prep_notes}</pre>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {detail.hasPdf && (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
-                    <CheckCircle className="h-4 w-4" />
-                    <span>
-                      PDF generated{" "}
-                      {currentJob.cover_letter_generated_at
-                        ? format(new Date(currentJob.cover_letter_generated_at), "MMM d, h:mm a")
-                        : ""}
-                    </span>
-                  </div>
-                  {detail.coverLetterDirty && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={detail.handleRegeneratePdf}
-                      disabled={detail.isGeneratingPdf}
-                      className="h-7 border-amber-500/30 text-xs hover:bg-amber-500/10"
-                    >
-                      {detail.isGeneratingPdf ? (
-                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                      ) : (
-                        <RefreshCw className="mr-1 h-3 w-3" />
-                      )}
-                      Regenerate PDF
-                    </Button>
-                  )}
-                </div>
-              )}
-
-              {detail.hasPdf && detail.coverLetterDirty && (
-                <p className="text-xs text-amber-600 dark:text-amber-400">
-                  Cover letter has been modified. Save changes and regenerate the PDF to update.
-                </p>
-              )}
             </div>
           )}
 
@@ -439,59 +291,396 @@ export function JobDetailModal({
             </div>
           )}
 
-          {currentJob.status === "new" && (
-            <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4 text-sm text-blue-700 dark:text-blue-300">
-              This job has been scored and saved, but it still needs OpenClaw to inspect the
-              application page before prep can run.
-            </div>
-          )}
-
-          {currentJob.reasoning && (
-            <div>
-              <p className="mb-2 text-sm font-medium">AI Analysis</p>
-              <p className="bg-muted rounded-lg p-3 text-sm">{currentJob.reasoning}</p>
-            </div>
-          )}
-
-          {currentJob.description && (
-            <div>
-              <p className="mb-2 text-sm font-medium">Description</p>
-              <div className="bg-muted max-h-60 overflow-y-auto rounded-lg p-3">
-                <p className="text-sm whitespace-pre-wrap">{currentJob.description}</p>
-              </div>
-            </div>
-          )}
-
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-sm font-medium">Your Notes</p>
-              {detail.notesDirty && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={detail.handleSaveNotes}
-                  disabled={detail.isUpdating}
-                  className="h-7 text-xs"
-                >
-                  {detail.isUpdating ? (
-                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                  ) : (
-                    <Save className="mr-1 h-3 w-3" />
+          <Accordion
+            type="multiple"
+            defaultValue={defaultSections}
+            className="rounded-lg border px-4"
+          >
+            <AccordionItem value="snapshot">
+              <AccordionTrigger>
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  <span>Job Snapshot</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="grid gap-3 text-sm sm:grid-cols-2">
+                  <div>
+                    <span className="text-muted-foreground">Company:</span> {currentJob.company}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Location:</span>{" "}
+                    {currentJob.location || "Unknown"}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Job type:</span>{" "}
+                    {currentJob.job_type || "Unknown"}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Remote:</span>{" "}
+                    {currentJob.is_remote === null
+                      ? "Unknown"
+                      : currentJob.is_remote
+                        ? "Yes"
+                        : "No"}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Source:</span>{" "}
+                    {currentJob.source || "Unknown"}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Ingested via:</span>{" "}
+                    {currentJob.ingestion_source || "Unknown"}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Added:</span>{" "}
+                    {format(new Date(currentJob.created_at), "MMM d, yyyy")}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Search terms:</span>{" "}
+                    {currentJob.search_terms || "None"}
+                  </div>
+                  {currentJob.analyzed_at && (
+                    <div>
+                      <span className="text-muted-foreground">Analyzed:</span>{" "}
+                      {format(new Date(currentJob.analyzed_at), "MMM d, h:mm a")}
+                    </div>
                   )}
-                  Save
-                </Button>
-              )}
-            </div>
-            <Textarea
-              value={detail.notes}
-              onChange={(e) => {
-                detail.setNotes(e.target.value);
-                detail.setNotesDirty(e.target.value !== (currentJob.notes || ""));
-              }}
-              placeholder="Add notes about this job..."
-              rows={3}
-            />
-          </div>
+                  {currentJob.prepped_at && (
+                    <div>
+                      <span className="text-muted-foreground">Prepped:</span>{" "}
+                      {format(new Date(currentJob.prepped_at), "MMM d, h:mm a")}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={currentJob.job_url} target="_blank" rel="noopener noreferrer">
+                      View Job Posting
+                      <ExternalLink className="ml-2 h-4 w-4" />
+                    </a>
+                  </Button>
+                  {currentJob.application_url && (
+                    <Button variant="outline" size="sm" asChild>
+                      <a
+                        href={currentJob.application_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Open Application
+                        <ExternalLink className="ml-2 h-4 w-4" />
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {detail.hasApplicationAnalysis && (
+              <AccordionItem value="analysis">
+                <AccordionTrigger>
+                  <div className="flex items-center gap-2">
+                    <ClipboardCheck className="h-4 w-4" />
+                    <span>Application Requirements</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4 rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-sm text-indigo-700 dark:text-indigo-300">
+                        Prep will use this analysis to decide which materials to generate.
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {currentJob.status === "analyzed" && onAnalyze && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onAnalyze?.(currentJob)}
+                          >
+                            <ClipboardCheck className="mr-2 h-4 w-4" />
+                            Edit Analysis
+                          </Button>
+                        )}
+                        {currentJob.analyzed_at && (
+                          <span className="text-xs text-indigo-700/80 dark:text-indigo-300/80">
+                            {format(new Date(currentJob.analyzed_at), "MMM d, h:mm a")}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid gap-3 text-sm sm:grid-cols-2">
+                      <div>
+                        <span className="text-muted-foreground">Application type:</span>{" "}
+                        <span className="capitalize">
+                          {currentJob.application_type || "Unknown"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Cover letter:</span>{" "}
+                        {currentJob.requires_cover_letter === null
+                          ? "Unknown"
+                          : currentJob.requires_cover_letter
+                            ? "Required"
+                            : "Not required"}
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Resume:</span>{" "}
+                        {currentJob.requires_resume === null
+                          ? "Unknown"
+                          : currentJob.requires_resume
+                            ? "Required"
+                            : "Not required"}
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Screening questions:</span>{" "}
+                        {currentJob.screening_questions?.length ?? 0}
+                      </div>
+                    </div>
+                    {!!currentJob.screening_questions?.length && (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
+                          Questions to prep
+                        </p>
+                        <ul className="space-y-1 text-sm">
+                          {currentJob.screening_questions?.map((question, index) => {
+                            const questionText = getScreeningQuestionText(question);
+                            if (!questionText) {
+                              return null;
+                            }
+
+                            return (
+                              <li
+                                key={`${currentJob.id}-screening-${index}`}
+                                className="bg-background/70 rounded-md px-3 py-2"
+                              >
+                                {questionText}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+
+            {detail.hasPreppedMaterials && (
+              <AccordionItem value="materials">
+                <AccordionTrigger>
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    <span>Application Materials</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4 rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-sm text-cyan-700 dark:text-cyan-300">
+                        Review and adjust the generated materials before you apply.
+                      </div>
+                      {detail.hasPdf && (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={detail.handlePreviewPdf}
+                            className="border-cyan-500/30 hover:bg-cyan-500/10"
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+                            Preview
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={detail.handleDownloadPdf}
+                            disabled={detail.isDownloading}
+                            className="border-cyan-500/30 hover:bg-cyan-500/10"
+                          >
+                            {detail.isDownloading ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Download className="mr-2 h-4 w-4" />
+                            )}
+                            Download
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    <CoverLetterProfileNotice profileId={currentJob.profile_id} />
+
+                    {currentJob.cover_letter && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm font-medium">Cover Letter</label>
+                          {detail.coverLetterDirty && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={detail.handleSaveCoverLetter}
+                              disabled={detail.isUpdating}
+                              className="h-7 text-xs"
+                            >
+                              {detail.isUpdating ? (
+                                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                              ) : (
+                                <Save className="mr-1 h-3 w-3" />
+                              )}
+                              Save Changes
+                            </Button>
+                          )}
+                        </div>
+                        <Textarea
+                          value={detail.coverLetter}
+                          onChange={(e) => {
+                            detail.setCoverLetter(e.target.value);
+                            detail.setCoverLetterDirty(e.target.value !== currentJob.cover_letter);
+                          }}
+                          placeholder="Your cover letter..."
+                          rows={8}
+                          className="font-mono text-sm"
+                        />
+                      </div>
+                    )}
+
+                    <ScreeningAnswersSection
+                      screeningQuestions={currentJob.screening_questions}
+                      screeningAnswers={currentJob.screening_answers}
+                      listClassName="bg-background/80 rounded-md p-3"
+                    />
+
+                    {currentJob.prep_notes && (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Prep Notes & Talking Points</p>
+                        <div className="bg-background/80 rounded-md p-3 text-sm">
+                          <pre className="font-sans whitespace-pre-wrap">
+                            {currentJob.prep_notes}
+                          </pre>
+                        </div>
+                      </div>
+                    )}
+
+                    {detail.hasPdf && (
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                          <CheckCircle className="h-4 w-4" />
+                          <span>
+                            PDF generated{" "}
+                            {currentJob.cover_letter_generated_at
+                              ? format(
+                                  new Date(currentJob.cover_letter_generated_at),
+                                  "MMM d, h:mm a"
+                                )
+                              : ""}
+                          </span>
+                        </div>
+                        {detail.coverLetterDirty && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={detail.handleRegeneratePdf}
+                            disabled={detail.isGeneratingPdf}
+                            className="h-7 border-amber-500/30 text-xs hover:bg-amber-500/10"
+                          >
+                            {detail.isGeneratingPdf ? (
+                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            ) : (
+                              <RefreshCw className="mr-1 h-3 w-3" />
+                            )}
+                            Regenerate PDF
+                          </Button>
+                        )}
+                      </div>
+                    )}
+
+                    {detail.hasPdf && detail.coverLetterDirty && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        Cover letter has been modified. Save changes and regenerate the PDF to
+                        update.
+                      </p>
+                    )}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+
+            {currentJob.reasoning && (
+              <AccordionItem value="match">
+                <AccordionTrigger>
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    <span>AI Match Analysis</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="bg-muted rounded-lg p-3 text-sm leading-relaxed">
+                    {currentJob.reasoning}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+
+            {currentJob.description && (
+              <AccordionItem value="description">
+                <AccordionTrigger>
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    <span>Full Description</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="bg-muted max-h-60 overflow-y-auto rounded-lg p-3">
+                    <p className="text-sm whitespace-pre-wrap">{currentJob.description}</p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+
+            <AccordionItem value="notes">
+              <AccordionTrigger>
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Personal Notes</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-muted-foreground text-sm">
+                      Save recruiter details, reminders, or application context here.
+                    </p>
+                    {detail.notesDirty && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={detail.handleSaveNotes}
+                        disabled={detail.isUpdating}
+                        className="h-7 text-xs"
+                      >
+                        {detail.isUpdating ? (
+                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                        ) : (
+                          <Save className="mr-1 h-3 w-3" />
+                        )}
+                        Save
+                      </Button>
+                    )}
+                  </div>
+                  <Textarea
+                    value={detail.notes}
+                    onChange={(e) => {
+                      detail.setNotes(e.target.value);
+                      detail.setNotesDirty(e.target.value !== (currentJob.notes || ""));
+                    }}
+                    placeholder="Add notes about this job..."
+                    rows={4}
+                  />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
 
           <div className="flex items-center justify-between border-t pt-4">
             <div className="flex items-center gap-2">

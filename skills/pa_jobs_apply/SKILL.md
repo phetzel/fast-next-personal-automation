@@ -1,6 +1,6 @@
 ---
 name: pa_jobs_apply
-description: Mark a reviewed personal_automations job as successfully applied from OpenClaw.
+description: Mark a pre-applied personal_automations job as successfully applied from OpenClaw.
 metadata: {"openclaw":{"requires":{"bins":["bash","curl"],"env":["PERSONAL_AUTOMATIONS_API_BASE_URL","PERSONAL_AUTOMATIONS_OPENCLAW_TOKEN"]},"primaryEnv":"PERSONAL_AUTOMATIONS_OPENCLAW_TOKEN"}}
 ---
 
@@ -12,7 +12,7 @@ Use this skill after OpenClaw has successfully submitted an application and need
 
 - `PERSONAL_AUTOMATIONS_API_BASE_URL` points to the FastAPI backend origin
 - `PERSONAL_AUTOMATIONS_OPENCLAW_TOKEN` is an active `oct_...` token with `jobs:apply`
-- The target job is already `reviewed` or already `applied`
+- The target job is in any pre-applied state (`new`, `analyzed`, `prepped`, `reviewed`) or already `applied`
 - Never print or echo the token
 
 ## Payload

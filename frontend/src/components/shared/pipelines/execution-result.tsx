@@ -224,7 +224,8 @@ function ProfileRequiredErrorView({
                 No Job Profiles Found
               </p>
               <p className="text-muted-foreground mt-1 text-sm">
-                Create a job profile with your resume to start searching for jobs.
+                Create a job profile with your resume so prep can generate materials with the right
+                context.
               </p>
               <Link
                 href={error.create_profile_url}

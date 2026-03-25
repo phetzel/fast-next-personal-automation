@@ -6,11 +6,10 @@ import {
   JobFilters,
   JobDetailModal,
   JobStatsCard,
+  ManualAnalyzeModal,
   PrepJobModal,
 } from "@/components/shared/jobs";
 import {
-  SearchJobsModal,
-  SearchAllJobsModal,
   ManualJobModal,
   BatchPrepModal,
   DeleteByStatusModal,
@@ -24,7 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui";
-import { RefreshCw, Search, ChevronDown, Layers, Globe, Trash2, Plus } from "lucide-react";
+import { RefreshCw, ChevronDown, Layers, Trash2, Plus } from "lucide-react";
 
 export default function JobsListPage() {
   const screen = useJobsListScreen();
@@ -33,7 +32,7 @@ export default function JobsListPage() {
     <div className="space-y-6">
       <PageHeader
         title="Job Listings"
-        description="View and manage jobs from your searches"
+        description="View and manage jobs from external ingest and manual entry"
         actions={
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -43,17 +42,9 @@ export default function JobsListPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => screen.setIsSearchModalOpen(true)}>
-                <Search className="mr-2 h-4 w-4" />
-                Search Jobs
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => screen.setIsManualJobModalOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Manual Job
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => screen.setIsSearchAllModalOpen(true)}>
-                <Globe className="mr-2 h-4 w-4" />
-                Search All Profiles
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => screen.setIsBatchPrepModalOpen(true)}>
@@ -98,6 +89,7 @@ export default function JobsListPage() {
         preppingJobId={screen.preppingJobId}
         onJobClick={screen.handleJobClick}
         onDelete={screen.handleDelete}
+        onAnalyze={screen.handleAnalyze}
         onPrep={screen.handlePrep}
         onPageChange={screen.goToPage}
         onSort={screen.handleSort}
@@ -111,14 +103,8 @@ export default function JobsListPage() {
         onJobChange={screen.setSelectedJob}
         onUpdate={screen.updateJobStatus}
         onDelete={screen.handleDelete}
+        onAnalyze={screen.handleAnalyze}
         onPrep={screen.handlePrep}
-      />
-
-      {/* Search Modal */}
-      <SearchJobsModal
-        isOpen={screen.isSearchModalOpen}
-        onClose={() => screen.setIsSearchModalOpen(false)}
-        onComplete={screen.refresh}
       />
 
       {/* Manual Job Modal */}
@@ -126,6 +112,13 @@ export default function JobsListPage() {
         isOpen={screen.isManualJobModalOpen}
         onClose={() => screen.setIsManualJobModalOpen(false)}
         onComplete={screen.refresh}
+      />
+
+      <ManualAnalyzeModal
+        job={screen.analyzeJob}
+        isOpen={screen.isManualAnalyzeModalOpen}
+        onClose={screen.handleCloseManualAnalyzeModal}
+        onComplete={screen.handleManualAnalyzeComplete}
       />
 
       {/* Prep Modal */}
@@ -140,13 +133,6 @@ export default function JobsListPage() {
       <BatchPrepModal
         isOpen={screen.isBatchPrepModalOpen}
         onClose={() => screen.setIsBatchPrepModalOpen(false)}
-        onComplete={screen.refresh}
-      />
-
-      {/* Search All Profiles Modal */}
-      <SearchAllJobsModal
-        isOpen={screen.isSearchAllModalOpen}
-        onClose={() => screen.setIsSearchAllModalOpen(false)}
         onComplete={screen.refresh}
       />
 

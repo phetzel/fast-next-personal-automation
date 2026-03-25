@@ -27,7 +27,7 @@ def upgrade() -> None:
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
 
-    # Additional scrape fields from python-jobspy
+    # Additional source metadata captured during ingestion
     op.add_column(
         "jobs",
         sa.Column("is_remote", sa.Boolean(), nullable=True),

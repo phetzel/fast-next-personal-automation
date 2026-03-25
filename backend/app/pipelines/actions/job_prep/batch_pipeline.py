@@ -1,6 +1,6 @@
 """Batch Job Prep Pipeline.
 
-Prepares all ANALYZED jobs in a single operation, using each job's associated profile.
+Prepares jobs that are explicitly analyzed and ready for prep.
 """
 
 import asyncio
@@ -24,12 +24,12 @@ logger = logging.getLogger(__name__)
 class BatchJobPrepInput(BaseModel):
     """Input for the batch job prep pipeline.
 
-    Simple configuration - gets analyzed jobs and uses each job's associated profile.
+    Simple configuration - gets prep-eligible analyzed jobs and uses each job's associated profile.
     """
 
     job_ids: list[UUID] | None = Field(
         default=None,
-        description="Optional explicit set of analyzed job IDs to prep",
+        description="Optional explicit set of prep-eligible analyzed job IDs to prep",
     )
     tone: Literal["professional", "conversational", "enthusiastic"] = Field(
         default="professional",
@@ -73,11 +73,11 @@ class BatchJobPrepOutput(BaseModel):
 
 @register_pipeline
 class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]):
-    """Batch job prep pipeline that preps analyzed jobs.
+    """Batch job prep pipeline that preps explicitly analyzed jobs.
 
     This pipeline:
-    1. Fetches all jobs with status ANALYZED
-    2. For each job, uses the profile_id saved with the job (from job_search)
+    1. Fetches all jobs with explicit application analysis and status ANALYZED
+    2. For each job, uses the profile_id saved with the job when available
     3. Falls back to user's default profile if no profile_id on job
     4. Processes jobs concurrently (up to max_concurrent)
     5. Returns a summary of results
@@ -111,13 +111,13 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
                 error="User authentication required for batch job prep",
             )
 
-        # Step 1: Fetch analyzed jobs
+        # Step 1: Fetch prep-eligible analyzed jobs
         async with get_db_context() as db:
             if input.job_ids:
                 selected_jobs = await job_repo.get_by_ids_and_user(
                     db, context.user_id, input.job_ids
                 )
-                jobs = [job for job in selected_jobs if job.job_status == JobStatus.ANALYZED]
+                jobs = [job for job in selected_jobs if job.is_prep_eligible]
                 total = len(jobs)
                 jobs = sorted(
                     jobs,
@@ -135,6 +135,8 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
                     sort_order="desc",
                 )
                 jobs, total = await job_repo.get_by_user(db, context.user_id, filters)
+                jobs = [job for job in jobs if job.is_prep_eligible]
+                total = len(jobs)
 
             # Also get the default profile as fallback
             default_profile = await job_profile_repo.get_default_for_user(db, context.user_id)
@@ -149,10 +151,12 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
                     skipped=0,
                     results=[],
                 ),
-                metadata={"message": "No analyzed jobs found to prep"},
+                metadata={"message": "No prep-eligible analyzed jobs found to prep"},
             )
 
-        logger.info(f"Found {len(jobs)} analyzed jobs to prep (total matching: {total})")
+        logger.info(
+            f"Found {len(jobs)} prep-eligible analyzed jobs to prep (total matching: {total})"
+        )
 
         # Step 2: Process jobs concurrently with semaphore
         semaphore = asyncio.Semaphore(input.max_concurrent)
@@ -173,7 +177,7 @@ class BatchJobPrepPipeline(ActionPipeline[BatchJobPrepInput, BatchJobPrepOutput]
                     )
 
                 # Determine which profile to use:
-                # 1. Use job's profile_id if set (from job_search)
+                # 1. Use job's profile_id if set
                 # 2. Fall back to default profile
                 profile_id_to_use = job.profile_id
                 profile_name = None

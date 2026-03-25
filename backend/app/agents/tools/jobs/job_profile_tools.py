@@ -1,6 +1,6 @@
-"""Job Profile tools for the Jobs area agent.
+"""Job profile tools for the Jobs area agent.
 
-This module provides FunctionToolset tools for viewing and creating job search
+This module provides FunctionToolset tools for viewing and creating job
 profiles through the AI assistant. For updates and deletions, users should
 use the web interface at /jobs/profiles.
 """
@@ -13,23 +13,12 @@ from pydantic_ai.toolsets import FunctionToolset
 
 from app.agents.tools.jobs.helpers import get_db_and_user
 from app.repositories import job_profile as profile_repo
-from app.schemas.job_profile import JobProfileResponse, JobProfileSummary
+from app.schemas.job_profile import JobProfileResponse, profile_to_summary
 
 
 def _profile_to_summary(profile) -> dict:
     """Convert a JobProfile model to a summary dict."""
-    return JobProfileSummary(
-        id=profile.id,
-        name=profile.name,
-        is_default=profile.is_default,
-        has_resume=profile.resume_id is not None,
-        resume_name=profile.resume.name if profile.resume else None,
-        has_story=profile.story_id is not None,
-        story_name=profile.story.name if profile.story else None,
-        project_count=len(profile.project_ids) if profile.project_ids else 0,
-        target_roles_count=len(profile.target_roles) if profile.target_roles else 0,
-        min_score_threshold=profile.min_score_threshold,
-    ).model_dump(mode="json")
+    return profile_to_summary(profile).model_dump(mode="json")
 
 
 # Create the toolset
@@ -38,10 +27,10 @@ job_profiles_toolset = FunctionToolset()
 
 @job_profiles_toolset.tool
 async def list_profiles(ctx: RunContext) -> dict:
-    """List all job search profiles for the current user.
+    """List all job profiles for the current user.
 
-    Profiles contain settings like target roles, locations, and linked resumes
-    that are used when searching for and scoring jobs.
+    Profiles contain prep context such as target roles, locations, linked
+    resumes, stories, and projects.
 
     Returns:
         List of profile summaries with basic info
@@ -61,7 +50,7 @@ async def list_profiles(ctx: RunContext) -> dict:
 
 @job_profiles_toolset.tool
 async def get_profile(ctx: RunContext, profile_id: str) -> dict:
-    """Get detailed information about a specific job search profile.
+    """Get detailed information about a specific job profile.
 
     Args:
         profile_id: The UUID of the profile to retrieve
@@ -90,10 +79,10 @@ async def get_profile(ctx: RunContext, profile_id: str) -> dict:
 
 @job_profiles_toolset.tool
 async def get_default_profile(ctx: RunContext) -> dict:
-    """Get the user's default job search profile.
+    """Get the user's default job profile.
 
-    The default profile is used automatically when running job searches
-    without specifying a profile ID.
+    The default profile is used automatically when a job flow needs prep
+    context and no profile ID is specified.
 
     Returns:
         Default profile details or message if none is set
@@ -126,10 +115,10 @@ async def create_profile(
     is_default: bool = False,
     preferences: dict[str, Any] | None = None,
 ) -> dict:
-    """Create a new job search profile.
+    """Create a new job profile.
 
-    Profiles define your job search criteria including target roles,
-    preferred locations, and scoring thresholds.
+    Profiles define your prep context including target roles, preferred
+    locations, and any supporting materials you want used for applications.
 
     Args:
         name: A descriptive name for this profile (e.g., "Backend Remote Jobs")

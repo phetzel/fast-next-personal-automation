@@ -73,9 +73,12 @@ class OpenClawJobInput(BaseSchema):
     application_type: Literal["easy_apply", "ats", "direct", "email", "unknown"] | None = None
     application_url: str | None = Field(default=None, max_length=2048)
     requires_cover_letter: bool | None = None
+    cover_letter_requested: bool | None = None
     requires_resume: bool | None = None
     detected_fields: dict[str, Any] | None = None
     screening_questions: list[dict[str, Any]] | None = None
+    ats_family: str | None = Field(default=None, max_length=100)
+    analysis_source: str | None = Field(default=None, max_length=50)
     analyzed_at: datetime | None = None
 
     @property
@@ -87,6 +90,7 @@ class OpenClawJobInput(BaseSchema):
                 self.application_type,
                 self.application_url,
                 self.requires_cover_letter,
+                self.cover_letter_requested,
                 self.requires_resume,
                 self.detected_fields,
                 self.screening_questions,
@@ -110,37 +114,10 @@ class OpenClawJobsIngestRequest(BaseSchema):
 
     jobs: list[OpenClawJobInput] = Field(..., min_length=1)
     profile_id: UUID | None = Field(
-        default=None, description="Optional profile for AI scoring context"
-    )
-    analyze_with_profile: bool = Field(
-        default=True,
-        description="If true, use profile resume text and preferences for AI scoring when available.",
-    )
-    save_all: bool = Field(
-        default=True,
-        description="If true, save jobs even when they do not meet min_score.",
-    )
-    min_score: float | None = Field(
         default=None,
-        ge=0.0,
-        le=10.0,
-        description="Optional score threshold override when analysis is enabled.",
+        description="Optional profile to associate with ingested jobs for later prep",
     )
     search_terms: str | None = Field(default=None, max_length=500)
-    qa_with_internal_analysis: bool = Field(
-        default=False,
-        description=(
-            "If true, run internal profile-based analysis for QA comparison while still storing "
-            "external scores/reasoning."
-        ),
-    )
-
-    @model_validator(mode="after")
-    def validate_qa_options(self):
-        """QA analysis requires profile analysis context to be enabled."""
-        if self.qa_with_internal_analysis and not self.analyze_with_profile:
-            raise ValueError("qa_with_internal_analysis requires analyze_with_profile=true")
-        return self
 
 
 class OpenClawJobsIngestResponse(BaseSchema):
@@ -149,13 +126,14 @@ class OpenClawJobsIngestResponse(BaseSchema):
     jobs_received: int
     jobs_analyzed: int
     jobs_saved: int
+    jobs_updated: int
     duplicates_skipped: int
     high_scoring: int
-    analysis_enabled: bool
     external_analysis_used: bool
-    qa_with_internal_analysis: bool = False
-    qa_jobs_checked: int = 0
-    qa_large_score_drift: int = 0
+    saved_job_ids: list[UUID] = Field(default_factory=list)
+    updated_job_ids: list[UUID] = Field(default_factory=list)
+    analyzed_job_ids: list[UUID] = Field(default_factory=list)
+    prep_eligible_job_ids: list[UUID] = Field(default_factory=list)
     profile_id: UUID | None = None
     profile_name: str | None = None
     token_id: UUID
@@ -169,34 +147,47 @@ class OpenClawJobAnalyzeRequest(BaseSchema):
     application_type: Literal["easy_apply", "ats", "direct", "email", "unknown"] | None = None
     application_url: str | None = Field(default=None, max_length=2048)
     requires_cover_letter: bool | None = None
+    cover_letter_requested: bool | None = None
     requires_resume: bool | None = None
     detected_fields: dict[str, Any] | None = None
     screening_questions: list[dict[str, Any]] | None = None
+    ats_family: str | None = Field(default=None, max_length=100)
+    analysis_source: str | None = Field(default=None, max_length=50)
     analyzed_at: datetime | None = None
 
     @model_validator(mode="after")
     def validate_has_analysis_fields(self):
-        """Require at least one real application-analysis field."""
+        """Require at least one application-analysis field or metadata field."""
         has_application_analysis = any(
             value is not None
             for value in (
                 self.application_type,
                 self.application_url,
                 self.requires_cover_letter,
+                self.cover_letter_requested,
                 self.requires_resume,
                 self.detected_fields,
                 self.screening_questions,
             )
         )
-        if not has_application_analysis:
-            raise ValueError("At least one application analysis field is required")
+        has_analysis_metadata = any(
+            value is not None for value in (self.ats_family, self.analysis_source)
+        )
+        if not has_application_analysis and not has_analysis_metadata:
+            raise ValueError(
+                "At least one application analysis field or metadata field is required"
+            )
         return self
 
 
 class OpenClawPrepBatchRequest(BaseSchema):
     """Request to synchronously prep analyzed jobs from OpenClaw."""
 
-    job_ids: list[UUID] | None = None
+    job_ids: list[UUID] = Field(
+        ...,
+        min_length=1,
+        description="Explicit analyzed job IDs that should be prepped",
+    )
     max_jobs: int = Field(default=20, ge=1, le=50)
     tone: Literal["professional", "conversational", "enthusiastic"] = "professional"
 

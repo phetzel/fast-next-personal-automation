@@ -13,7 +13,7 @@ import {
   Textarea,
 } from "@/components/ui";
 import { ProfileSelectField } from "@/components/shared/jobs/profile-select-field";
-import { useJobs } from "@/hooks";
+import { useJobMutations } from "@/hooks";
 import type { Job } from "@/types";
 import { BriefcaseBusiness, Loader2, Plus } from "lucide-react";
 
@@ -34,7 +34,7 @@ const initialForm = {
 };
 
 export function ManualJobModal({ isOpen, onClose, onComplete }: ManualJobModalProps) {
-  const { createJob, error } = useJobs();
+  const { createJob, error, clearError } = useJobMutations();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState(initialForm);
 
@@ -42,8 +42,9 @@ export function ManualJobModal({ isOpen, onClose, onComplete }: ManualJobModalPr
     if (isOpen) {
       setForm(initialForm);
       setIsSubmitting(false);
+      clearError();
     }
-  }, [isOpen]);
+  }, [clearError, isOpen]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -75,8 +76,8 @@ export function ManualJobModal({ isOpen, onClose, onComplete }: ManualJobModalPr
             Add Manual Job
           </DialogTitle>
           <DialogDescription>
-            Save a job manually and score it against your selected profile. Manual jobs start in the
-            `new` stage and wait for OpenClaw analysis before prep.
+            Save a job manually for later analysis and prep. Manual jobs start in the `new` stage,
+            and you can optionally attach a profile now for prep context.
           </DialogDescription>
         </DialogHeader>
 
@@ -151,7 +152,7 @@ export function ManualJobModal({ isOpen, onClose, onComplete }: ManualJobModalPr
             id="manual-profile"
             value={form.profile_id}
             onChange={(value) => setForm((current) => ({ ...current, profile_id: value }))}
-            description="Required for scoring. Defaults to your default profile."
+            description="Optional. Prep uses this profile first and otherwise falls back to your default profile."
           />
 
           <div className="space-y-2">

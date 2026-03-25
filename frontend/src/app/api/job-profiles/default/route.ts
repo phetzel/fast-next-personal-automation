@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { backendFetch, BackendApiError } from "@/lib/server-api";
 
 /**
- * GET /api/job-profiles/default - Get the default job search profile
+ * GET /api/job-profiles/default - Get the default job profile
  */
 export async function GET(request: NextRequest) {
   try {

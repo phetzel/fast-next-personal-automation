@@ -57,7 +57,7 @@ export function ScheduleFormDialog({
             <Label htmlFor="name">Name *</Label>
             <Input
               id="name"
-              placeholder="Daily job search"
+              placeholder="Daily job prep review"
               value={formData.name}
               onChange={(event) => setFormData({ ...formData, name: event.target.value })}
             />

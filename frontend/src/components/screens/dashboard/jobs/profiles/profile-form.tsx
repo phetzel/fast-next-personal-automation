@@ -19,18 +19,16 @@ import {
 import { ResumeSelector } from "@/components/shared/jobs";
 import type { JobProfile } from "@/types";
 import {
+  CheckCircle2,
   Loader2,
   Plus,
   X,
   Save,
-  CheckCircle2,
   User,
   Phone,
   Mail,
   MapPin,
   Globe,
-  ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 
 const NO_STORY_VALUE = "__no_story__";
@@ -75,15 +73,6 @@ export function ProfileForm({ profile, onSave, onCancel, isLoading }: ProfileFor
   const [contactEmail, setContactEmail] = useState(profile?.contact_email || "");
   const [contactLocation, setContactLocation] = useState(profile?.contact_location || "");
   const [contactWebsite, setContactWebsite] = useState(profile?.contact_website || "");
-  const [showContactInfo, setShowContactInfo] = useState(
-    !!(
-      profile?.contact_full_name ||
-      profile?.contact_phone ||
-      profile?.contact_email ||
-      profile?.contact_location ||
-      profile?.contact_website
-    )
-  );
 
   // Fetch stories and projects for selectors
   const { stories, fetchStories } = useStories();
@@ -154,8 +143,8 @@ export function ProfileForm({ profile, onSave, onCancel, isLoading }: ProfileFor
         <CardTitle>{isEditing ? "Edit Profile" : "Create New Profile"}</CardTitle>
         <CardDescription>
           {isEditing
-            ? "Update your job search profile settings"
-            : "Create a new job search profile with your resume, story, projects, and preferences"}
+            ? "Update your job profile settings"
+            : "Create a new job profile with your resume, story, projects, and preferences"}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -182,7 +171,7 @@ export function ProfileForm({ profile, onSave, onCancel, isLoading }: ProfileFor
               placeholder="Select a resume for this profile..."
             />
             <p className="text-muted-foreground mt-1 text-xs">
-              Link a resume to this profile for AI job matching.
+              Link a resume to this profile for prep notes, question answers, and cover letters.
             </p>
           </div>
 
@@ -342,109 +331,86 @@ export function ProfileForm({ profile, onSave, onCancel, isLoading }: ProfileFor
           </div>
 
           {/* Contact Info for Cover Letters */}
-          <div className="rounded-lg border border-dashed p-4">
-            <button
-              type="button"
-              onClick={() => setShowContactInfo(!showContactInfo)}
-              className="hover:text-primary flex w-full items-center justify-between text-sm font-medium"
-            >
-              <div className="flex items-center gap-2">
+          <div className="space-y-4 rounded-lg border p-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium">
                 <User className="h-4 w-4" />
-                <span>Cover Letter Contact Info</span>
-                {(contactFullName || contactPhone || contactEmail) && (
-                  <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs">
-                    Configured
-                  </span>
-                )}
+                <span>Cover Letter Header</span>
               </div>
-              {showContactInfo ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </button>
+              <p className="text-muted-foreground text-xs">
+                This information is used in your generated cover-letter PDF. A full name here, or on
+                your account profile, is required before the PDF can be created.
+              </p>
+            </div>
 
-            {showContactInfo && (
-              <div className="mt-4 space-y-4">
-                <p className="text-muted-foreground text-xs">
-                  This information appears in the header of your generated cover letter PDFs.
-                </p>
+            <div>
+              <label className="mb-1.5 flex items-center gap-2 text-sm font-medium">
+                <User className="text-muted-foreground h-3.5 w-3.5" />
+                Full Name
+              </label>
+              <Input
+                value={contactFullName}
+                onChange={(e) => setContactFullName(e.target.value)}
+                placeholder="e.g., Phillip Hetzel"
+                maxLength={255}
+              />
+            </div>
 
-                {/* Full Name */}
-                <div>
-                  <label className="mb-1.5 flex items-center gap-2 text-sm font-medium">
-                    <User className="text-muted-foreground h-3.5 w-3.5" />
-                    Full Name
-                  </label>
-                  <Input
-                    value={contactFullName}
-                    onChange={(e) => setContactFullName(e.target.value)}
-                    placeholder="e.g., Phillip Hetzel"
-                    maxLength={255}
-                  />
-                </div>
+            <div>
+              <label className="mb-1.5 flex items-center gap-2 text-sm font-medium">
+                <Phone className="text-muted-foreground h-3.5 w-3.5" />
+                Phone Number
+              </label>
+              <Input
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                placeholder="e.g., 510-684-9802"
+                maxLength={50}
+              />
+            </div>
 
-                {/* Phone */}
-                <div>
-                  <label className="mb-1.5 flex items-center gap-2 text-sm font-medium">
-                    <Phone className="text-muted-foreground h-3.5 w-3.5" />
-                    Phone Number
-                  </label>
-                  <Input
-                    value={contactPhone}
-                    onChange={(e) => setContactPhone(e.target.value)}
-                    placeholder="e.g., 510-684-9802"
-                    maxLength={50}
-                  />
-                </div>
+            <div>
+              <label className="mb-1.5 flex items-center gap-2 text-sm font-medium">
+                <Mail className="text-muted-foreground h-3.5 w-3.5" />
+                Email Address
+              </label>
+              <Input
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder="e.g., phetzel89@gmail.com"
+                maxLength={255}
+              />
+              <p className="text-muted-foreground mt-1 text-xs">
+                Falls back to your account email if not set.
+              </p>
+            </div>
 
-                {/* Email */}
-                <div>
-                  <label className="mb-1.5 flex items-center gap-2 text-sm font-medium">
-                    <Mail className="text-muted-foreground h-3.5 w-3.5" />
-                    Email Address
-                  </label>
-                  <Input
-                    type="email"
-                    value={contactEmail}
-                    onChange={(e) => setContactEmail(e.target.value)}
-                    placeholder="e.g., phetzel89@gmail.com"
-                    maxLength={255}
-                  />
-                  <p className="text-muted-foreground mt-1 text-xs">
-                    Falls back to your account email if not set
-                  </p>
-                </div>
+            <div>
+              <label className="mb-1.5 flex items-center gap-2 text-sm font-medium">
+                <MapPin className="text-muted-foreground h-3.5 w-3.5" />
+                Location
+              </label>
+              <Input
+                value={contactLocation}
+                onChange={(e) => setContactLocation(e.target.value)}
+                placeholder="e.g., Portland, Oregon"
+                maxLength={255}
+              />
+            </div>
 
-                {/* Location */}
-                <div>
-                  <label className="mb-1.5 flex items-center gap-2 text-sm font-medium">
-                    <MapPin className="text-muted-foreground h-3.5 w-3.5" />
-                    Location
-                  </label>
-                  <Input
-                    value={contactLocation}
-                    onChange={(e) => setContactLocation(e.target.value)}
-                    placeholder="e.g., Portland, Oregon"
-                    maxLength={255}
-                  />
-                </div>
-
-                {/* Website */}
-                <div>
-                  <label className="mb-1.5 flex items-center gap-2 text-sm font-medium">
-                    <Globe className="text-muted-foreground h-3.5 w-3.5" />
-                    Website
-                  </label>
-                  <Input
-                    value={contactWebsite}
-                    onChange={(e) => setContactWebsite(e.target.value)}
-                    placeholder="e.g., philliphetzel.com"
-                    maxLength={255}
-                  />
-                </div>
-              </div>
-            )}
+            <div>
+              <label className="mb-1.5 flex items-center gap-2 text-sm font-medium">
+                <Globe className="text-muted-foreground h-3.5 w-3.5" />
+                Website
+              </label>
+              <Input
+                value={contactWebsite}
+                onChange={(e) => setContactWebsite(e.target.value)}
+                placeholder="e.g., philliphetzel.com"
+                maxLength={255}
+              />
+            </div>
           </div>
 
           {/* Actions */}
