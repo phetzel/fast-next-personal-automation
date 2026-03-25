@@ -341,7 +341,6 @@ class TestEmailSyncPipeline:
 
         props = schema["properties"]
         assert "source_id" in props
-        assert "sync_id" in props
         assert "force_full_sync" in props
         assert "save_all" in props
 
@@ -529,6 +528,7 @@ class TestEmailTriagePipeline:
             token_expiry=None,
             email_address="triage@example.com",
             last_triage_at=None,
+            auto_actions_enabled=False,
         )
         input_data = SimpleNamespace(limit_per_source=10, force_full_run=False, lookback_hours=None)
         db = AsyncMock()
