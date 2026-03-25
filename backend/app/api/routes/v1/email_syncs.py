@@ -58,19 +58,19 @@ async def trigger_sync(
     """Trigger a new email sync for all active sources.
 
     Runs the sync synchronously and returns results when complete.
+    The pipeline creates and manages its own sync record.
     """
-    # Start the sync record (returns existing if one is running)
-    sync, is_new = await email_service.start_sync(current_user.id, sync_input.force_full_sync)
-
-    # If sync was already running, return that
-    if not is_new:
+    # Check for already-running sync (cancel stale ones first)
+    await email_service.cancel_stale_syncs(current_user.id)
+    existing = await email_service.get_running_sync(current_user.id)
+    if existing:
         return EmailSyncResult(
-            sync_id=sync.id,
+            sync_id=existing.id,
             status="already_running",
             message="A sync is already in progress",
         )
 
-    # Execute sync pipeline
+    # Execute sync pipeline — it creates its own sync record
     context = PipelineContext(
         user_id=current_user.id,
         source=PipelineSource.API,
@@ -85,15 +85,17 @@ async def trigger_sync(
 
     await db.commit()
 
+    sync_id = result.metadata.get("sync_id") if result.metadata else None
+
     if result.success and result.output:
         return EmailSyncResult(
-            sync_id=sync.id,
+            sync_id=sync_id,
             status="completed",
             message=f"Sync completed: {result.output.jobs_saved} jobs saved",
         )
     else:
         return EmailSyncResult(
-            sync_id=sync.id,
+            sync_id=sync_id,
             status="failed",
             message=result.error or "Sync failed",
         )

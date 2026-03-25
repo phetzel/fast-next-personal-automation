@@ -42,7 +42,11 @@ class EmailSourceResponse(BaseModel):
     is_active: bool
     last_sync_at: datetime | None
     last_sync_error: str | None
+    last_triage_at: datetime | None
+    last_triage_error: str | None
     custom_senders: list[str] | None
+    auto_actions_enabled: bool = True
+    auto_action_confidence_threshold: float = 0.95
     created_at: datetime
     updated_at: datetime | None
 

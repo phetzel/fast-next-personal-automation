@@ -571,10 +571,10 @@ uv run pytest tests/api/test_auth.py -v
 
 ### Current Implementation
 
-The email integration automatically syncs job alert emails from connected Gmail accounts:
+The email integration syncs job alert emails from connected Gmail accounts:
 
 - **Supported Job Boards**: Indeed, LinkedIn, HiringCafe, Glassdoor, Dice, ZipRecruiter
-- **Sync Frequency**: Every hour via scheduled task
+- **Sync Frequency**: A default hourly schedule is created when Gmail is connected and can be edited on the Schedules page
 - **Parsers**: Template-based (BeautifulSoup) for known formats, AI fallback (GPT-4o-mini) for unknown
 - **Persistence**: Saves deduplicated jobs and preserves any external scores already present in parsed data
 

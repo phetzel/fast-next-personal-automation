@@ -6,8 +6,8 @@ const STEPS = [
     description: "Grant read-only access to fetch emails from specific senders",
   },
   {
-    title: "Automatic syncing",
-    description: "Emails are checked hourly and parsed automatically",
+    title: "Default schedule created",
+    description: "A default sync schedule is added automatically, and you can edit it any time",
   },
   {
     title: "Content extracted",

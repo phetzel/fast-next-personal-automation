@@ -64,6 +64,8 @@ async def get_email_source(
         is_active=source.is_active,
         last_sync_at=source.last_sync_at,
         last_sync_error=source.last_sync_error,
+        last_triage_at=source.last_triage_at,
+        last_triage_error=source.last_triage_error,
         custom_senders=source.custom_senders,
         created_at=source.created_at,
         updated_at=source.updated_at,
@@ -71,30 +73,33 @@ async def get_email_source(
     )
 
 
+@router.get("/gmail/connect-token")
+async def get_gmail_connect_token(current_user: CurrentUser):
+    """Create a short-lived token for the Gmail OAuth redirect flow."""
+    from app.core.security import create_email_connect_token
+
+    return {"connect_token": create_email_connect_token(str(current_user.id))}
+
+
 @router.get("/gmail/connect")
 async def connect_gmail(
     request: Request,
-    token: str = Query(..., description="JWT access token"),
+    connect_token: str = Query(..., description="Short-lived Gmail connect token"),
 ) -> RedirectResponse:
     """Start Gmail OAuth flow to connect email account.
 
-    Security note: JWT is passed as query param because OAuth flows require browser
-    redirects, and HTTP headers cannot be set in redirect URLs. Mitigations:
-    - Token is validated immediately and not stored
-    - User ID is transferred to server-side session after validation
-    - The token only grants permission to initiate this specific OAuth flow
-    - JWTs are short-lived (default 30 minutes)
+    The browser receives a short-lived, purpose-scoped token from the backend and
+    uses it only to bootstrap the OAuth redirect.
 
     Redirects user to Google consent screen with Gmail read permissions.
     """
     from app.core.security import verify_token
 
-    # Verify the token from query param
-    payload = verify_token(token)
+    payload = verify_token(connect_token)
     if payload is None:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
-    if payload.get("type") != "access":
+    if payload.get("type") != "email_connect":
         raise HTTPException(status_code=401, detail="Invalid token type")
 
     user_id = payload.get("sub")
@@ -138,7 +143,7 @@ async def gmail_callback(request: Request, db: DBSession):
         access_token = token.get("access_token")
         refresh_token = token.get("refresh_token")
 
-        if not access_token or not refresh_token:
+        if not access_token:
             params = urlencode({"error": "Failed to get OAuth tokens"})
             return RedirectResponse(url=f"{FRONTEND_URL}/settings/email?{params}")
 
@@ -154,11 +159,19 @@ async def gmail_callback(request: Request, db: DBSession):
 
         if existing:
             # Update existing source with new tokens
-            await email_source_repo.update_tokens(db, existing, access_token, token_expiry)
-            existing.refresh_token = refresh_token
+            await email_source_repo.update_tokens(
+                db,
+                existing,
+                access_token,
+                token_expiry,
+                refresh_token=refresh_token,
+            )
             existing.is_active = True
-            await db.commit()
         else:
+            if not refresh_token:
+                params = urlencode({"error": "Failed to get Gmail refresh token"})
+                return RedirectResponse(url=f"{FRONTEND_URL}/settings/email?{params}")
+
             # Create new source
             await email_source_repo.create(
                 db,
@@ -169,13 +182,10 @@ async def gmail_callback(request: Request, db: DBSession):
                 token_expiry=token_expiry,
             )
 
-            # Ensure user has a default Job Alerts destination
-            await email_service.ensure_default_destination(user_id)
-
-            await db.commit()
-
-        # Clear session
-        request.session.pop("gmail_connect_user_id", None)
+        # Ensure email routing/scheduling defaults exist for all connected users.
+        await email_service.ensure_default_destination(user_id)
+        await email_service.ensure_default_sync_schedule(user_id)
+        await db.commit()
 
         # Redirect to frontend with success
         params = urlencode({"success": "Gmail connected successfully"})
@@ -191,6 +201,8 @@ async def gmail_callback(request: Request, db: DBSession):
             {"error": "An error occurred connecting your Gmail account. Please try again."}
         )
         return RedirectResponse(url=f"{FRONTEND_URL}/settings/email?{params}")
+    finally:
+        request.session.pop("gmail_connect_user_id", None)
 
 
 @router.post("/sources/{source_id}/sync", response_model=EmailSyncOutput)
@@ -208,7 +220,13 @@ async def sync_email_source(
     if not source.is_active:
         raise HTTPException(status_code=400, detail="Email source is disabled")
 
-    # Execute sync pipeline
+    email_service = EmailService(db)
+    await email_service.cancel_stale_syncs(current_user.id)
+    existing = await email_service.get_running_sync(current_user.id)
+    if existing:
+        raise HTTPException(status_code=409, detail="A sync is already in progress")
+
+    # Execute sync pipeline — it creates its own sync record
     context = PipelineContext(
         user_id=current_user.id,
         source=PipelineSource.API,
@@ -216,7 +234,10 @@ async def sync_email_source(
 
     result = await execute_pipeline(
         "email_sync_jobs",
-        {"source_id": str(source_id), "force_full_sync": force_full_sync},
+        {
+            "source_id": str(source_id),
+            "force_full_sync": force_full_sync,
+        },
         context,
         db=db,
     )

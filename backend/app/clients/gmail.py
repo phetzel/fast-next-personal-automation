@@ -28,10 +28,14 @@ class EmailContent:
     thread_id: str
     subject: str
     from_address: str
+    to_address: str | None
     received_at: datetime
     body_html: str
     body_text: str
     snippet: str
+    list_unsubscribe: str | None
+    precedence: str | None
+    auto_submitted: str | None
 
 
 class GmailClient:
@@ -73,6 +77,7 @@ class GmailClient:
             expiry=expiry_naive,
         )
         self._service = None
+        self._label_cache: dict[str, str] = {}
         self._tokens_refreshed = False
 
     @property
@@ -208,6 +213,7 @@ class GmailClient:
 
         subject = headers.get("subject", "(No Subject)")
         from_address = headers.get("from", "")
+        to_address = headers.get("to")
         date_str = headers.get("date", "")
 
         # Parse date
@@ -224,10 +230,14 @@ class GmailClient:
             thread_id=message["threadId"],
             subject=subject,
             from_address=from_address,
+            to_address=to_address,
             received_at=received_at,
             body_html=body_html,
             body_text=body_text,
             snippet=message.get("snippet", ""),
+            list_unsubscribe=headers.get("list-unsubscribe"),
+            precedence=headers.get("precedence"),
+            auto_submitted=headers.get("auto-submitted"),
         )
 
     async def get_message(self, message_id: str) -> EmailContent:
@@ -279,24 +289,172 @@ class GmailClient:
 
         return html_body, text_body
 
-    def _mark_as_read_sync(self, message_id: str) -> None:
-        """Synchronous implementation of mark_as_read."""
-        self.service.users().messages().modify(
-            userId="me",
-            id=message_id,
-            body={"removeLabelIds": ["UNREAD"]},
-        ).execute()
+    # --- Label management ---
 
-    async def mark_as_read(self, message_id: str) -> None:
-        """Mark a message as read by removing UNREAD label.
+    def _get_labels_sync(self) -> list[dict]:
+        """Get all labels for the account."""
+        result = self.service.users().labels().list(userId="me").execute()
+        return result.get("labels", [])
 
-        Args:
-            message_id: Gmail message ID.
+    async def get_labels(self) -> list[dict]:
+        """Get all Gmail labels."""
+        return await asyncio.to_thread(self._get_labels_sync)
+
+    def _create_label_sync(self, label_name: str) -> dict:
+        """Create a new Gmail label."""
+        body = {
+            "name": label_name,
+            "labelListVisibility": "labelShow",
+            "messageListVisibility": "show",
+        }
+        return self.service.users().labels().create(userId="me", body=body).execute()
+
+    async def get_or_create_label(self, label_name: str) -> str:
+        """Get a label by name, creating it if it doesn't exist. Returns the label ID.
+
+        Caches label IDs per session to avoid repeated API calls.
         """
+        if label_name in self._label_cache:
+            return self._label_cache[label_name]
+
+        labels = await self.get_labels()
+        for label in labels:
+            if label.get("name") == label_name:
+                self._label_cache[label_name] = label["id"]
+                return label["id"]
+
+        new_label = await asyncio.to_thread(self._create_label_sync, label_name)
+        self._label_cache[label_name] = new_label["id"]
+        return new_label["id"]
+
+    # --- Message modification ---
+
+    def _get_message_labels_sync(self, message_id: str) -> list[str]:
+        """Get the current label IDs on a message."""
+        msg = (
+            self.service.users()
+            .messages()
+            .get(userId="me", id=message_id, format="minimal")
+            .execute()
+        )
+        return msg.get("labelIds", [])
+
+    async def get_message_labels(self, message_id: str) -> list[str]:
+        """Get current label IDs on a message."""
+        return await asyncio.to_thread(self._get_message_labels_sync, message_id)
+
+    def _modify_message_sync(
+        self,
+        message_id: str,
+        add_label_ids: list[str] | None = None,
+        remove_label_ids: list[str] | None = None,
+    ) -> dict:
+        """Synchronous message modify call."""
+        body: dict[str, list[str]] = {}
+        if add_label_ids:
+            body["addLabelIds"] = add_label_ids
+        if remove_label_ids:
+            body["removeLabelIds"] = remove_label_ids
+        return (
+            self.service.users().messages().modify(userId="me", id=message_id, body=body).execute()
+        )
+
+    async def modify_message(
+        self,
+        message_id: str,
+        add_label_ids: list[str] | None = None,
+        remove_label_ids: list[str] | None = None,
+    ) -> list[str]:
+        """Modify labels on a message. Returns the previous label IDs for undo support."""
         try:
-            await asyncio.to_thread(self._mark_as_read_sync, message_id)
+            previous_labels = await self.get_message_labels(message_id)
+            await asyncio.to_thread(
+                self._modify_message_sync, message_id, add_label_ids, remove_label_ids
+            )
+            return previous_labels
         except HttpError as e:
-            logger.error(f"Gmail API error marking message {message_id} as read: {e}")
+            logger.error(f"Gmail API error modifying message {message_id}: {e}")
+            raise
+
+    async def archive(self, message_id: str) -> list[str]:
+        """Archive a message (remove INBOX label). Returns previous labels."""
+        return await self.modify_message(message_id, remove_label_ids=["INBOX"])
+
+    async def unarchive(self, message_id: str) -> list[str]:
+        """Unarchive a message (add INBOX label back). Returns previous labels."""
+        return await self.modify_message(message_id, add_label_ids=["INBOX"])
+
+    async def mark_as_read(self, message_id: str) -> list[str]:
+        """Mark a message as read. Returns previous labels."""
+        return await self.modify_message(message_id, remove_label_ids=["UNREAD"])
+
+    async def mark_as_unread(self, message_id: str) -> list[str]:
+        """Mark a message as unread. Returns previous labels."""
+        return await self.modify_message(message_id, add_label_ids=["UNREAD"])
+
+    async def add_labels(self, message_id: str, label_ids: list[str]) -> list[str]:
+        """Add labels to a message. Returns previous labels."""
+        return await self.modify_message(message_id, add_label_ids=label_ids)
+
+    async def remove_labels(self, message_id: str, label_ids: list[str]) -> list[str]:
+        """Remove labels from a message. Returns previous labels."""
+        return await self.modify_message(message_id, remove_label_ids=label_ids)
+
+    def _trash_sync(self, message_id: str) -> dict:
+        """Move a message to trash."""
+        return self.service.users().messages().trash(userId="me", id=message_id).execute()
+
+    async def trash(self, message_id: str) -> list[str]:
+        """Move a message to trash. Returns previous labels."""
+        try:
+            previous_labels = await self.get_message_labels(message_id)
+            await asyncio.to_thread(self._trash_sync, message_id)
+            return previous_labels
+        except HttpError as e:
+            logger.error(f"Gmail API error trashing message {message_id}: {e}")
+            raise
+
+    def _untrash_sync(self, message_id: str) -> dict:
+        """Remove a message from trash."""
+        return self.service.users().messages().untrash(userId="me", id=message_id).execute()
+
+    async def untrash(self, message_id: str) -> list[str]:
+        """Remove a message from trash. Returns previous labels."""
+        try:
+            previous_labels = await self.get_message_labels(message_id)
+            await asyncio.to_thread(self._untrash_sync, message_id)
+            return previous_labels
+        except HttpError as e:
+            logger.error(f"Gmail API error untrashing message {message_id}: {e}")
+            raise
+
+    def _batch_modify_sync(
+        self,
+        message_ids: list[str],
+        add_label_ids: list[str] | None = None,
+        remove_label_ids: list[str] | None = None,
+    ) -> None:
+        """Batch modify labels on multiple messages (up to 1000)."""
+        body: dict = {"ids": message_ids}
+        if add_label_ids:
+            body["addLabelIds"] = add_label_ids
+        if remove_label_ids:
+            body["removeLabelIds"] = remove_label_ids
+        self.service.users().messages().batchModify(userId="me", body=body).execute()
+
+    async def batch_modify(
+        self,
+        message_ids: list[str],
+        add_label_ids: list[str] | None = None,
+        remove_label_ids: list[str] | None = None,
+    ) -> None:
+        """Batch modify labels on multiple messages (Gmail supports up to 1000)."""
+        try:
+            await asyncio.to_thread(
+                self._batch_modify_sync, message_ids, add_label_ids, remove_label_ids
+            )
+        except HttpError as e:
+            logger.error(f"Gmail API error batch modifying {len(message_ids)} messages: {e}")
             raise
 
     def _get_profile_sync(self) -> dict:

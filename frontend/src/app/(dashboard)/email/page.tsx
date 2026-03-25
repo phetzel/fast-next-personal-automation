@@ -15,8 +15,10 @@ export default function EmailOverviewPage() {
     <div className="space-y-6">
       <EmailOverviewHeader
         isSyncing={screen.isSyncing}
+        isTriaging={screen.isTriaging}
         hasSources={screen.sources.length > 0}
         onTriggerSync={screen.handleTriggerSync}
+        onTriggerTriage={screen.handleTriggerTriage}
       />
       <EmailOverviewQuickActionsGrid />
       <EmailOverviewStatsPanel

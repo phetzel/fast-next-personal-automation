@@ -7,8 +7,14 @@ export const queryKeys = {
     all: ["email"] as const,
     sources: () => [...queryKeys.email.all, "sources"] as const,
     config: () => [...queryKeys.email.all, "config"] as const,
+    destinations: (params?: unknown) => [...queryKeys.email.all, "destinations", params] as const,
     syncs: (params?: unknown) => [...queryKeys.email.all, "syncs", params] as const,
     messages: (params?: unknown) => [...queryKeys.email.all, "messages", params] as const,
+    triageMessages: (params?: unknown) =>
+      [...queryKeys.email.all, "triage-messages", params] as const,
+    triageStats: () => [...queryKeys.email.all, "triage-stats"] as const,
+    subscriptions: (params?: unknown) => [...queryKeys.email.all, "subscriptions", params] as const,
+    actionLogs: (params?: unknown) => [...queryKeys.email.all, "action-logs", params] as const,
     stats: () => [...queryKeys.email.all, "stats"] as const,
   },
   jobs: {

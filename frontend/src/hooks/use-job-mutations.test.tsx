@@ -56,6 +56,7 @@ const baseJob: Job = {
   confirmation_code: null,
   created_at: "2026-03-14T00:00:00Z",
   updated_at: null,
+  linked_email: null,
 };
 
 function createWrapper(queryClient: QueryClient) {

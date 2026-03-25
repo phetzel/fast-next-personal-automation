@@ -21,6 +21,9 @@ from app.api.routes.v1 import projects
 from app.api.routes.v1 import email_sources
 from app.api.routes.v1 import email_syncs
 from app.api.routes.v1 import email_destinations
+from app.api.routes.v1 import email_triage
+from app.api.routes.v1 import email_subscriptions
+from app.api.routes.v1 import email_actions
 from app.api.routes.v1 import schedules
 from app.api.routes.v1 import finances
 from app.api.routes.v1 import integrations
@@ -79,6 +82,9 @@ v1_router.include_router(projects.router, prefix="/projects", tags=["projects"])
 v1_router.include_router(email_sources.router, prefix="/email", tags=["email"])
 v1_router.include_router(email_syncs.router, prefix="/email/syncs", tags=["email"])
 v1_router.include_router(email_destinations.router, prefix="/email/destinations", tags=["email"])
+v1_router.include_router(email_triage.router, prefix="/email/triage", tags=["email"])
+v1_router.include_router(email_subscriptions.router, prefix="/email/subscriptions", tags=["email"])
+v1_router.include_router(email_actions.router, prefix="/email/actions", tags=["email"])
 
 # Schedule routes (calendar-based pipeline scheduling)
 v1_router.include_router(schedules.router, prefix="/schedules", tags=["schedules"])

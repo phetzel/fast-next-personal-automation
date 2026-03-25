@@ -15,8 +15,8 @@ oauth.register(
     client_kwargs={"scope": "openid email profile"},
 )
 
-# Gmail OAuth scope for email access
-GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
+# Gmail OAuth scope for email access (gmail.modify is a superset of gmail.readonly)
+GMAIL_MODIFY_SCOPE = "https://www.googleapis.com/auth/gmail.modify"
 
 # Configure Google OAuth2 with Gmail access (for email integration)
 # This is separate from login to allow existing users to connect Gmail
@@ -26,7 +26,7 @@ oauth.register(
     client_secret=settings.GOOGLE_CLIENT_SECRET,
     server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
     client_kwargs={
-        "scope": f"openid email profile {GMAIL_READONLY_SCOPE}",
+        "scope": f"openid email profile {GMAIL_MODIFY_SCOPE}",
     },
     # These must be in authorize_params to be included in the authorization URL
     # access_type=offline: Request refresh token

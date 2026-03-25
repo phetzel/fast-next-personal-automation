@@ -10,6 +10,8 @@ import {
   Button,
   Card,
   CardContent,
+  CardHeader,
+  CardTitle,
   Textarea,
 } from "@/components/ui";
 import { getScreeningQuestionText, type Job } from "@/types";
@@ -22,6 +24,7 @@ import {
   Sparkles,
   Clock,
 } from "lucide-react";
+import { LinkedEmailCard } from "@/components/shared/linked-email-card";
 import { TimelineItem } from "./timeline-item";
 
 interface OverviewTabProps {
@@ -266,6 +269,8 @@ export function OverviewTab({
             </CardContent>
           </Card>
         )}
+
+        {job.linked_email && <LinkedEmailCard email={job.linked_email} />}
 
         <Card>
           <CardContent className="pt-2">

@@ -4,7 +4,7 @@ export function EmailSettingsHeader() {
   return (
     <PageHeader
       title="Email Integration"
-      description="Connect your email to automatically sync and parse content"
+      description="Connect Gmail to sync job emails into the app with an editable default schedule"
     />
   );
 }

@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -24,6 +24,13 @@ class EmailMessage(Base, TimestampMixin):
     """
 
     __tablename__ = "email_messages"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_id",
+            "gmail_message_id",
+            name="email_messages_source_id_gmail_message_id_key",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     source_id: Mapped[uuid.UUID] = mapped_column(
@@ -53,6 +60,19 @@ class EmailMessage(Base, TimestampMixin):
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     processing_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Phase 1 triage state
+    bucket: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    triage_status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    triage_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    actionability_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    requires_review: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    unsubscribe_candidate: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    archive_recommended: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_vip: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    triaged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_action_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     # DEPRECATED: These fields are kept for backwards compatibility during migration
     # Use EmailMessageDestination for new processing results
     jobs_extracted: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -61,7 +81,9 @@ class EmailMessage(Base, TimestampMixin):
     )  # "indeed", "ai", etc.
 
     # Relationships
-    source: Mapped["EmailSource"] = relationship("EmailSource", back_populates="messages")
+    source: Mapped["EmailSource"] = relationship(
+        "EmailSource", back_populates="messages", lazy="selectin"
+    )
     sync: Mapped["EmailSync | None"] = relationship("EmailSync", back_populates="messages")
     destinations: Mapped[list["EmailMessageDestination"]] = relationship(
         "EmailMessageDestination",

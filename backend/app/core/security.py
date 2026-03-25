@@ -12,6 +12,26 @@ from cryptography.fernet import Fernet
 
 from app.core.config import settings
 
+
+def _create_typed_token(
+    subject: str | Any,
+    *,
+    token_type: str,
+    expires_delta: timedelta,
+    extra_claims: dict[str, Any] | None = None,
+) -> str:
+    """Create a JWT token with a specific type and expiry."""
+    expire = datetime.now(UTC) + expires_delta
+    to_encode: dict[str, Any] = {
+        "exp": expire,
+        "sub": str(subject),
+        "type": token_type,
+    }
+    if extra_claims:
+        to_encode.update(extra_claims)
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
 # === Token Encryption (Fernet) ===
 
 
@@ -73,13 +93,11 @@ def create_access_token(
     expires_delta: timedelta | None = None,
 ) -> str:
     """Create a JWT access token."""
-    if expires_delta:
-        expire = datetime.now(UTC) + expires_delta
-    else:
-        expire = datetime.now(UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-
-    to_encode = {"exp": expire, "sub": str(subject), "type": "access"}
-    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return _create_typed_token(
+        subject,
+        token_type="access",
+        expires_delta=expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
 
 
 def create_refresh_token(
@@ -87,13 +105,23 @@ def create_refresh_token(
     expires_delta: timedelta | None = None,
 ) -> str:
     """Create a JWT refresh token."""
-    if expires_delta:
-        expire = datetime.now(UTC) + expires_delta
-    else:
-        expire = datetime.now(UTC) + timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
+    return _create_typed_token(
+        subject,
+        token_type="refresh",
+        expires_delta=expires_delta or timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES),
+    )
 
-    to_encode = {"exp": expire, "sub": str(subject), "type": "refresh"}
-    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+def create_email_connect_token(
+    subject: str | Any,
+    expires_delta: timedelta | None = None,
+) -> str:
+    """Create a short-lived token for initiating the Gmail connect flow."""
+    return _create_typed_token(
+        subject,
+        token_type="email_connect",
+        expires_delta=expires_delta or timedelta(minutes=5),
+    )
 
 
 def verify_token(token: str) -> dict[str, Any] | None:

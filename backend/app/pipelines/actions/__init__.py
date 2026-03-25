@@ -30,6 +30,7 @@ def discover_pipelines(force_reload: bool = False) -> None:
         "app.pipelines.actions.job_prep.pipeline",
         "app.pipelines.actions.job_prep.batch_pipeline",
         "app.pipelines.actions.email_sync.pipeline",
+        "app.pipelines.actions.email_triage.pipeline",
         "app.pipelines.actions.finance_email_sync.pipeline",
         "app.pipelines.actions.finance_categorize.pipeline",
     ]

@@ -6,6 +6,7 @@ import {
   useEmailSourcesQuery,
   useEmailStatsQuery,
   useEmailSyncsQuery,
+  useRunEmailTriageMutation,
 } from "@/hooks/queries/email";
 import { apiClient } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
@@ -15,6 +16,7 @@ export function useEmailOverviewScreen() {
   const syncsQuery = useEmailSyncsQuery(5, 0);
   const sourcesQuery = useEmailSourcesQuery();
   const statsQuery = useEmailStatsQuery();
+  const triageMutation = useRunEmailTriageMutation();
 
   const triggerSyncMutation = useMutation({
     mutationFn: (forceFullSync: boolean) =>
@@ -42,10 +44,22 @@ export function useEmailOverviewScreen() {
       statsQuery.isLoading ||
       statsQuery.isFetching,
     isSyncing: triggerSyncMutation.isPending,
+    isTriaging: triageMutation.isPending,
     handleTriggerSync: async () => {
       try {
         return await triggerSyncMutation.mutateAsync(false);
       } catch {
+        return null;
+      }
+    },
+    handleTriggerTriage: async () => {
+      try {
+        const result = await triageMutation.mutateAsync({});
+        await queryClient.invalidateQueries({ queryKey: queryKeys.email.all });
+        toast.success(`Triaged ${result.messages_triaged} messages`);
+        return result;
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Failed to run email triage");
         return null;
       }
     },

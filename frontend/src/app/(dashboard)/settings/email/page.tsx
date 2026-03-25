@@ -2,9 +2,11 @@
 
 import { StatusAlert } from "@/components/shared/feedback";
 import {
+  AutoActionsCard,
   ConnectedAccountsCard,
   EmailSettingsHeader,
   HowItWorksCard,
+  SenderRulesCard,
   SupportedSourcesCard,
   useEmailSettingsScreen,
 } from "@/components/screens/dashboard/settings/email";
@@ -55,7 +57,18 @@ export default function EmailSettingsPage() {
         formatDate={screen.formatDate}
       />
 
+      <AutoActionsCard sources={screen.sources} />
+
       {screen.config && <SupportedSourcesCard config={screen.config} />}
+
+      <SenderRulesCard
+        senderRules={screen.senderRules}
+        isSaving={screen.senderRulesSaving}
+        onCreateRule={screen.onCreateSenderRule}
+        onUpdateRule={screen.onUpdateSenderRule}
+        onDeleteRule={screen.onDeleteSenderRule}
+        onToggleRule={screen.onToggleSenderRule}
+      />
 
       <HowItWorksCard />
     </div>

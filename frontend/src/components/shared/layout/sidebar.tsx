@@ -18,6 +18,7 @@ import {
   Mail,
   Inbox,
   RefreshCw,
+  Sparkles,
   CalendarDays,
   Wallet,
   Receipt,
@@ -60,6 +61,7 @@ const areaNavigation: NavArea[] = [
     icon: Mail,
     children: [
       { name: "Overview", href: ROUTES.EMAIL, icon: LayoutDashboard },
+      { name: "Triage", href: ROUTES.EMAIL_TRIAGE, icon: Sparkles },
       { name: "Sync History", href: ROUTES.EMAIL_SYNCS, icon: RefreshCw },
       { name: "Messages", href: ROUTES.EMAIL_MESSAGES, icon: Inbox },
     ],

@@ -1,6 +1,7 @@
 /**
  * Job-related types for the jobs workflow.
  */
+import type { LinkedEmailContext } from "./email";
 
 /**
  * All possible job statuses.
@@ -143,6 +144,7 @@ export interface Job {
   applied_at: string | null;
   application_method: string | null;
   confirmation_code: string | null;
+  linked_email: LinkedEmailContext | null;
   created_at: string;
   updated_at: string | null;
 }

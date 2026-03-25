@@ -104,7 +104,7 @@ class Settings(BaseSettings):
 
     # === Email Sync ===
     EMAIL_SYNC_INTERVAL_MINUTES: int = (
-        60  # How often to sync email sources (matches scheduler cron)
+        60  # Default cadence used when auto-creating an email sync schedule
     )
     EMAIL_SYNC_LOOKBACK_HOURS: int = 72  # How far back to look for emails on first sync
 

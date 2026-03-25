@@ -27,6 +27,8 @@ from app.repositories import email_source as email_source_repo
 
 from app.repositories import email_sync as email_sync_repo
 
+from app.repositories import email_action_log as email_action_log_repo
+
 from app.repositories import email_destination as email_destination_repo
 
 from app.repositories import scheduled_task as scheduled_task_repo
@@ -49,6 +51,7 @@ __all__ = [
     "project_repo",
     "email_source_repo",
     "email_sync_repo",
+    "email_action_log_repo",
     "email_destination_repo",
     "scheduled_task_repo",
     "integration_token_repo",

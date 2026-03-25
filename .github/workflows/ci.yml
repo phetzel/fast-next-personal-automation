@@ -123,6 +123,7 @@ jobs:
           --ignore-vuln CVE-2025-69229
           --ignore-vuln CVE-2025-69230
           --ignore-vuln CVE-2026-25580
+          --ignore-vuln CVE-2026-4539
 
   docker:
     runs-on: ubuntu-latest

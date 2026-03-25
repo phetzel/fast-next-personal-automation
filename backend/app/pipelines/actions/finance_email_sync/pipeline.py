@@ -262,7 +262,9 @@ class FinanceEmailSyncPipeline(ActionPipeline[FinanceEmailSyncInput, FinanceEmai
                     if account_id:
                         tx["account_id"] = account_id
 
-                imported, skipped = await finance_service.ingest_from_email(user_id, parsed)
+                imported, skipped, _created = await finance_service.ingest_from_email(
+                    user_id, parsed
+                )
                 result["transactions_imported"] += imported
                 result["duplicates_skipped"] += skipped
 

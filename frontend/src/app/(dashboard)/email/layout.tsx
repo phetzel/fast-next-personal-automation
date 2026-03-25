@@ -9,6 +9,10 @@ import { ROUTES } from "@/lib/constants";
 // Breadcrumb configuration
 const routeLabels: Record<string, string> = {
   [ROUTES.EMAIL]: "Overview",
+  [ROUTES.EMAIL_TRIAGE]: "Triage",
+  [ROUTES.EMAIL_REVIEW]: "Review",
+  [ROUTES.EMAIL_SUBSCRIPTIONS]: "Subscriptions",
+  [ROUTES.EMAIL_HISTORY]: "History",
   [ROUTES.EMAIL_SYNCS]: "Sync History",
   [ROUTES.EMAIL_MESSAGES]: "Messages",
 };

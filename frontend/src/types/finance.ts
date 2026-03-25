@@ -1,6 +1,7 @@
 /**
  * Finance area types.
  */
+import type { LinkedEmailContext } from "./email";
 
 export type AccountType = "checking" | "savings" | "credit_card" | "investment" | "loan" | "other";
 
@@ -76,6 +77,7 @@ export interface Transaction {
   raw_email_id: string | null;
   is_reviewed: boolean;
   notes: string | null;
+  linked_email: LinkedEmailContext | null;
   created_at: string;
   updated_at: string | null;
 }
