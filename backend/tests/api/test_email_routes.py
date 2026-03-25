@@ -90,8 +90,13 @@ async def test_sync_email_source_returns_409_when_sync_running(client) -> None:
         ),
         patch.object(
             email_sources_route.EmailService,
-            "start_sync",
-            AsyncMock(return_value=(running_sync, False)),
+            "cancel_stale_syncs",
+            AsyncMock(return_value=0),
+        ),
+        patch.object(
+            email_sources_route.EmailService,
+            "get_running_sync",
+            AsyncMock(return_value=running_sync),
         ),
     ):
         response = await client.post(f"/api/v1/email/sources/{source.id}/sync")

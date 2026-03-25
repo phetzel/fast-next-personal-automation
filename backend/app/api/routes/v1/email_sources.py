@@ -221,13 +221,12 @@ async def sync_email_source(
         raise HTTPException(status_code=400, detail="Email source is disabled")
 
     email_service = EmailService(db)
-    sync, is_new = await email_service.start_sync(current_user.id, force_full_sync)
-    if not is_new:
+    await email_service.cancel_stale_syncs(current_user.id)
+    existing = await email_service.get_running_sync(current_user.id)
+    if existing:
         raise HTTPException(status_code=409, detail="A sync is already in progress")
 
-    await db.commit()
-
-    # Execute sync pipeline
+    # Execute sync pipeline — it creates its own sync record
     context = PipelineContext(
         user_id=current_user.id,
         source=PipelineSource.API,
@@ -238,7 +237,6 @@ async def sync_email_source(
         {
             "source_id": str(source_id),
             "force_full_sync": force_full_sync,
-            "sync_id": str(sync.id),
         },
         context,
         db=db,

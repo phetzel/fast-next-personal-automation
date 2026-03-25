@@ -127,32 +127,13 @@ class EmailService:
         total = await email_sync_repo.count_by_user_id(self.db, user_id)
         return syncs, total
 
-    async def start_sync(
-        self, user_id: UUID, force_full_sync: bool = False
-    ) -> tuple[EmailSync, bool]:
-        """Start a new email sync operation.
+    async def cancel_stale_syncs(self, user_id: UUID) -> int:
+        """Cancel syncs that have been running too long (10 min timeout)."""
+        return await email_sync_repo.cancel_stale_syncs(self.db, user_id, stale_minutes=10)
 
-        Returns tuple of (sync record, is_new).
-        - is_new=True means a new sync was created and pipeline should run
-        - is_new=False means an existing sync was found (already running)
-        """
-        # First, cancel any syncs that have been running too long (10 min timeout)
-        await email_sync_repo.cancel_stale_syncs(self.db, user_id, stale_minutes=10)
-
-        # Check if there's already a running sync
-        existing = await email_sync_repo.get_running_by_user(self.db, user_id)
-        if existing:
-            return existing, False
-
-        # Create new sync record
-        sync = await email_sync_repo.create(
-            self.db,
-            user_id=user_id,
-            started_at=datetime.now(UTC),
-            status="running",
-        )
-
-        return sync, True
+    async def get_running_sync(self, user_id: UUID) -> EmailSync | None:
+        """Get a currently running sync for the user, if any."""
+        return await email_sync_repo.get_running_by_user(self.db, user_id)
 
     async def complete_sync(
         self,
