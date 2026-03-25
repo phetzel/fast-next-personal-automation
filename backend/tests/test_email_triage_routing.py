@@ -197,9 +197,6 @@ class TestRouteJobMessage:
                 email_service,
                 destination,
                 profile_id=uuid4(),
-                resume_text="My resume",
-                target_roles=["Engineer"],
-                min_score=7.0,
                 force=False,
             )
 
@@ -234,9 +231,6 @@ class TestRouteJobMessage:
                 AsyncMock(),
                 destination,
                 profile_id=None,
-                resume_text=None,
-                target_roles=None,
-                min_score=7.0,
                 force=False,
             )
 
@@ -285,9 +279,6 @@ class TestRouteJobMessage:
                 email_service,
                 destination,
                 profile_id=None,
-                resume_text=None,
-                target_roles=None,
-                min_score=7.0,
                 force=True,
             )
 
@@ -339,9 +330,6 @@ class TestRouteJobMessage:
                 email_service,
                 SimpleNamespace(id=uuid4()),
                 profile_id=None,
-                resume_text=None,
-                target_roles=None,
-                min_score=7.0,
                 force=False,
             )
 
