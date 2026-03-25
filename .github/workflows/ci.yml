@@ -108,9 +108,11 @@ jobs:
         run: uv sync --directory backend --dev
 
       - name: Run pip-audit
+        # CVE-2026-25580: pydantic-ai - fix requires >=1.56 which has breaking ToolManager API changes
         # CVE-2026-4539: pygments - no fix version released yet
         run: >
           uv run --directory backend pip-audit --progress-spinner off
+          --ignore-vuln CVE-2026-25580
           --ignore-vuln CVE-2026-4539
 
   docker:
