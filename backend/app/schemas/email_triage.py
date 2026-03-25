@@ -7,7 +7,8 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 EmailBucket = Literal["now", "jobs", "finance", "newsletter", "notifications", "review", "done"]
-TriageStatus = Literal["pending", "classified", "reviewed", "ignored"]
+TriageStatus = Literal["pending", "classified", "reviewed", "ignored", "actioned"]
+EmailActionType = Literal["archive", "mark_read", "trash", "label", "undo"]
 
 
 class EmailTriageRunInput(BaseModel):
@@ -48,6 +49,11 @@ class EmailTriageRunResult(BaseModel):
     routed_finance_messages: int = 0
     imported_transactions: int = 0
     routing_errors: int = 0
+    # Phase 4 auto-action counts
+    auto_archived: int = 0
+    auto_labeled: int = 0
+    auto_marked_read: int = 0
+    auto_action_errors: int = 0
     errors: list[str] = Field(default_factory=list)
 
 
@@ -122,3 +128,47 @@ class EmailTriageReviewResponse(BaseModel):
     """Response after a triage review decision is saved."""
 
     message: EmailTriageMessageResponse
+
+
+# --- Phase 4: Action schemas ---
+
+
+class EmailActionInput(BaseModel):
+    """Request to execute a Gmail action on a message."""
+
+    action: EmailActionType
+    label_name: str | None = Field(
+        default=None,
+        description="Gmail label name to apply (only for 'label' action).",
+    )
+
+
+class EmailActionResponse(BaseModel):
+    """Response after a Gmail action is executed."""
+
+    message: EmailTriageMessageResponse
+    action_log_id: UUID
+    action_type: str
+    action_status: str
+
+
+class EmailBulkActionInput(BaseModel):
+    """Bulk action on multiple messages."""
+
+    message_ids: list[UUID] = Field(..., min_length=1, max_length=100)
+    action: Literal["archive", "mark_read"]
+
+
+class EmailBulkActionResponse(BaseModel):
+    """Response after a bulk Gmail action."""
+
+    succeeded: int = 0
+    failed: int = 0
+    action_log_ids: list[UUID] = Field(default_factory=list)
+
+
+class EmailSourceAutoActionSettings(BaseModel):
+    """Auto-action settings for an email source."""
+
+    auto_actions_enabled: bool
+    auto_action_confidence_threshold: float = Field(ge=0.5, le=1.0)

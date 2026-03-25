@@ -10,6 +10,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.clients.gmail import GmailClient
 from app.core.config import settings
 from app.core.exceptions import BadRequestError, NotFoundError
 from app.db.models.email_action_log import EmailActionLog
@@ -33,6 +34,14 @@ from app.repositories import (
 from app.schemas.scheduled_task import ScheduledTaskCreate
 from app.services.job import JobService, RawJob
 from app.services.scheduled_task import ScheduledTaskService
+
+# Gmail label names managed by the app
+AUTOMATION_LABELS = {
+    "jobs": "Automations/Jobs",
+    "finance": "Automations/Finance",
+    "newsletter": "Automations/Newsletters",
+    "done": "Automations/Done",
+}
 
 logger = logging.getLogger(__name__)
 
@@ -579,6 +588,235 @@ class EmailService:
             },
         )
         return rule
+
+    # === Phase 4: Gmail Action Executor ===
+
+    async def execute_action(
+        self,
+        message: EmailMessage,
+        user_id: UUID,
+        gmail: GmailClient,
+        *,
+        action_type: str,
+        action_source: str = "user",
+        label_name: str | None = None,
+        reason: str | None = None,
+    ) -> EmailActionLog:
+        """Execute a Gmail action on a message with full audit logging.
+
+        Validates policy, executes via GmailClient, logs the action with
+        previous state for undo support.
+        """
+        gmail_message_id = message.gmail_message_id
+
+        # Policy: trash requires an explicit cleanup rule
+        if action_type == "trash":
+            await self._require_trash_rule(user_id, message)
+
+        # Policy: VIP messages cannot be auto-actioned
+        if action_source == "system" and message.is_vip:
+            raise BadRequestError(message="VIP messages cannot be auto-actioned")
+
+        previous_labels: list[str] = []
+        applied_labels: list[str] = []
+        removed_labels: list[str] = []
+
+        if action_type == "archive":
+            bucket_label_name = AUTOMATION_LABELS.get(message.bucket or "")
+            add_ids: list[str] = []
+            if bucket_label_name:
+                label_id = await gmail.get_or_create_label(bucket_label_name)
+                add_ids = [label_id]
+                applied_labels = [bucket_label_name]
+            previous_labels = await gmail.modify_message(
+                gmail_message_id,
+                add_label_ids=add_ids or None,
+                remove_label_ids=["INBOX"],
+            )
+            removed_labels = ["INBOX"]
+
+        elif action_type == "mark_read":
+            previous_labels = await gmail.modify_message(
+                gmail_message_id,
+                remove_label_ids=["UNREAD"],
+            )
+            removed_labels = ["UNREAD"]
+
+        elif action_type == "label":
+            if not label_name:
+                raise BadRequestError(message="label_name is required for 'label' action")
+            label_id = await gmail.get_or_create_label(label_name)
+            previous_labels = await gmail.modify_message(
+                gmail_message_id,
+                add_label_ids=[label_id],
+            )
+            applied_labels = [label_name]
+
+        elif action_type == "trash":
+            previous_labels = await gmail.trash(gmail_message_id)
+
+        else:
+            raise BadRequestError(message=f"Unsupported action type: {action_type}")
+
+        now = datetime.now(UTC)
+        await email_source_repo.update_message_triage(
+            self.db, message, triage_status="actioned", last_action_at=now
+        )
+
+        return await self._create_action_log(
+            user_id=user_id,
+            message=message,
+            action_type=action_type,
+            action_status="applied",
+            action_source=action_source,
+            reason=reason,
+            metadata={
+                "previous_labels": previous_labels,
+                "applied_labels": applied_labels,
+                "removed_labels": removed_labels,
+            },
+        )
+
+    async def undo_last_action(
+        self,
+        message: EmailMessage,
+        user_id: UUID,
+        gmail: GmailClient,
+    ) -> EmailActionLog:
+        """Undo the last applied action on a message."""
+        last_log = None
+        # Search across all undoable action types for the most recent
+        for action_type in ("archive", "mark_read", "trash", "label"):
+            candidate = await email_action_log_repo.get_by_message_action(
+                self.db,
+                user_id=user_id,
+                message_id=message.id,
+                action_type=action_type,
+                action_status="applied",
+            )
+            if candidate is not None and (
+                last_log is None or candidate.created_at > last_log.created_at
+            ):
+                last_log = candidate
+
+        if last_log is None:
+            raise NotFoundError(message="No undoable action found for this message")
+
+        meta = last_log.action_metadata or {}
+        previous_labels = meta.get("previous_labels", [])
+        applied_labels = meta.get("applied_labels", [])
+        removed_labels = meta.get("removed_labels", [])
+
+        gmail_message_id = message.gmail_message_id
+
+        if last_log.action_type == "trash":
+            await gmail.untrash(gmail_message_id)
+        else:
+            # Reverse: re-add removed labels, remove applied labels
+            re_add = [lid for lid in removed_labels if lid in previous_labels]
+            re_remove: list[str] = []
+            # For applied labels that are label names, resolve IDs
+            for lname in applied_labels:
+                try:
+                    lid = await gmail.get_or_create_label(lname)
+                    re_remove.append(lid)
+                except Exception:
+                    pass
+            if re_add or re_remove:
+                await gmail.modify_message(
+                    gmail_message_id,
+                    add_label_ids=re_add or None,
+                    remove_label_ids=re_remove or None,
+                )
+
+        # Mark original log as undone
+        last_log.action_status = "undone"
+        self.db.add(last_log)
+        await self.db.flush()
+
+        now = datetime.now(UTC)
+        await email_source_repo.update_message_triage(
+            self.db, message, triage_status="classified", last_action_at=now
+        )
+
+        return await self._create_action_log(
+            user_id=user_id,
+            message=message,
+            action_type="undo",
+            action_status="applied",
+            action_source="user",
+            metadata={
+                "undone_action_id": str(last_log.id),
+                "undone_action_type": last_log.action_type,
+            },
+        )
+
+    async def get_gmail_client_for_message(self, message: EmailMessage) -> GmailClient:
+        """Build a GmailClient from the source associated with a message."""
+        source = await email_source_repo.get_by_id(self.db, message.source_id)
+        if source is None:
+            raise NotFoundError(message="Email source not found")
+        access_token, refresh_token = email_source_repo.get_decrypted_tokens(source)
+        return GmailClient(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_expiry=source.token_expiry,
+        )
+
+    async def save_refreshed_tokens(self, gmail: GmailClient, message: EmailMessage) -> None:
+        """Persist refreshed OAuth tokens if the GmailClient refreshed them."""
+        if gmail.tokens_refreshed and gmail.new_access_token:
+            source = await email_source_repo.get_by_id(self.db, message.source_id)
+            if source:
+                await email_source_repo.update_tokens(
+                    self.db, source, gmail.new_access_token, gmail.new_token_expiry
+                )
+
+    async def get_source_auto_action_settings(
+        self,
+        source_id: UUID,
+        user_id: UUID,
+    ):
+        """Get auto-action settings for an email source."""
+        source = await email_source_repo.get_by_id(self.db, source_id)
+        if source is None or source.user_id != user_id:
+            raise NotFoundError(message="Email source not found")
+        return source
+
+    async def update_source_auto_action_settings(
+        self,
+        source_id: UUID,
+        user_id: UUID,
+        *,
+        auto_actions_enabled: bool | None = None,
+        auto_action_confidence_threshold: float | None = None,
+    ):
+        """Update auto-action settings on an email source."""
+        source = await email_source_repo.get_by_id(self.db, source_id)
+        if source is None or source.user_id != user_id:
+            raise NotFoundError(message="Email source not found")
+        if auto_actions_enabled is not None:
+            source.auto_actions_enabled = auto_actions_enabled
+        if auto_action_confidence_threshold is not None:
+            source.auto_action_confidence_threshold = auto_action_confidence_threshold
+        self.db.add(source)
+        await self.db.flush()
+        await self.db.refresh(source)
+        return source
+
+    async def _require_trash_rule(self, user_id: UUID, message: EmailMessage) -> None:
+        """Ensure an explicit cleanup rule exists that covers this sender before trashing."""
+        rules = await email_destination_repo.find_matching_destinations(
+            self.db,
+            user_id,
+            message.from_address,
+            message.subject,
+            destination_type="cleanup",
+        )
+        if not rules:
+            raise BadRequestError(
+                message="Trash requires an explicit sender rule. Create a cleanup rule first."
+            )
 
     async def list_action_logs(
         self,

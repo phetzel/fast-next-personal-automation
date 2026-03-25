@@ -13,6 +13,8 @@ function makeSource(overrides: Partial<EmailSource> = {}): EmailSource {
     last_triage_at: null,
     last_triage_error: null,
     custom_senders: null,
+    auto_actions_enabled: true,
+    auto_action_confidence_threshold: 0.95,
     created_at: "2026-03-23T00:00:00Z",
     updated_at: null,
     ...overrides,

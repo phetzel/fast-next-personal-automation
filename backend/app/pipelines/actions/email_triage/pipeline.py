@@ -74,6 +74,10 @@ class EmailTriagePipeline(ActionPipeline[EmailTriageRunInput, EmailTriageRunResu
                     )
                     output.imported_transactions += source_result.get("imported_transactions", 0)
                     output.routing_errors += source_result.get("routing_errors", 0)
+                    output.auto_archived += source_result.get("auto_archived", 0)
+                    output.auto_labeled += source_result.get("auto_labeled", 0)
+                    output.auto_marked_read += source_result.get("auto_marked_read", 0)
+                    output.auto_action_errors += source_result.get("auto_action_errors", 0)
                     errors.extend(source_result["errors"])
                 except Exception as exc:
                     logger.exception("Error triaging %s", source.email_address)
@@ -106,6 +110,10 @@ class EmailTriagePipeline(ActionPipeline[EmailTriageRunInput, EmailTriageRunResu
             "routed_finance_messages": 0,
             "imported_transactions": 0,
             "routing_errors": 0,
+            "auto_archived": 0,
+            "auto_labeled": 0,
+            "auto_marked_read": 0,
+            "auto_action_errors": 0,
             "errors": [],
         }
 
@@ -248,6 +256,15 @@ class EmailTriagePipeline(ActionPipeline[EmailTriageRunInput, EmailTriageRunResu
             result["imported_transactions"] = routing_result["imported_transactions"]
             result["routing_errors"] = routing_result["routing_errors"]
             source_errors.extend(routing_result["errors"])
+
+        # Phase 4: apply auto-actions for high-confidence messages
+        if source.auto_actions_enabled:
+            auto_result = await self._apply_auto_actions(db, user_id, source, gmail)
+            result["auto_archived"] = auto_result["auto_archived"]
+            result["auto_labeled"] = auto_result["auto_labeled"]
+            result["auto_marked_read"] = auto_result["auto_marked_read"]
+            result["auto_action_errors"] = auto_result["auto_action_errors"]
+            source_errors.extend(auto_result["errors"])
 
         if gmail.tokens_refreshed and gmail.new_access_token:
             await email_source_repo.update_tokens(
@@ -539,6 +556,101 @@ class EmailTriagePipeline(ActionPipeline[EmailTriageRunInput, EmailTriageRunResu
             await email_source_repo.update_message_triage(db, message, requires_review=True)
 
         return imported_count
+
+    async def _apply_auto_actions(
+        self,
+        db,
+        user_id: UUID,
+        source,
+        gmail: GmailClient,
+    ) -> dict[str, Any]:
+        """Apply auto-actions for high-confidence, non-VIP messages in this run."""
+        from app.services.email import AUTOMATION_LABELS
+
+        result: dict[str, Any] = {
+            "auto_archived": 0,
+            "auto_labeled": 0,
+            "auto_marked_read": 0,
+            "auto_action_errors": 0,
+            "errors": [],
+        }
+
+        threshold = source.auto_action_confidence_threshold
+
+        # Find messages that were classified in this session and qualify for auto-action
+        eligible = await email_source_repo.list_auto_actionable_messages(
+            db,
+            source_id=source.id,
+            confidence_threshold=threshold,
+        )
+
+        for message in eligible:
+            bucket = message.bucket
+            try:
+                if bucket == "notifications":
+                    # Notifications: mark read only, don't archive
+                    previous_labels = await gmail.modify_message(
+                        message.gmail_message_id, remove_label_ids=["UNREAD"]
+                    )
+                    result["auto_marked_read"] += 1
+                    await email_action_log_repo.create(
+                        db,
+                        user_id=user_id,
+                        message_id=message.id,
+                        gmail_thread_id=message.gmail_thread_id,
+                        action_type="mark_read",
+                        action_status="applied",
+                        action_source="system",
+                        metadata={
+                            "auto_action": True,
+                            "confidence": message.triage_confidence,
+                            "previous_labels": previous_labels,
+                            "removed_labels": ["UNREAD"],
+                        },
+                    )
+                elif bucket in AUTOMATION_LABELS:
+                    # Jobs, finance, newsletter, done: label + archive + mark read
+                    label_name = AUTOMATION_LABELS[bucket]
+                    label_id = await gmail.get_or_create_label(label_name)
+                    previous_labels = await gmail.modify_message(
+                        message.gmail_message_id,
+                        add_label_ids=[label_id],
+                        remove_label_ids=["INBOX", "UNREAD"],
+                    )
+                    result["auto_archived"] += 1
+                    result["auto_labeled"] += 1
+                    result["auto_marked_read"] += 1
+                    await email_action_log_repo.create(
+                        db,
+                        user_id=user_id,
+                        message_id=message.id,
+                        gmail_thread_id=message.gmail_thread_id,
+                        action_type="archive",
+                        action_status="applied",
+                        action_source="system",
+                        metadata={
+                            "auto_action": True,
+                            "confidence": message.triage_confidence,
+                            "previous_labels": previous_labels,
+                            "applied_labels": [label_name],
+                            "removed_labels": ["INBOX", "UNREAD"],
+                        },
+                    )
+                else:
+                    continue
+
+                await email_source_repo.update_message_triage(
+                    db,
+                    message,
+                    triage_status="actioned",
+                    last_action_at=datetime.now(UTC),
+                )
+            except Exception as exc:
+                result["auto_action_errors"] += 1
+                logger.exception("Auto-action failed for message %s (%s)", message.id, bucket)
+                result["errors"].append(f"Auto-action error for message {message.id}: {exc}")
+
+        return result
 
     async def _apply_cleanup_rules(
         self,

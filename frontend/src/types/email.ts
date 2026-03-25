@@ -12,6 +12,8 @@ export interface EmailSource {
   last_triage_at: string | null;
   last_triage_error: string | null;
   custom_senders: string[] | null;
+  auto_actions_enabled: boolean;
+  auto_action_confidence_threshold: number;
   created_at: string;
   updated_at: string | null;
 }
@@ -55,7 +57,7 @@ export interface EmailTriageMessage extends Omit<EmailMessage, "jobs_extracted" 
   source_id: string;
   source_email_address: string;
   bucket: EmailBucket | null;
-  triage_status: "pending" | "classified" | "reviewed" | "ignored";
+  triage_status: "pending" | "classified" | "reviewed" | "ignored" | "actioned";
   triage_confidence: number | null;
   actionability_score: number | null;
   summary: string | null;
@@ -84,6 +86,11 @@ export interface EmailTriageRunResult {
   routed_finance_messages: number;
   imported_transactions: number;
   routing_errors: number;
+  // Phase 4 auto-action counts
+  auto_archived: number;
+  auto_labeled: number;
+  auto_marked_read: number;
+  auto_action_errors: number;
   errors: string[];
 }
 
@@ -282,4 +289,36 @@ export interface EmailSyncStats {
   total_jobs_extracted: number;
   total_jobs_saved: number;
   last_sync: EmailSync | null;
+}
+
+// --- Phase 4: Gmail Action Types ---
+
+export type EmailActionType = "archive" | "mark_read" | "trash" | "label" | "undo";
+
+export interface EmailActionInput {
+  action: EmailActionType;
+  label_name?: string;
+}
+
+export interface EmailActionResponse {
+  message: EmailTriageMessage;
+  action_log_id: string;
+  action_type: string;
+  action_status: string;
+}
+
+export interface EmailBulkActionInput {
+  message_ids: string[];
+  action: "archive" | "mark_read";
+}
+
+export interface EmailBulkActionResponse {
+  succeeded: number;
+  failed: number;
+  action_log_ids: string[];
+}
+
+export interface EmailSourceAutoActionSettings {
+  auto_actions_enabled: boolean;
+  auto_action_confidence_threshold: number;
 }

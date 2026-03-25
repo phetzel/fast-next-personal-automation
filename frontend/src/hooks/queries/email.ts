@@ -4,7 +4,11 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import type {
+  EmailActionInput,
   EmailActionLogListResponse,
+  EmailActionResponse,
+  EmailBulkActionInput,
+  EmailBulkActionResponse,
   EmailCleanupDecisionInput,
   EmailConfig,
   EmailDestination,
@@ -200,6 +204,44 @@ export function useEmailActionLogsQuery(limit = 50, offset = 0) {
     queryKey: queryKeys.email.actionLogs({ limit, offset }),
     queryFn: () =>
       apiClient.get<EmailActionLogListResponse>(`/email/actions/logs?limit=${limit}&offset=${offset}`),
+  });
+}
+
+// --- Phase 4: Gmail Action Mutations ---
+
+export function useExecuteEmailActionMutation() {
+  return useMutation({
+    mutationFn: ({
+      messageId,
+      input,
+    }: {
+      messageId: string;
+      input: EmailActionInput;
+    }) =>
+      apiClient.post<EmailActionResponse>(
+        `/email/triage/messages/${messageId}/actions`,
+        input
+      ),
+  });
+}
+
+export function useUndoEmailActionMutation() {
+  return useMutation({
+    mutationFn: (messageId: string) =>
+      apiClient.post<EmailActionResponse>(
+        `/email/triage/messages/${messageId}/undo`,
+        {}
+      ),
+  });
+}
+
+export function useBulkEmailActionMutation() {
+  return useMutation({
+    mutationFn: (input: EmailBulkActionInput) =>
+      apiClient.post<EmailBulkActionResponse>(
+        "/email/triage/messages/bulk-action",
+        input
+      ),
   });
 }
 

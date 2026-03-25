@@ -584,6 +584,31 @@ async def get_triage_stats_for_user(
     }
 
 
+async def list_auto_actionable_messages(
+    db: AsyncSession,
+    source_id: UUID,
+    *,
+    confidence_threshold: float = 0.95,
+) -> list[EmailMessage]:
+    """Find messages eligible for auto-actions in the current triage run.
+
+    Returns classified, non-VIP messages with confidence >= threshold
+    that haven't been actioned yet.
+    """
+    result = await db.execute(
+        select(EmailMessage)
+        .where(
+            EmailMessage.source_id == source_id,
+            EmailMessage.triage_status == "classified",
+            EmailMessage.is_vip.is_(False),
+            EmailMessage.triage_confidence >= confidence_threshold,
+            EmailMessage.bucket.in_(["jobs", "finance", "newsletter", "notifications", "done"]),
+        )
+        .order_by(EmailMessage.received_at.desc().nullslast())
+    )
+    return list(result.scalars().all())
+
+
 async def get_message_stats(db: AsyncSession, source_id: UUID) -> dict:
     """Get statistics for an email source."""
     messages = await get_messages_by_source(db, source_id, limit=1000)

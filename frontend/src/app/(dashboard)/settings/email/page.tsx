@@ -2,6 +2,7 @@
 
 import { StatusAlert } from "@/components/shared/feedback";
 import {
+  AutoActionsCard,
   ConnectedAccountsCard,
   EmailSettingsHeader,
   HowItWorksCard,
@@ -55,6 +56,8 @@ export default function EmailSettingsPage() {
         onDelete={screen.onDelete}
         formatDate={screen.formatDate}
       />
+
+      <AutoActionsCard sources={screen.sources} />
 
       {screen.config && <SupportedSourcesCard config={screen.config} />}
 
