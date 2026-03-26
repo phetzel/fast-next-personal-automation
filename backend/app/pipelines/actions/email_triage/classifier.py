@@ -11,129 +11,24 @@ from pydantic_ai import Agent
 
 from app.clients.gmail import EmailContent
 from app.core.config import settings
-from app.email.config import get_default_sender_domains
 
 logger = logging.getLogger(__name__)
 
-JOB_SUBJECT_KEYWORDS = (
-    "job alert",
-    "jobs for you",
-    "recruiter",
-    "interview",
-    "application",
-    "candidate",
-    "offer",
-    "rejection",
-    "unfortunately",
-    "not moving forward",
-    "decided not to proceed",
-    "position has been filled",
-    "your application to",
-    "applied to",
-    "hiring manager",
-    "phone screen",
-    "technical interview",
-    "coding challenge",
-    "take-home",
-    "onsite interview",
-    "offer letter",
-    "compensation",
-    "background check",
-    "new job",
-    "job opportunity",
-    "we found your profile",
-)
-JOB_SENDER_KEYWORDS = (
-    "linkedin.com",
-    "indeed.com",
-    "glassdoor.com",
-    "ziprecruiter.com",
-    "greenhouse.io",
-    "lever.co",
-    "workday.com",
-    "myworkday",
-    "icims.com",
-    "jobvite.com",
-    "smartrecruiters.com",
-    "ashbyhq.com",
-    "breezy.hr",
-    "welcometothejungle.com",
-    "dice.com",
-    "hiringcafe.com",
-)
-FINANCE_KEYWORDS = (
-    "receipt",
-    "invoice",
-    "statement",
-    "payment",
-    "charged",
-    "bill",
-    "renewal",
-    "subscription",
-    "order confirmation",
-    "transaction",
-    "purchase",
-    "refund",
-    "credit card",
-    "direct deposit",
-    "autopay",
-    "billing",
-    "your order",
-    "payment received",
-    "payment due",
-    "amount due",
-    "balance",
-)
-FINANCE_SENDERS = (
-    "paypal.com",
-    "stripe.com",
-    "venmo.com",
-    "bankofamerica.com",
-    "chase.com",
-    "discover.com",
-    "wellsfargo.com",
-    "citibank.com",
-    "apple.com",
-    "amazon.com",
-    "squareup.com",
-    "cash.app",
-    "zelle",
-    "capitalone.com",
-    "amex.com",
-    "americanexpress.com",
-    "usbank.com",
-    "ally.com",
-    "netflix.com",
-    "spotify.com",
-    "hulu.com",
-)
-NEWSLETTER_KEYWORDS = ("newsletter", "digest", "roundup", "weekly", "daily", "news update")
-NOTIFICATION_KEYWORDS = (
-    "notification",
-    "alert",
-    "activity",
-    "security code",
-    "status update",
-    "commented",
-    "mentioned you",
-)
-SPAM_KEYWORDS = (
-    "bitcoin",
-    "lottery",
-    "casino",
-    "viagra",
-    "wire transfer",
-    "claim your prize",
-)
+VALID_BUCKETS = {"now", "jobs", "finance", "newsletter", "notifications", "review", "done"}
 
 
 class AITriageResult(BaseModel):
-    """Structured result for the AI fallback classifier."""
+    """Structured result from the AI classifier."""
 
-    bucket: str = Field(description="One of: now, review, done")
+    bucket: str = Field(
+        description="One of: now, jobs, finance, newsletter, notifications, review, done"
+    )
     confidence: float = Field(ge=0, le=1)
     actionability_score: float = Field(ge=0, le=1)
-    summary: str
+    summary: str = Field(description="One-sentence summary of the email's purpose")
+    unsubscribe_candidate: bool = Field(
+        description="True if this is marketing/promotional and the user likely didn't opt in"
+    )
 
 
 @dataclass
@@ -155,19 +50,6 @@ def _normalized_sender(from_address: str) -> str:
     return (email_address or from_address).strip().lower()
 
 
-def _text_blob(email: EmailContent) -> str:
-    return " ".join(
-        part
-        for part in [
-            email.subject,
-            email.snippet,
-            email.body_text[:2000] if email.body_text else "",
-            email.body_html[:1000] if email.body_html else "",
-        ]
-        if part
-    ).lower()
-
-
 def _build_summary(email: EmailContent) -> str:
     preview = email.snippet or email.body_text or email.subject or "(No subject)"
     preview = " ".join(preview.split())
@@ -176,125 +58,13 @@ def _build_summary(email: EmailContent) -> str:
     return shorten(preview, width=160, placeholder="...")
 
 
-def _looks_spammy(text_blob: str) -> bool:
-    return any(keyword in text_blob for keyword in SPAM_KEYWORDS)
-
-
-def _job_signal(sender: str, text_blob: str) -> tuple[bool, float, float]:
-    if any(domain in sender for domain in get_default_sender_domains()):
-        return True, 0.97, 0.6
-    if any(keyword in sender for keyword in JOB_SENDER_KEYWORDS):
-        return True, 0.95, 0.65
-    if any(keyword in text_blob for keyword in JOB_SUBJECT_KEYWORDS):
-        # Higher actionability for time-sensitive job stages
-        high_action = (
-            "interview",
-            "offer",
-            "recruiter",
-            "phone screen",
-            "onsite",
-            "coding challenge",
-            "take-home",
-            "offer letter",
-            "background check",
-        )
-        rejection = (
-            "rejection",
-            "unfortunately",
-            "not moving forward",
-            "decided not to proceed",
-            "position has been filled",
-        )
-        if any(keyword in text_blob for keyword in high_action):
-            return True, 0.92, 0.88
-        if any(keyword in text_blob for keyword in rejection):
-            return True, 0.92, 0.7
-        return True, 0.9, 0.6
-    return False, 0.0, 0.0
-
-
-def _finance_signal(sender: str, text_blob: str) -> tuple[bool, float, float]:
-    if any(keyword in sender for keyword in FINANCE_SENDERS):
-        return True, 0.94, 0.55
-    if any(keyword in text_blob for keyword in FINANCE_KEYWORDS):
-        actionability = (
-            0.72
-            if any(
-                keyword in text_blob for keyword in ("bill", "payment due", "charged", "renewal")
-            )
-            else 0.45
-        )
-        return True, 0.9, actionability
-    return False, 0.0, 0.0
-
-
-def _newsletter_signal(
-    email: EmailContent, sender: str, text_blob: str
-) -> tuple[bool, float, bool]:
-    has_list_header = bool(email.list_unsubscribe)
-    has_bulk_header = (email.precedence or "").lower() in {"bulk", "list", "junk"}
-    keyword_match = any(keyword in text_blob for keyword in NEWSLETTER_KEYWORDS)
-    is_newsletter = has_list_header or has_bulk_header or keyword_match
-    unsubscribe_candidate = is_newsletter and not _looks_spammy(text_blob)
-    if is_newsletter:
-        confidence = 0.95 if has_list_header else 0.88
-        return True, confidence, unsubscribe_candidate
-    if "newsletter" in sender or "digest" in sender:
-        return True, 0.84, True
-    return False, 0.0, False
-
-
-def _notification_signal(
-    email: EmailContent, sender: str, text_blob: str
-) -> tuple[bool, float, float]:
-    sender_is_machine = any(
-        token in sender for token in ("no-reply", "noreply", "notifications", "alerts")
-    )
-    auto_submitted = bool(email.auto_submitted and email.auto_submitted.lower() != "no")
-    if (
-        sender_is_machine
-        or auto_submitted
-        or any(keyword in text_blob for keyword in NOTIFICATION_KEYWORDS)
-    ):
-        actionability = 0.55 if "security" in text_blob or "alert" in text_blob else 0.25
-        return True, 0.86 if (sender_is_machine or auto_submitted) else 0.82, actionability
-    return False, 0.0, 0.0
-
-
-def _heuristic_fallback(email: EmailContent, text_blob: str) -> TriageClassification:
-    sender = _normalized_sender(email.from_address)
-    summary = _build_summary(email)
-    if any(
-        keyword in text_blob for keyword in ("reply", "can you", "please review", "action required")
-    ):
-        return TriageClassification(
-            bucket="now",
-            confidence=0.72,
-            actionability_score=0.82,
-            summary=summary,
-            requires_review=True,
-            unsubscribe_candidate=False,
-            is_vip=False,
-        )
-    if any(token in sender for token in ("no-reply", "noreply")):
-        return TriageClassification(
-            bucket="done",
-            confidence=0.68,
-            actionability_score=0.15,
-            summary=summary,
-            requires_review=True,
-            unsubscribe_candidate=False,
-            is_vip=False,
-        )
-    return TriageClassification(
-        bucket="review",
-        confidence=0.55,
-        actionability_score=0.5,
-        summary=summary,
-        requires_review=True,
-        unsubscribe_candidate=False,
-        is_vip=False,
-    )
+def _has_unsubscribe_signals(email: EmailContent) -> bool:
+    """Check email headers for newsletter/bulk mail signals."""
+    if email.list_unsubscribe:
+        return True
+    if (email.precedence or "").lower() in {"bulk", "list", "junk"}:
+        return True
+    return False
 
 
 @lru_cache(maxsize=1)
@@ -302,98 +72,103 @@ def _get_ai_triage_agent() -> Agent[AITriageResult]:
     return Agent(
         f"openai:{settings.AI_MODEL}",
         result_type=AITriageResult,
-        system_prompt="""You are classifying a single email for a personal automation inbox.
+        system_prompt="""\
+You are classifying a single email for a personal inbox triage system.
 
-Choose one bucket:
-- now: likely needs human attention or response soon
-- review: ambiguous or potentially important but low confidence
-- done: informational or not worth immediate attention
+Classify into exactly ONE bucket based on the subject line and sender:
 
-Return a short summary, a confidence score, and an actionability score.
-Never classify marketing/newsletters/receipts/jobs/notifications here; those were handled already.
+- **now**: Requires a human reply or action soon (e.g., personal messages, direct questions, \
+meeting requests, urgent requests from real people).
+- **jobs**: Job alerts, job listings, application updates, interview scheduling, recruiter \
+outreach, hiring platform digests (e.g., LinkedIn, Indeed, HiringCafe, Greenhouse).
+- **finance**: Receipts, invoices, payment confirmations, billing statements, bank alerts, \
+subscription charges, order confirmations. Must be a TRANSACTIONAL email about money, not a \
+promotional email from a company that also does transactions.
+- **newsletter**: Newsletters, digests, content roundups, event announcements, community \
+updates. Informational content the user subscribed to.
+- **notifications**: Automated system notifications, security alerts, CI/CD alerts, app \
+activity notifications (e.g., GitHub, Slack, calendar reminders).
+- **review**: Genuinely ambiguous — you cannot confidently pick another bucket.
+- **done**: Purely informational, no action needed, low value (e.g., shipping updates already \
+delivered, completed event reminders).
+
+Key distinctions:
+- A PROMOTIONAL email from Netflix/Amazon/Spotify ("save 40%", "new releases") is **newsletter**, \
+NOT finance. Finance is only for actual charges/receipts/statements.
+- A job DIGEST from HiringCafe/LinkedIn is **jobs**, even if it looks like a newsletter format.
+- An event announcement from Meetup/Bandsintown/Eventbrite is **newsletter**.
+- Security codes and 2FA are **notifications**.
+
+Set unsubscribe_candidate=true for promotional/marketing emails the user likely didn't \
+explicitly opt into (sales, promotions, ads). Newsletters the user chose to subscribe to \
+should be false.
+
+Be decisive. Only use "review" when truly uncertain.
 """,
     )
 
 
-async def _ai_fallback(email: EmailContent) -> TriageClassification | None:
+async def _ai_classify(email: EmailContent) -> TriageClassification | None:
+    """Classify an email using the AI agent."""
     if not settings.OPENAI_API_KEY:
         return None
 
-    content = "\n".join(
-        part
-        for part in [
-            f"Subject: {email.subject}",
-            f"From: {email.from_address}",
-            f"Snippet: {email.snippet}",
-            f"Body: {(email.body_text or email.body_html)[:4000] if (email.body_text or email.body_html) else ''}",
-        ]
-        if part
-    )
+    content = f"Subject: {email.subject}\nFrom: {email.from_address}"
 
     try:
         result = await _get_ai_triage_agent().run(content)
         data = result.data
-        bucket = data.bucket if data.bucket in {"now", "review", "done"} else "review"
-        requires_review = bucket == "review" or data.confidence < 0.8
+        bucket = data.bucket if data.bucket in VALID_BUCKETS else "review"
+        requires_review = bucket == "review" or data.confidence < 0.75
+
+        # Merge AI unsubscribe signal with email header signals
+        unsubscribe_candidate = data.unsubscribe_candidate or _has_unsubscribe_signals(email)
+
         return TriageClassification(
             bucket=bucket,
             confidence=data.confidence,
             actionability_score=data.actionability_score,
             summary=shorten(" ".join(data.summary.split()), width=160, placeholder="..."),
             requires_review=requires_review,
-            unsubscribe_candidate=False,
+            unsubscribe_candidate=unsubscribe_candidate,
             is_vip=False,
         )
     except Exception as exc:
-        logger.warning("AI triage fallback failed: %s", exc)
+        logger.warning("AI triage classification failed: %s", exc)
         return None
 
 
-async def classify_email(email: EmailContent) -> TriageClassification:
-    """Classify an email into a Phase 1 triage bucket."""
+def _heuristic_fallback(email: EmailContent) -> TriageClassification:
+    """Last-resort fallback when AI is unavailable."""
     sender = _normalized_sender(email.from_address)
-    text_blob = _text_blob(email)
     summary = _build_summary(email)
 
-    matches: list[tuple[str, float, float | bool]] = []
-
-    job_match, job_confidence, job_actionability = _job_signal(sender, text_blob)
-    if job_match:
-        matches.append(("jobs", job_confidence, job_actionability))
-
-    finance_match, finance_confidence, finance_actionability = _finance_signal(sender, text_blob)
-    if finance_match:
-        matches.append(("finance", finance_confidence, finance_actionability))
-
-    newsletter_match, newsletter_confidence, unsubscribe_candidate = _newsletter_signal(
-        email, sender, text_blob
-    )
-    if newsletter_match:
-        matches.append(("newsletter", newsletter_confidence, 0.18))
-
-    notification_match, notification_confidence, notification_actionability = _notification_signal(
-        email, sender, text_blob
-    )
-    if notification_match:
-        matches.append(("notifications", notification_confidence, notification_actionability))
-
-    conflict = len({bucket for bucket, _, _ in matches}) > 1
-    if matches:
-        bucket, confidence, actionability = matches[0]
-        requires_review = confidence < 0.8 or conflict or bucket == "review"
+    if any(token in sender for token in ("no-reply", "noreply")):
         return TriageClassification(
-            bucket=bucket,
-            confidence=float(confidence),
-            actionability_score=float(actionability),
+            bucket="notifications",
+            confidence=0.6,
+            actionability_score=0.2,
             summary=summary,
-            requires_review=requires_review,
-            unsubscribe_candidate=bool(unsubscribe_candidate if bucket == "newsletter" else False),
+            requires_review=True,
+            unsubscribe_candidate=_has_unsubscribe_signals(email),
             is_vip=False,
-            conflict=conflict,
         )
 
-    ai_result = await _ai_fallback(email)
+    return TriageClassification(
+        bucket="review",
+        confidence=0.5,
+        actionability_score=0.5,
+        summary=summary,
+        requires_review=True,
+        unsubscribe_candidate=_has_unsubscribe_signals(email),
+        is_vip=False,
+    )
+
+
+async def classify_email(email: EmailContent) -> TriageClassification:
+    """Classify an email into a triage bucket using AI, with heuristic fallback."""
+    ai_result = await _ai_classify(email)
     if ai_result is not None:
         return ai_result
 
-    return _heuristic_fallback(email, text_blob)
+    return _heuristic_fallback(email)
