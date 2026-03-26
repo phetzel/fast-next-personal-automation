@@ -91,9 +91,7 @@ class TestClassifierPhase3:
         mock_run_result.data = ai_result
         mock_agent = MagicMock()
         mock_agent.run = AsyncMock(return_value=mock_run_result)
-        return patch.object(
-            triage_classifier, "_get_ai_triage_agent", return_value=mock_agent
-        )
+        return patch.object(triage_classifier, "_get_ai_triage_agent", return_value=mock_agent)
 
     @pytest.mark.anyio
     async def test_ats_sender_classified_as_jobs(self):

@@ -62,9 +62,7 @@ def _has_unsubscribe_signals(email: EmailContent) -> bool:
     """Check email headers for newsletter/bulk mail signals."""
     if email.list_unsubscribe:
         return True
-    if (email.precedence or "").lower() in {"bulk", "list", "junk"}:
-        return True
-    return False
+    return (email.precedence or "").lower() in {"bulk", "list", "junk"}
 
 
 @lru_cache(maxsize=1)
