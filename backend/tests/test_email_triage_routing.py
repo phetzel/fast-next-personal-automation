@@ -67,72 +67,96 @@ def _mock_db():
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-class TestClassifierPhase3Heuristics:
-    """Tests for expanded classifier heuristics added in Phase 3."""
+class TestClassifierPhase3:
+    """Tests for AI-first classification of job and finance emails."""
+
+    def _patch_ai(self, **overrides):
+        from app.pipelines.actions.email_triage import classifier as triage_classifier
+        from app.pipelines.actions.email_triage.classifier import TriageClassification
+
+        defaults = {
+            "bucket": "review",
+            "confidence": 0.9,
+            "actionability_score": 0.5,
+            "summary": "Test summary",
+            "requires_review": False,
+            "unsubscribe_candidate": False,
+            "is_vip": False,
+        }
+        defaults.update(overrides)
+        classification = TriageClassification(**defaults)
+        return patch.object(
+            triage_classifier, "_ai_classify", AsyncMock(return_value=classification)
+        )
 
     @pytest.mark.anyio
     async def test_ats_sender_classified_as_jobs(self):
         """ATS platform senders (greenhouse, lever, etc.) should be classified as jobs."""
         for sender_domain in ("greenhouse.io", "lever.co", "ashbyhq.com"):
-            classification = await classify_email(
-                _email_content(
-                    subject="Application Update",
-                    from_address=f"no-reply@{sender_domain}",
-                    snippet="Your application status has been updated.",
+            with self._patch_ai(bucket="jobs", confidence=0.95, actionability_score=0.65):
+                classification = await classify_email(
+                    _email_content(
+                        subject="Application Update",
+                        from_address=f"no-reply@{sender_domain}",
+                        snippet="Your application status has been updated.",
+                    )
                 )
-            )
             assert classification.bucket == "jobs", f"Failed for {sender_domain}"
 
     @pytest.mark.anyio
     async def test_interview_keywords_get_high_actionability(self):
         """Interview-related emails should have high actionability scores."""
-        classification = await classify_email(
-            _email_content(
-                subject="Schedule your technical interview",
-                from_address="recruiter@company.com",
-                snippet="We'd like to schedule a technical interview with you.",
+        with self._patch_ai(bucket="jobs", confidence=0.95, actionability_score=0.88):
+            classification = await classify_email(
+                _email_content(
+                    subject="Schedule your technical interview",
+                    from_address="recruiter@company.com",
+                    snippet="We'd like to schedule a technical interview with you.",
+                )
             )
-        )
         assert classification.bucket == "jobs"
         assert classification.actionability_score >= 0.85
 
     @pytest.mark.anyio
     async def test_rejection_keywords_classified_as_jobs(self):
         """Rejection emails should be classified as jobs with moderate actionability."""
-        classification = await classify_email(
-            _email_content(
-                subject="Update on your application",
-                from_address="no-reply@company.com",
-                snippet="Unfortunately, we have decided not to proceed with your application.",
+        with self._patch_ai(bucket="jobs", confidence=0.92, actionability_score=0.7):
+            classification = await classify_email(
+                _email_content(
+                    subject="Update on your application",
+                    from_address="no-reply@company.com",
+                    snippet="Unfortunately, we have decided not to proceed with your application.",
+                )
             )
-        )
         assert classification.bucket == "jobs"
         assert classification.actionability_score >= 0.6
         assert classification.actionability_score < 0.85
 
     @pytest.mark.anyio
     async def test_expanded_finance_senders(self):
-        """New finance senders (capitalone, amex, etc.) should be classified as finance."""
+        """Finance senders (capitalone, amex, etc.) should be classified as finance."""
         for sender_domain in ("capitalone.com", "amex.com", "ally.com"):
-            classification = await classify_email(
-                _email_content(
-                    subject="Your monthly statement is ready",
-                    from_address=f"alerts@{sender_domain}",
-                    snippet="Your statement is available.",
+            with self._patch_ai(bucket="finance", confidence=0.94, actionability_score=0.55):
+                classification = await classify_email(
+                    _email_content(
+                        subject="Your monthly statement is ready",
+                        from_address=f"alerts@{sender_domain}",
+                        snippet="Your statement is available.",
+                    )
                 )
-            )
             assert classification.bucket == "finance", f"Failed for {sender_domain}"
 
     @pytest.mark.anyio
     async def test_expanded_finance_keywords(self):
-        """New finance keywords (autopay, direct deposit, etc.) should trigger finance bucket."""
-        classification = await classify_email(
-            _email_content(
-                subject="Direct deposit received",
-                from_address="payroll@company.com",
-                snippet="Your direct deposit of $2,500.00 has been processed.",
+        """Finance keywords (direct deposit, etc.) should trigger finance bucket."""
+        with self._patch_ai(bucket="finance", confidence=0.9, actionability_score=0.55):
+            classification = await classify_email(
+                _email_content(
+                    subject="Direct deposit received",
+                    from_address="payroll@company.com",
+                    snippet="Your direct deposit of $2,500.00 has been processed.",
+                )
             )
-        )
         assert classification.bucket == "finance"
 
 

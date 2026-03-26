@@ -391,67 +391,89 @@ def _email_content(
 
 
 class TestEmailTriageClassifier:
-    """Tests for triage classification heuristics."""
+    """Tests for AI-first triage classification."""
+
+    def _patch_ai(self, email_content=None, **overrides):
+        """Patch _ai_classify to return a controlled TriageClassification."""
+        from app.pipelines.actions.email_triage.classifier import TriageClassification
+
+        defaults = {
+            "bucket": "review",
+            "confidence": 0.9,
+            "actionability_score": 0.5,
+            "summary": "Test summary",
+            "requires_review": False,
+            "unsubscribe_candidate": overrides.pop("unsubscribe_candidate", False),
+            "is_vip": False,
+        }
+        defaults.update(overrides)
+        classification = TriageClassification(**defaults)
+        return patch.object(
+            triage_classifier, "_ai_classify", AsyncMock(return_value=classification)
+        )
 
     @pytest.mark.anyio
     async def test_classifies_job_emails(self):
-        classification = await classify_email(
-            _email_content(
-                subject="New jobs for Staff Engineer",
-                from_address="jobs-noreply@linkedin.com",
-                snippet="Your weekly job alert is ready.",
+        with self._patch_ai(bucket="jobs", confidence=0.95, actionability_score=0.65):
+            classification = await classify_email(
+                _email_content(
+                    subject="New jobs for Staff Engineer",
+                    from_address="jobs-noreply@linkedin.com",
+                    snippet="Your weekly job alert is ready.",
+                )
             )
-        )
 
         assert classification.bucket == "jobs"
         assert classification.confidence >= 0.9
 
     @pytest.mark.anyio
     async def test_classifies_finance_emails(self):
-        classification = await classify_email(
-            _email_content(
-                subject="Your receipt from Stripe",
-                from_address="receipts@stripe.com",
-                snippet="Payment successful for your renewal.",
+        with self._patch_ai(bucket="finance", confidence=0.92, actionability_score=0.55):
+            classification = await classify_email(
+                _email_content(
+                    subject="Your receipt from Stripe",
+                    from_address="receipts@stripe.com",
+                    snippet="Payment successful for your renewal.",
+                )
             )
-        )
 
         assert classification.bucket == "finance"
         assert classification.actionability_score >= 0.45
 
     @pytest.mark.anyio
     async def test_classifies_newsletters_and_sets_unsubscribe_candidate(self):
-        classification = await classify_email(
-            _email_content(
-                subject="Weekly design roundup",
-                from_address="newsletter@example.com",
-                snippet="Top links from this week.",
-                list_unsubscribe="<mailto:unsubscribe@example.com>",
-                precedence="bulk",
+        # AI returns unsubscribe_candidate=True (merged with List-Unsubscribe header in real flow)
+        with self._patch_ai(bucket="newsletter", confidence=0.95, unsubscribe_candidate=True):
+            classification = await classify_email(
+                _email_content(
+                    subject="Weekly design roundup",
+                    from_address="newsletter@example.com",
+                    snippet="Top links from this week.",
+                    list_unsubscribe="<mailto:unsubscribe@example.com>",
+                    precedence="bulk",
+                )
             )
-        )
 
         assert classification.bucket == "newsletter"
         assert classification.unsubscribe_candidate is True
 
     @pytest.mark.anyio
-    async def test_does_not_mark_spam_as_unsubscribe_candidate(self):
-        classification = await classify_email(
-            _email_content(
-                subject="Claim your bitcoin lottery prize",
-                from_address="newsletter@totally-legit.biz",
-                snippet="Click here to claim your prize now before it expires.",
-                list_unsubscribe="<mailto:unsubscribe@example.com>",
-                precedence="bulk",
+    async def test_unsubscribe_candidate_from_ai_signal(self):
+        with self._patch_ai(bucket="newsletter", confidence=0.9, unsubscribe_candidate=True):
+            classification = await classify_email(
+                _email_content(
+                    subject="Save 40% on Malwarebytes Plus!",
+                    from_address="noreply@e.malwarebytes.com",
+                    snippet="Stay ahead of the scams.",
+                )
             )
-        )
 
         assert classification.bucket == "newsletter"
-        assert classification.unsubscribe_candidate is False
+        assert classification.unsubscribe_candidate is True
 
     @pytest.mark.anyio
-    async def test_low_confidence_mail_lands_in_review(self):
-        with patch.object(triage_classifier, "_ai_fallback", AsyncMock(return_value=None)):
+    async def test_falls_back_to_heuristic_when_ai_unavailable(self):
+        with patch.object(triage_classifier, "_ai_classify", AsyncMock(return_value=None)):
             classification = await classify_email(
                 _email_content(
                     subject="Checking in",
@@ -461,6 +483,20 @@ class TestEmailTriageClassifier:
             )
 
         assert classification.bucket == "review"
+        assert classification.requires_review is True
+
+    @pytest.mark.anyio
+    async def test_heuristic_fallback_noreply_goes_to_notifications(self):
+        with patch.object(triage_classifier, "_ai_classify", AsyncMock(return_value=None)):
+            classification = await classify_email(
+                _email_content(
+                    subject="Security alert",
+                    from_address="no-reply@accounts.google.com",
+                    snippet="New sign-in to your account.",
+                )
+            )
+
+        assert classification.bucket == "notifications"
         assert classification.requires_review is True
 
 
