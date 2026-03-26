@@ -70,28 +70,24 @@ def _mock_db():
 class TestClassifierPhase3:
     """Tests for AI-first classification of job and finance emails."""
 
-    def _mock_ai_result(self, **overrides):
-        from app.pipelines.actions.email_triage.classifier import AITriageResult
+    def _patch_ai(self, **overrides):
+        from app.pipelines.actions.email_triage import classifier as triage_classifier
+        from app.pipelines.actions.email_triage.classifier import TriageClassification
 
         defaults = {
             "bucket": "review",
             "confidence": 0.9,
             "actionability_score": 0.5,
             "summary": "Test summary",
+            "requires_review": False,
             "unsubscribe_candidate": False,
+            "is_vip": False,
         }
         defaults.update(overrides)
-        return AITriageResult(**defaults)
-
-    def _patch_ai(self, **overrides):
-        from app.pipelines.actions.email_triage import classifier as triage_classifier
-
-        ai_result = self._mock_ai_result(**overrides)
-        mock_run_result = MagicMock()
-        mock_run_result.data = ai_result
-        mock_agent = MagicMock()
-        mock_agent.run = AsyncMock(return_value=mock_run_result)
-        return patch.object(triage_classifier, "_get_ai_triage_agent", return_value=mock_agent)
+        classification = TriageClassification(**defaults)
+        return patch.object(
+            triage_classifier, "_ai_classify", AsyncMock(return_value=classification)
+        )
 
     @pytest.mark.anyio
     async def test_ats_sender_classified_as_jobs(self):

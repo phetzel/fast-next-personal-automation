@@ -393,28 +393,24 @@ def _email_content(
 class TestEmailTriageClassifier:
     """Tests for AI-first triage classification."""
 
-    def _mock_ai_result(self, **overrides):
-        """Build a mock AI classification result."""
-        from app.pipelines.actions.email_triage.classifier import AITriageResult
+    def _patch_ai(self, email_content=None, **overrides):
+        """Patch _ai_classify to return a controlled TriageClassification."""
+        from app.pipelines.actions.email_triage.classifier import TriageClassification
 
         defaults = {
             "bucket": "review",
             "confidence": 0.9,
             "actionability_score": 0.5,
             "summary": "Test summary",
-            "unsubscribe_candidate": False,
+            "requires_review": False,
+            "unsubscribe_candidate": overrides.pop("unsubscribe_candidate", False),
+            "is_vip": False,
         }
         defaults.update(overrides)
-        return AITriageResult(**defaults)
-
-    def _patch_ai(self, **overrides):
-        """Patch the AI agent to return a controlled result."""
-        ai_result = self._mock_ai_result(**overrides)
-        mock_run_result = MagicMock()
-        mock_run_result.data = ai_result
-        mock_agent = MagicMock()
-        mock_agent.run = AsyncMock(return_value=mock_run_result)
-        return patch.object(triage_classifier, "_get_ai_triage_agent", return_value=mock_agent)
+        classification = TriageClassification(**defaults)
+        return patch.object(
+            triage_classifier, "_ai_classify", AsyncMock(return_value=classification)
+        )
 
     @pytest.mark.anyio
     async def test_classifies_job_emails(self):
@@ -446,7 +442,8 @@ class TestEmailTriageClassifier:
 
     @pytest.mark.anyio
     async def test_classifies_newsletters_and_sets_unsubscribe_candidate(self):
-        with self._patch_ai(bucket="newsletter", confidence=0.95, unsubscribe_candidate=False):
+        # AI returns unsubscribe_candidate=True (merged with List-Unsubscribe header in real flow)
+        with self._patch_ai(bucket="newsletter", confidence=0.95, unsubscribe_candidate=True):
             classification = await classify_email(
                 _email_content(
                     subject="Weekly design roundup",
@@ -458,7 +455,6 @@ class TestEmailTriageClassifier:
             )
 
         assert classification.bucket == "newsletter"
-        # unsubscribe_candidate is true because List-Unsubscribe header is present
         assert classification.unsubscribe_candidate is True
 
     @pytest.mark.anyio
